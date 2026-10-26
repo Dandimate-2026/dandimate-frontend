@@ -6,34 +6,3 @@
     BlinkMacSystemFont, system-ui, 'Segoe UI', 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
 }
-
-@layer base {
-  html {
-    @apply h-full font-sans;
-
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-    font-synthesis: none;
-  }
-
-  body {
-    @apply m-0 min-w-0 bg-white text-base leading-relaxed text-slate-900 antialiased;
-  }
-
-  #root {
-    @apply flex min-h-screen w-full flex-col;
-
-    /* 모바일 브라우저 주소창의 높이 변화를 반영합니다. */
-    min-height: 100dvh;
-    /* 노치와 홈 인디케이터에 콘텐츠가 가려지지 않도록 합니다. */
-    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
-      env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-  }
-
-  input,
-  select,
-  textarea {
-    /* iOS에서 입력창 포커스 시 자동 확대를 방지합니다. */
-    @apply text-base;
-  }
-}
