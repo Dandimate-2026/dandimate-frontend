@@ -1,9 +1,12 @@
 @import 'tailwindcss';
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 
-/* 디자인 시안 색상 토큰 */
 @theme {
-  --font-sans: 'Pretendard', system-ui, sans-serif;
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, 'Segoe UI', 'Apple SD Gothic Neo',
+    'Malgun Gothic', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
 
+  /* 디자인 시안 색상 토큰 */
   --color-bg: #f7f3ec;
   --color-surface: #fffdf9;
   --color-line: #e3dcd1;
@@ -12,8 +15,4 @@
   --color-muted: #d5ccbf;
   --color-disabled: #cfc6ba;
   --color-point: #b03a6a;
-}
-
-body {
-  @apply bg-bg font-sans text-ink antialiased;
 }

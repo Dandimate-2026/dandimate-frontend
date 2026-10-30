@@ -33,7 +33,7 @@ function InviteJoinPage() {
   }, [inviteToken])
 
   if (loadError) return <NotFoundPage message={loadError} />
-  if (!preview) return <main className="flex-1" aria-busy="true" />
+  if (!preview) return <main className="flex-1 bg-bg" aria-busy="true" />
 
   const canJoin = preview.canJoin && name.trim().length > 0 && !submitting
   const emptyCount = Math.max(preview.capacity - preview.flowers.length, 0)
@@ -58,7 +58,7 @@ function InviteJoinPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col px-5 pt-[124px] pb-12">
+    <main className="flex flex-1 flex-col bg-bg px-5 text-ink pt-[124px] pb-12">
       <section className="mb-12 px-2">
         {/* TODO: 초대한 사람 이름이 InvitePreview API에 없어 백엔드 추가 요청 필요 */}
         <p className="text-[13px] text-sub">친구가 초대했어요</p>
