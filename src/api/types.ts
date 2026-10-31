@@ -71,3 +71,21 @@ export interface RoomHome {
 export interface ErrorBody {
   error: { code: string; message: string; requestId: string }
 }
+
+export type PhotoContentType = 'image/jpeg' | 'image/png' | 'image/heic' | 'image/heif'
+
+export interface UploadFileRequest {
+  clientFileId: string
+  fileName: string
+  contentType: PhotoContentType
+  sizeBytes: number
+  displayOrder: number
+}
+
+export interface UploadTicket {
+  clientFileId: string
+  photoId: string
+  uploadUrl: string
+  expiresAt: string
+  requiredHeaders?: Record<string, string>
+}
