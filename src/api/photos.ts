@@ -5,9 +5,14 @@ import type { UploadFileRequest, UploadTicket } from './types'
 /**
  * 사진 업로드는 3단계다.
  * 1. 업로드 주소 발급 → 2. 받은 주소로 파일 PUT → 3. 업로드 완료 알림
+ * 올린 사진의 id를 고른 순서대로 돌려준다.
  */
-export async function uploadPhotos(roomId: string, token: string, files: { request: UploadFileRequest; blob: Blob }[]) {
-  if (USE_MOCK) return
+export async function uploadPhotos(
+  roomId: string,
+  token: string,
+  files: { request: UploadFileRequest; blob: Blob }[],
+): Promise<string[]> {
+  if (USE_MOCK) return files.map((f) => `mock-${f.request.clientFileId}`)
 
   const { uploads } = await request<{ uploads: UploadTicket[] }>(`/rooms/${roomId}/photos/upload-requests`, {
     method: 'POST',
@@ -30,4 +35,5 @@ export async function uploadPhotos(roomId: string, token: string, files: { reque
       await request(`/photos/${ticket.photoId}/complete`, { method: 'POST', token, idempotent: true })
     }),
   )
+  return files.map((f) => uploads.find((u) => u.clientFileId === f.request.clientFileId)?.photoId ?? '')
 }
