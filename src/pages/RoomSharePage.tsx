@@ -47,7 +47,7 @@ function RoomSharePage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col bg-bg px-5 text-ink pt-[124px] pb-12">
+    <main className="flex flex-1 flex-col bg-bg px-5 text-ink pt-[clamp(32px,12dvh,124px)] pb-12">
       <h1 className="px-[6px] text-[24px] leading-[32px] font-bold">
         {session.roomName}
         <br />방이 열렸어요
