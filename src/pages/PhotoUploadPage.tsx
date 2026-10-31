@@ -5,6 +5,7 @@ import Button from '../components/Button'
 import { isAcceptedType, prepareImage } from '../lib/image'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
+import type { FirstEntryState } from './FirstEntryPage'
 import NotFoundPage from './NotFoundPage'
 
 const MAX_PHOTOS = 3
@@ -152,9 +153,9 @@ function PhotoUploadPage() {
           }
         }),
       )
-      await uploadPhotos(roomId, session.memberAccessToken, files)
-      // TODO: 한마디 남기기 화면이 생기면 연결
-      navigate(paths.firstEntry(roomId))
+      const photoIds = await uploadPhotos(roomId, session.memberAccessToken, files)
+      const state: FirstEntryState = { photos: photos.map((p, i) => ({ photoId: photoIds[i], file: p.file })) }
+      navigate(paths.firstEntry(roomId), { state })
     } catch (err) {
       setError(err instanceof Error ? err.message : '사진을 올리지 못했어요. 다시 시도해 주세요')
       setUploading(false)

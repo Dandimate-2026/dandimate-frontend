@@ -89,3 +89,16 @@ export interface UploadTicket {
   expiresAt: string
   requiredHeaders?: Record<string, string>
 }
+
+export type EntryKind = 'FIRST' | 'ADDON'
+
+export interface TranscriptionDraft {
+  transcriptionId: string
+  audioAssetId: string
+  transcript: string
+  expiresAt: string
+}
+
+export type CreateEntryRequest =
+  | { kind: EntryKind; inputMode: 'VOICE'; transcriptionId: string; transcript: string }
+  | { kind: EntryKind; inputMode: 'TEXT'; transcript: string }
