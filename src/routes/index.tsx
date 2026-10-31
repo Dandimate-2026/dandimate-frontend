@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { MOCK_INVITE_TOKEN, USE_MOCK } from '../api/mock'
 import InviteJoinPage from '../pages/InviteJoinPage'
 import NotFoundPage from '../pages/NotFoundPage'
+import PhotoUploadPage from '../pages/PhotoUploadPage'
 import RoomHomePage from '../pages/RoomHomePage'
 import RoomSharePage from '../pages/RoomSharePage'
 import { paths } from './paths'
@@ -13,6 +14,8 @@ function AppRoutes() {
       <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
       {/* 방 생성 직후: 초대 링크 공유 */}
       <Route path={paths.roomShare(':roomId')} element={<RoomSharePage />} />
+      {/* 이야기를 남길 사진 고르기 */}
+      <Route path={paths.photoUpload(':roomId')} element={<PhotoUploadPage />} />
       {/* 초대 링크로 들어온 친구: 이름 입력 후 입장 */}
       <Route path={paths.inviteJoin(':inviteToken')} element={<InviteJoinPage />} />
       {/* TODO: 홈(방 만들기) 화면이 생기면 교체 */}
