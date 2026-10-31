@@ -1,17 +1,5 @@
 import type { FlowerCode } from '../api/types'
-
-// 백엔드 FlowerCode → 꽃 색상
-// TODO: 시안에 있는 3색(진달래·물망초·개나리) 외 나머지는 디자이너 확인 필요
-const FLOWER_COLOR: Record<FlowerCode, string> = {
-  AZALEA: '#E0568F',
-  FORGET_ME_NOT: '#3D7BD6',
-  FORSYTHIA: '#E08A12',
-  ROYAL_AZALEA: '#C2407A',
-  CANOLA: '#E8C21A',
-  LILAC: '#A77BD6',
-  TEAL: '#2A9D8F',
-  PURPLE: '#7A4FC2',
-}
+import { FLOWER_COLOR } from '../lib/flower'
 
 // 꽃잎 5장의 중심 좌표 (30x30 기준)
 const PETALS = [
@@ -23,9 +11,9 @@ const PETALS = [
 ]
 
 /** 방에 들어온 친구를 나타내는 꽃 아이콘 */
-function Flower({ code }: { code: FlowerCode }) {
+function Flower({ code, size = 30 }: { code: FlowerCode; size?: number }) {
   return (
-    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 30 30" aria-hidden="true">
       {PETALS.map(([cx, cy]) => (
         <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="5.4" fill={FLOWER_COLOR[code]} />
       ))}

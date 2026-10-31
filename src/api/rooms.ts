@@ -1,6 +1,6 @@
 import { request } from './client'
-import { mockInvitePreview, mockJoinRoom, USE_MOCK } from './mock'
-import type { Consent, InvitePreview, JoinRoomResult } from './types'
+import { mockInvitePreview, mockJoinRoom, mockRoomHome, USE_MOCK } from './mock'
+import type { Consent, InvitePreview, JoinRoomResult, RoomHome } from './types'
 
 // TODO: 백엔드와 약관 버전 값 확정 필요
 export const CONSENT: Consent = {
@@ -22,4 +22,9 @@ export function joinRoom(inviteToken: string, nickname: string) {
     body: { nickname, consent: CONSENT },
     idempotent: true,
   })
+}
+
+export function getRoomHome(roomId: string, token: string) {
+  if (USE_MOCK) return Promise.resolve(mockRoomHome)
+  return request<RoomHome>(`/rooms/${roomId}`, { token })
 }

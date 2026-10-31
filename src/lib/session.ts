@@ -1,5 +1,6 @@
 // 계정 없이 방에 들어오므로, 방마다 받은 토큰을 기기에 저장해 둔다
 import { MOCK_INVITE_TOKEN, MOCK_ROOM_ID, USE_MOCK } from '../api/mock'
+import { paths } from '../routes/paths'
 
 const key = (roomId: string) => `duruduru:room:${roomId}`
 
@@ -32,5 +33,5 @@ export function getRoomSession(roomId: string): RoomSession | null {
 }
 
 export function inviteUrl(inviteToken: string) {
-  return `${window.location.origin}/invite/${inviteToken}`
+  return `${window.location.origin}${paths.inviteJoin(inviteToken)}`
 }
