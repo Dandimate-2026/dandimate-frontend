@@ -5,4 +5,14 @@
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, 'Segoe UI', 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+
+  /* 디자인 시안 색상 토큰 */
+  --color-bg: #f7f3ec;
+  --color-surface: #fffdf9;
+  --color-line: #e3dcd1;
+  --color-ink: #2a2623;
+  --color-sub: #6b635b;
+  --color-muted: #d5ccbf;
+  --color-disabled: #cfc6ba;
+  --color-point: #b03a6a;
 }
