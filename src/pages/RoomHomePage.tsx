@@ -74,7 +74,10 @@ function MemberProgress({ member }: { member: Member }) {
         </span>
       </div>
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full" style={{ width: `${rate * 100}%`, backgroundColor: FLOWER_COLOR[member.flowerCode] }} />
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${rate * 100}%`, backgroundColor: FLOWER_COLOR[member.flowerCode] }}
+        />
       </div>
     </li>
   )
@@ -93,7 +96,9 @@ function RoomHomePage() {
     getRoomHome(roomId, session.memberAccessToken)
       .then(setHome)
       .catch((e: unknown) =>
-        setError(e instanceof ApiError && e.status === 403 ? '이 방에 들어갈 수 없어요' : '방 정보를 불러오지 못했어요'),
+        setError(
+          e instanceof ApiError && e.status === 403 ? '이 방에 들어갈 수 없어요' : '방 정보를 불러오지 못했어요',
+        ),
       )
     // session은 매 렌더마다 새로 읽으므로 roomId 기준으로만 다시 불러온다
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,77 +111,92 @@ function RoomHomePage() {
   const { room, me, members, todayFlowers, myTodo } = home
 
   return (
-    <main className="flex flex-1 flex-col bg-bg px-5 pt-16 pb-10 text-ink">
-      <header className="px-1">
-        {/* TODO: 뒤로 가기 목적지 확정 필요. 지금은 브라우저 히스토리 기준이라
+    // 위쪽 내용은 스크롤되고, 내 할 일 카드는 화면 아래에 고정한다 (멤버 수에 따라 내용 길이가 달라짐)
+    <main className="flex h-dvh flex-col bg-bg text-ink">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-16 pb-6">
+        <header className="px-1">
+          {/* TODO: 뒤로 가기 목적지 확정 필요. 지금은 브라우저 히스토리 기준이라
             입장 화면으로 돌아가거나, 링크로 바로 들어온 경우 사이트를 벗어날 수 있음 */}
-        <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-2.5 text-[16px] font-bold">
-          <ChevronLeftIcon />
-          {room.name}
-        </button>
-        <div className="mt-3.5 flex items-center gap-2.5">
-          <span className="rounded-full bg-[#f6e3ea] px-3 py-0.5 text-[9px] text-point">{STATUS_LABEL[room.status]}</span>
-          <span className="text-[11px] text-sub">{deadlineText(room.deadlineAt)}</span>
-        </div>
-      </header>
-
-      <section className="mt-5 px-1.5">
-        <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
-        <ul className="mt-2.5 flex flex-wrap gap-0.5">
-          {todayFlowers.map((f, i) => (
-            <li key={`${f.memberId}-${i}`}>
-              <Flower code={f.flowerCode} />
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-[11px] text-sub">이야기 {todayFlowers.length}개 · 친구가 오면 꽃이 더해져요</p>
-      </section>
-
-      {myTodo.topAskback && (
-        <section className="mt-5 rounded-xl bg-[#f6e3ea] px-3.5 py-4">
-          <p className="flex items-center gap-1.5 text-[11px] text-point">
-            <SparkleIcon />
-            {me.nickname}님에게 질문이 왔어요
-          </p>
-          <p className="mt-2.5 text-[16px] font-bold">“{myTodo.topAskback.question}”</p>
-          {/* TODO: 되묻기 답변 화면 연결 */}
-          <Button
-            variant="outline"
-            onClick={() => myTodo.topAskback && navigate(paths.askback(myTodo.topAskback.id))}
-            className="mt-3 rounded-full border-ink px-4 py-2.5 text-[13px]"
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2.5 text-[16px] font-bold"
           >
-            한 문장만 답하기
-          </Button>
+            <ChevronLeftIcon />
+            {room.name}
+          </button>
+          <div className="mt-3.5 flex items-center gap-2.5">
+            <span className="rounded-full bg-[#f6e3ea] px-3 py-0.5 text-[9px] text-point">
+              {STATUS_LABEL[room.status]}
+            </span>
+            <span className="text-[11px] text-sub">{deadlineText(room.deadlineAt)}</span>
+          </div>
+        </header>
+
+        <section className="mt-5 px-1.5">
+          <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
+          <ul className="mt-2.5 flex flex-wrap gap-0.5">
+            {todayFlowers.map((f, i) => (
+              <li key={`${f.memberId}-${i}`}>
+                <Flower code={f.flowerCode} />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-sub">이야기 {todayFlowers.length}개 · 친구가 오면 꽃이 더해져요</p>
         </section>
-      )}
 
-      <section className="mt-7 mb-12">
-        <h2 className="px-0.5 text-[11px] text-sub">참여현황</h2>
-        <ul className="mt-3 flex flex-col gap-4">
-          {members.map((m) => (
-            <MemberProgress key={m.id} member={m} />
-          ))}
-        </ul>
-      </section>
+        {myTodo.topAskback && (
+          <section className="mt-5 rounded-xl bg-[#f6e3ea] px-3.5 py-4">
+            <p className="flex items-center gap-1.5 text-[11px] text-point">
+              <SparkleIcon />
+              {me.nickname}님에게 질문이 왔어요
+            </p>
+            <p className="mt-2.5 text-[16px] font-bold">“{myTodo.topAskback.question}”</p>
+            {/* TODO: 되묻기 답변 화면 연결 */}
+            <Button
+              variant="outline"
+              onClick={() => myTodo.topAskback && navigate(paths.askback(myTodo.topAskback.id))}
+              className="mt-3 rounded-full border-ink px-4 py-2.5 text-[13px]"
+            >
+              한 문장만 답하기
+            </Button>
+          </section>
+        )}
 
-      <Card className="mt-auto px-[26px] pt-5 pb-6">
-        <p className="text-[11px] text-sub">내 할 일</p>
-        <p className="mt-1.5 text-[15px] font-bold">{todoText(home)}</p>
-        {/* TODO: 돌려보기 화면 연결 */}
-        <Button
-          onClick={() => navigate(paths.roomCirculation(room.id))}
-          disabled={home.allCompleted}
-          className="mt-4 w-full"
-        >
-          이어서 하기
-        </Button>
-      </Card>
-      <div className="mt-6 flex justify-center">
-        <Button variant="text" onClick={() => navigate(paths.roomShare(room.id))} className="flex h-auto items-center gap-2 text-[11px] font-normal text-sub">
-          <ShareIcon />
-          단톡방에 알리기
-        </Button>
+        <section className="mt-7">
+          <h2 className="px-0.5 text-[11px] text-sub">참여현황</h2>
+          <ul className="mt-3 flex flex-col gap-4">
+            {members.map((m) => (
+              <MemberProgress key={m.id} member={m} />
+            ))}
+          </ul>
+        </section>
       </div>
+
+      <footer className="shrink-0 px-5 pt-3 pb-6">
+        <Card className="px-[26px] pt-5 pb-6">
+          <p className="text-[11px] text-sub">내 할 일</p>
+          <p className="mt-1.5 text-[15px] font-bold">{todoText(home)}</p>
+          {/* TODO: 돌려보기 화면 연결 */}
+          <Button
+            onClick={() => navigate(paths.roomCirculation(room.id))}
+            disabled={home.allCompleted}
+            className="mt-4 w-full"
+          >
+            이어서 하기
+          </Button>
+        </Card>
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="text"
+            onClick={() => navigate(paths.roomShare(room.id))}
+            className="flex h-auto items-center gap-2 text-[11px] font-normal text-sub"
+          >
+            <ShareIcon />
+            단톡방에 알리기
+          </Button>
+        </div>
+      </footer>
     </main>
   )
 }

@@ -163,7 +163,7 @@ function PhotoUploadPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col bg-bg px-5 pt-16 pb-10 text-ink">
+    <main className="flex flex-1 flex-col bg-bg px-5 pt-[clamp(24px,8dvh,64px)] pb-10 text-ink">
       {/* TODO: 뒤로 가기 목적지 확정 필요 (지금은 브라우저 히스토리 기준) */}
       <button type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-fit">
         <ChevronLeftIcon />
@@ -245,7 +245,7 @@ function PhotoUploadPage() {
       </div>
 
       {/* 화면이 낮아도 버튼 위에 빈 공간을 남긴다 */}
-      <div className="mt-auto pt-24">
+      <div className="mt-auto pt-[clamp(32px,10dvh,96px)]">
         <Button onClick={handleNext} disabled={photos.length === 0 || uploading} className="w-full">
           {uploading ? '사진 올리는 중…' : '다음 : 한마디 남기기'}
         </Button>
