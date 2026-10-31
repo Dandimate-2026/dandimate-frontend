@@ -4,6 +4,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import { getRoomSession, inviteUrl } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
+import { paths } from '../routes/paths'
 
 const DEFAULT_SHARE_MESSAGE = '두루두루 열었어! 사진 올리고 한마디 남겨줘'
 const MAX_MESSAGE_LENGTH = 50
@@ -91,7 +92,7 @@ function RoomSharePage() {
 
       <div className="mt-auto flex flex-col gap-3 pt-12">
         <Button onClick={handleShare}>카카오톡으로 보내기</Button>
-        <Button variant="text" onClick={() => navigate(`/rooms/${roomId}`)}>
+        <Button variant="text" onClick={() => navigate(paths.roomHome(roomId))}>
           방으로 들어가기
         </Button>
       </div>

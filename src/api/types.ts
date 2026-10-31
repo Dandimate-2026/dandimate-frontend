@@ -24,6 +24,10 @@ export interface Member {
   nickname: string
   role: 'HOST' | 'MEMBER'
   flowerCode: FlowerCode
+  photoCount?: number
+  storyCount?: number
+  /** 0~1, 참여현황 막대 길이 */
+  responseRate?: number
 }
 
 export interface RoomSummary {
@@ -48,6 +52,20 @@ export interface JoinRoomResult {
   room: RoomSummary
   member: Member
   memberAccessToken: string
+}
+
+export interface RoomHome {
+  room: RoomSummary
+  me: Member
+  members: Member[]
+  todayFlowers: { memberId: string; flowerCode: FlowerCode; entryKind: 'FIRST' | 'ADDON' }[]
+  myTodo: {
+    needsFirstEntry: boolean
+    pendingCirculationCount: number
+    topAskback: { id: string; question: string } | null
+  }
+  unreadCount: number
+  allCompleted: boolean
 }
 
 export interface ErrorBody {

@@ -9,6 +9,7 @@ import Flower, { EmptySlot } from '../components/Flower'
 import { formatDate } from '../lib/date'
 import { saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
+import { paths } from '../routes/paths'
 
 const MAX_NAME_LENGTH = 10
 
@@ -46,7 +47,7 @@ function InviteJoinPage() {
     try {
       const { room, memberAccessToken } = await joinRoom(inviteToken, name.trim())
       saveRoomSession(room.id, { memberAccessToken, roomName: room.name })
-      navigate(`/rooms/${room.id}`)
+      navigate(paths.roomHome(room.id))
     } catch (err) {
       setSubmitError(
         err instanceof ApiError && err.status === 409
@@ -110,7 +111,7 @@ function InviteJoinPage() {
         설치·가입 없이 이름만 있으면 돼요
         <br />
         들어가면{' '}
-        <Link to="/terms" className="text-point">
+        <Link to={paths.terms()} className="text-point">
           이용 안내
         </Link>
         에 동의하면 돼요
