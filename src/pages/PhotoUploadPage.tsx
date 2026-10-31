@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { uploadPhotos } from '../api/photos'
 import Button from '../components/Button'
@@ -8,7 +8,9 @@ import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
 const MAX_PHOTOS = 3
-const LONG_PRESS_MS = 450
+const LONG_PRESS_MS = 400
+// 길게 누르기 전에 이만큼 움직이면 누르기를 취소한다
+const MOVE_TOLERANCE = 8
 
 interface PickedPhoto {
   id: string
@@ -49,10 +51,12 @@ function PhotoUploadPage() {
   const [photos, setPhotos] = useState<PickedPhoto[]>([])
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  // 길게 눌러 고른 사진. 다른 사진을 누르면 서로 자리를 바꾼다
-  const [movingId, setMovingId] = useState<string | null>(null)
+  // 길게 눌러 끌고 있는 사진과 손가락이 움직인 거리
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const listRef = useRef<HTMLUListElement>(null)
   const pressTimer = useRef<number | undefined>(undefined)
-  const longPressed = useRef(false)
+  const pressStart = useRef({ x: 0, y: 0 })
 
   // 화면을 떠날 때 미리보기용 URL을 정리한다
   const photosRef = useRef(photos)
@@ -82,37 +86,51 @@ function PhotoUploadPage() {
     setPhotos((prev) => [...prev, ...next])
   }
 
-  const startPress = (id: string) => {
-    longPressed.current = false
+  const handlePointerDown = (e: PointerEvent<HTMLLIElement>, id: string) => {
+    if (uploading) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    pressStart.current = { x: e.clientX, y: e.clientY }
     pressTimer.current = window.setTimeout(() => {
-      longPressed.current = true
-      setMovingId(id)
+      setDragId(id)
+      navigator.vibrate?.(30)
     }, LONG_PRESS_MS)
   }
 
-  const cancelPress = () => window.clearTimeout(pressTimer.current)
-
-  const handleTileClick = (id: string) => {
-    // 길게 누른 직후의 클릭은 무시한다
-    if (longPressed.current) {
-      longPressed.current = false
+  const handlePointerMove = (e: PointerEvent<HTMLLIElement>, id: string) => {
+    const dx = e.clientX - pressStart.current.x
+    const dy = e.clientY - pressStart.current.y
+    if (dragId !== id) {
+      if (Math.hypot(dx, dy) > MOVE_TOLERANCE) window.clearTimeout(pressTimer.current)
       return
     }
-    if (!movingId) return
-    if (movingId !== id) {
+
+    // 사진 칸은 한 줄 3칸이라, 손가락의 가로 위치로 놓일 자리를 정한다
+    const list = listRef.current?.getBoundingClientRect()
+    if (!list) return
+    const colWidth = list.width / MAX_PHOTOS
+    const from = photos.findIndex((p) => p.id === id)
+    const to = Math.min(Math.max(Math.floor((e.clientX - list.left) / colWidth), 0), photos.length - 1)
+
+    if (to !== from) {
       setPhotos((prev) => {
         const next = [...prev]
-        const a = next.findIndex((p) => p.id === movingId)
-        const b = next.findIndex((p) => p.id === id)
-        ;[next[a], next[b]] = [next[b], next[a]]
+        const [moved] = next.splice(from, 1)
+        next.splice(to, 0, moved)
         return next
       })
+      // 칸이 옮겨진 만큼 기준점을 옮겨 사진이 손가락 아래에 머물게 한다
+      pressStart.current.x += (to - from) * colWidth
     }
-    setMovingId(null)
+    setDragOffset({ x: e.clientX - pressStart.current.x, y: dy })
+  }
+
+  const handlePointerEnd = () => {
+    window.clearTimeout(pressTimer.current)
+    setDragId(null)
+    setDragOffset({ x: 0, y: 0 })
   }
 
   const handleRemove = (id: string) => {
-    if (movingId === id) setMovingId(null)
     setPhotos((prev) => {
       const target = prev.find((p) => p.id === id)
       if (target) URL.revokeObjectURL(target.previewUrl)
@@ -157,19 +175,20 @@ function PhotoUploadPage() {
       </h1>
       <p className="mt-3.5 px-[7px] text-[11px] text-sub">1장부터 괜찮아요 · 최대 {MAX_PHOTOS}장</p>
 
-      <ul className="mt-4 grid grid-cols-3 gap-[9px]">
+      <ul ref={listRef} className="mt-4 grid grid-cols-3 gap-[9px]">
         {photos.map((p) => (
           <li
             key={p.id}
-            onPointerDown={() => startPress(p.id)}
-            onPointerUp={cancelPress}
-            onPointerLeave={cancelPress}
-            onPointerCancel={cancelPress}
+            onPointerDown={(e) => handlePointerDown(e, p.id)}
+            onPointerMove={(e) => handlePointerMove(e, p.id)}
+            onPointerUp={handlePointerEnd}
+            onPointerCancel={handlePointerEnd}
             onContextMenu={(e) => e.preventDefault()}
-            onClick={() => handleTileClick(p.id)}
-            // iOS에서 길게 누르면 뜨는 이미지 저장 메뉴를 막는다
-            className={`relative aspect-[101/136] touch-manipulation overflow-hidden rounded-xl bg-[#efe9df] select-none [-webkit-touch-callout:none] ${
-              movingId === p.id ? 'ring-2 ring-ink ring-offset-2 ring-offset-bg' : ''
+            style={dragId === p.id ? { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(1.05)` } : undefined}
+            // touch-none: 사진 위에서는 화면 스크롤 대신 끌기로 동작
+            // [-webkit-touch-callout:none]: iOS에서 길게 누르면 뜨는 이미지 저장 메뉴를 막는다
+            className={`relative aspect-[101/136] touch-none overflow-hidden rounded-xl bg-[#efe9df] select-none [-webkit-touch-callout:none] ${
+              dragId === p.id ? 'z-10 shadow-lg' : 'transition-transform'
             }`}
           >
             <img src={p.previewUrl} alt={p.file.name} draggable={false} className="size-full object-cover" />
@@ -216,7 +235,7 @@ function PhotoUploadPage() {
           <p className="text-[11px] text-point">{error}</p>
         ) : (
           <p className="text-[11px] text-sub">
-            {movingId ? '자리를 바꿀 사진을 눌러주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
+            {dragId ? '원하는 자리에 놓아주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
           </p>
         )}
         <p className="text-[15px] font-semibold">
