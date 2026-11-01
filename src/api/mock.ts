@@ -1,6 +1,6 @@
 // 백엔드가 준비되기 전, 개발 서버에서 화면을 확인하기 위한 예시 데이터
 // .env.local 에 VITE_USE_MOCK=false 를 넣으면 실제 API를 호출한다
-import type { InvitePreview, JoinRoomResult, RoomHome } from './types'
+import type { Askback, InvitePreview, JoinRoomResult, RoomHome, TranscriptionDraft } from './types'
 
 export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
 
@@ -63,4 +63,33 @@ export const mockRoomHome: RoomHome = {
   },
   unreadCount: 0,
   allCompleted: false,
+}
+
+export const mockAskback: Askback = {
+  id: 'a1',
+  // 사진이 없으면 화면에서 자리표시를 보여준다
+  photo: { id: 'mock-photo', imageUrl: '', uploader: mockMembers[0], displayOrder: 0 },
+  gapType: 'CONFLICT',
+  question: '민지님은 그때 어땠어요?',
+  evidenceNicknames: ['서연', '지수'],
+  status: 'PENDING',
+  firstEntry: null,
+  createdAt: new Date().toISOString(),
+  expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+}
+
+/** 받아 적기 흉내. 1.2초 뒤 정해진 글을 돌려준다 */
+export function mockTranscribe(transcript: string) {
+  return new Promise<TranscriptionDraft>((resolve) =>
+    setTimeout(
+      () =>
+        resolve({
+          transcriptionId: 'mock-transcription',
+          audioAssetId: 'mock-audio',
+          transcript,
+          expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+        }),
+      1200,
+    ),
+  )
 }

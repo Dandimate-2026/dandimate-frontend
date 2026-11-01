@@ -6,8 +6,9 @@ export const paths = {
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
   photoUpload: (roomId: string) => `/rooms/${roomId}/photos/new`,
   firstEntry: (roomId: string) => `/rooms/${roomId}/entries/new`,
+  // 참여자 토큰이 방마다 있어서 방 id도 주소에 넣는다
+  askback: (roomId: string, askbackId: string) => `/rooms/${roomId}/askbacks/${askbackId}`,
   // TODO: 아래 화면은 아직 없음
   roomCirculation: (roomId: string) => `/rooms/${roomId}/circulation`,
-  askback: (askbackId: string) => `/askbacks/${askbackId}`,
   terms: () => '/terms',
 }

@@ -39,6 +39,17 @@ export function useVoiceRecorder({ maxMs, onFinish }: { maxMs: number; onFinish:
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
   }, [])
 
+  /** 녹음을 버린다. stop과 달리 onFinish를 부르지 않는다 */
+  const cancel = useCallback(() => {
+    const recorder = recorderRef.current
+    if (recorder?.state === 'recording') {
+      recorder.onstop = null
+      recorder.stop()
+    }
+    releaseMic()
+    setRecording(false)
+  }, [])
+
   /** 마이크 권한이 없거나 녹음을 지원하지 않으면 예외를 던진다 */
   const start = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -82,7 +93,7 @@ export function useVoiceRecorder({ maxMs, onFinish }: { maxMs: number; onFinish:
     [],
   )
 
-  return { recording, elapsedMs, start, stop }
+  return { recording, elapsedMs, start, stop, cancel }
 }
 
 /** 12000 → "0:12" */

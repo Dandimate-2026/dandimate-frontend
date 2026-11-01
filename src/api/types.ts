@@ -99,6 +99,43 @@ export interface TranscriptionDraft {
   expiresAt: string
 }
 
+export interface Photo {
+  id: string
+  imageUrl: string
+  uploader: Member
+  displayOrder: number
+}
+
+export interface Entry {
+  id: string
+  photoId: string
+  member: Member
+  kind: EntryKind | 'ASKBACK_ANSWER'
+  inputMode: 'VOICE' | 'TEXT'
+  transcript: string
+  audioUrl?: string | null
+  confirmedAt: string
+}
+
+export type AskbackStatus = 'PENDING' | 'ANSWERED' | 'FORGOT' | 'EXPIRED' | 'CANCELLED'
+
+export interface Askback {
+  id: string
+  photo: Photo
+  gapType: 'CONFLICT' | 'MISSING_REASON' | 'NO_ADDON' | 'MISSING_CONTEXT'
+  question: string
+  /** 질문의 근거가 된 이야기를 쓴 친구들 */
+  evidenceNicknames: string[]
+  status: AskbackStatus
+  firstEntry?: Entry | null
+  createdAt: string
+  expiresAt: string
+}
+
+export type AskbackAnswerRequest =
+  | { inputMode: 'VOICE'; transcriptionId: string; transcript: string }
+  | { inputMode: 'TEXT'; transcript: string }
+
 export type CreateEntryRequest =
   | { kind: EntryKind; inputMode: 'VOICE'; transcriptionId: string; transcript: string }
   | { kind: EntryKind; inputMode: 'TEXT'; transcript: string }
