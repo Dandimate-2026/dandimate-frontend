@@ -103,9 +103,9 @@ function RoomHomePage() {
   const { room, me, members, todayFlowers, myTodo } = home
 
   return (
-    // 위쪽 내용은 스크롤되고, 내 할 일 카드는 화면 아래에 고정한다 (멤버 수에 따라 내용 길이가 달라짐)
-    <main className="flex h-dvh flex-col bg-bg text-ink">
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-16 pb-6">
+    // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
+    <main className="flex min-h-dvh flex-col bg-bg text-ink">
+      <div className="px-5 pt-16 pb-6">
         <header className="px-1">
           {/* TODO: 뒤로 가기 목적지 확정 필요. 지금은 브라우저 히스토리 기준이라
             입장 화면으로 돌아가거나, 링크로 바로 들어온 경우 사이트를 벗어날 수 있음 */}
@@ -164,7 +164,7 @@ function RoomHomePage() {
         </section>
       </div>
 
-      <footer className="shrink-0 px-5 pt-3 pb-6">
+      <footer className="mt-auto px-5 pt-3 pb-6">
         <Card className="px-[26px] pt-5 pb-6">
           <p className="text-[11px] text-sub">내 할 일</p>
           <p className="mt-1.5 text-[15px] font-bold">{todoText(home)}</p>
