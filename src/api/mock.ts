@@ -1,6 +1,14 @@
 // 백엔드가 준비되기 전, 개발 서버에서 화면을 확인하기 위한 예시 데이터
 // .env.local 에 VITE_USE_MOCK=false 를 넣으면 실제 API를 호출한다
-import type { Askback, InvitePreview, JoinRoomResult, RoomHome, TranscriptionDraft } from './types'
+import type {
+  Askback,
+  CreateRoomRequest,
+  CreateRoomResult,
+  InvitePreview,
+  JoinRoomResult,
+  RoomHome,
+  TranscriptionDraft,
+} from './types'
 
 export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
 
@@ -15,6 +23,21 @@ export const mockInvitePreview: InvitePreview = {
   capacity: 8,
   flowers: ['AZALEA', 'FORGET_ME_NOT', 'FORSYTHIA'],
   canJoin: true,
+}
+
+export function mockCreateRoom({ name, meetingDate, hostNickname }: CreateRoomRequest): CreateRoomResult {
+  return {
+    room: {
+      id: MOCK_ROOM_ID,
+      name,
+      meetingDate,
+      status: 'COLLECTING',
+      deadlineAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    },
+    member: { id: 'mock-host', nickname: hostNickname, role: 'HOST', flowerCode: 'AZALEA' },
+    inviteToken: MOCK_INVITE_TOKEN,
+    memberAccessToken: 'mock-token',
+  }
 }
 
 export function mockJoinRoom(nickname: string): JoinRoomResult {
