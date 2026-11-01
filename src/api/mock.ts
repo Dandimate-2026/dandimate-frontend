@@ -6,6 +6,7 @@ import type {
   CreateRoomResult,
   InvitePreview,
   JoinRoomResult,
+  Member,
   RoomHome,
   TranscriptionDraft,
 } from './types'
@@ -13,6 +14,8 @@ import type {
 export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
 
 export const MOCK_ROOM_ID = 'demo'
+/** 방 만들기로 막 연 방. 친구를 기다리는 화면을 확인할 때 쓴다 */
+export const MOCK_NEW_ROOM_ID = 'new'
 export const MOCK_INVITE_TOKEN = 'demo'
 
 export const mockInvitePreview: InvitePreview = {
@@ -28,7 +31,7 @@ export const mockInvitePreview: InvitePreview = {
 export function mockCreateRoom({ name, meetingDate, hostNickname }: CreateRoomRequest): CreateRoomResult {
   return {
     room: {
-      id: MOCK_ROOM_ID,
+      id: MOCK_NEW_ROOM_ID,
       name,
       meetingDate,
       status: 'COLLECTING',
@@ -84,6 +87,26 @@ export const mockRoomHome: RoomHome = {
     pendingCirculationCount: 3,
     topAskback: { id: 'a1', question: '민지님은 그때 어땠어요?' },
   },
+  unreadCount: 0,
+  allCompleted: false,
+}
+
+const mockHost: Member = { id: 'mock-host', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA' }
+
+/** 방장 혼자 있는 막 만든 방 */
+export const mockNewRoomHome: RoomHome = {
+  room: {
+    id: MOCK_NEW_ROOM_ID,
+    name: mockInvitePreview.roomName,
+    meetingDate: mockInvitePreview.meetingDate,
+    status: 'COLLECTING',
+    // 지금부터 47시간 뒤
+    deadlineAt: new Date(Date.now() + 47 * 60 * 60 * 1000).toISOString(),
+  },
+  me: mockHost,
+  members: [mockHost],
+  todayFlowers: [],
+  myTodo: { needsFirstEntry: true, pendingCirculationCount: 0, topAskback: null },
   unreadCount: 0,
   allCompleted: false,
 }

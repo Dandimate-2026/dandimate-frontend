@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
-import { getRoomHome } from '../api/rooms'
-import type { Member, RoomHome, RoomStatus } from '../api/types'
+import { getRoomHome, ROOM_CAPACITY } from '../api/rooms'
+import type { Member, RoomHome, RoomStatus, RoomSummary } from '../api/types'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { SparkleIcon } from '../components/entry/EntryIcons'
-import Flower from '../components/Flower'
+import Flower, { EmptySlot } from '../components/Flower'
+import { CopyIcon, ShareIcon } from '../components/ShareIcons'
+import { useInviteShare } from '../hooks/useInviteShare'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
@@ -41,15 +43,6 @@ function ChevronLeftIcon() {
   )
 }
 
-function ShareIcon() {
-  // 시안 SVG 좌표 그대로 사용
-  return (
-    <svg width="12" height="12" viewBox="126 696 12 12" fill="currentColor" aria-hidden="true">
-      <path d="M128.208 704.042C128.832 704.042 129.387 703.75 129.766 703.307L133.773 705.564C133.767 705.64 133.75 705.716 133.75 705.792C133.75 706.918 134.666 707.833 135.792 707.833C136.917 707.833 137.833 706.918 137.833 705.792C137.833 704.666 136.917 703.75 135.792 703.75C135.167 703.75 134.613 704.042 134.234 704.485L130.227 702.228C130.232 702.152 130.25 702.076 130.25 702C130.25 701.924 130.238 701.848 130.227 701.773L134.234 699.515C134.607 699.958 135.162 700.25 135.792 700.25C136.917 700.25 137.833 699.334 137.833 698.208C137.833 697.083 136.917 696.167 135.792 696.167C134.666 696.167 133.75 697.083 133.75 698.208C133.75 698.284 133.762 698.36 133.773 698.436L129.766 700.693C129.576 700.464 129.338 700.28 129.069 700.153C128.8 700.026 128.506 699.959 128.208 699.958C127.082 699.958 126.167 700.874 126.167 702C126.167 703.126 127.082 704.042 128.208 704.042ZM135.792 704.917C136.276 704.917 136.667 705.308 136.667 705.792C136.667 706.276 136.276 706.667 135.792 706.667C135.307 706.667 134.917 706.276 134.917 705.792C134.917 705.308 135.307 704.917 135.792 704.917ZM135.792 697.333C136.276 697.333 136.667 697.724 136.667 698.208C136.667 698.693 136.276 699.083 135.792 699.083C135.307 699.083 134.917 698.693 134.917 698.208C134.917 697.724 135.307 697.333 135.792 697.333ZM128.208 701.125C128.692 701.125 129.083 701.516 129.083 702C129.083 702.484 128.692 702.875 128.208 702.875C127.724 702.875 127.333 702.484 127.333 702C127.333 701.516 127.724 701.125 128.208 701.125Z" />
-    </svg>
-  )
-}
-
 /** 참여현황 한 줄: 꽃 + 이름, 사진/이야기 수, 참여율 막대 */
 function MemberProgress({ member }: { member: Member }) {
   const rate = Math.min(Math.max(member.responseRate ?? 0, 0), 1)
@@ -72,6 +65,126 @@ function MemberProgress({ member }: { member: Member }) {
         />
       </div>
     </li>
+  )
+}
+
+/** 방 이름(뒤로 가기), 상태, 마감까지 남은 시간 */
+function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean }) {
+  const navigate = useNavigate()
+  return (
+    <header className="px-1">
+      {/* TODO: 뒤로 가기 목적지 확정 필요. 지금은 브라우저 히스토리 기준이라
+        입장 화면으로 돌아가거나, 링크로 바로 들어온 경우 사이트를 벗어날 수 있음 */}
+      <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-2.5 text-[16px] font-bold">
+        <ChevronLeftIcon />
+        {room.name}
+      </button>
+      <div className="mt-3.5 flex items-center gap-2.5">
+        <span
+          className={`rounded-full px-3 py-0.5 text-[9px] ${gathering ? 'bg-[#efe9df] text-[#6b6b6b]' : 'bg-[#f6e3ea] text-point'}`}
+        >
+          {STATUS_LABEL[room.status]}
+        </span>
+        <span className="text-[11px] text-sub">{deadlineText(room.deadlineAt)}</span>
+      </div>
+    </header>
+  )
+}
+
+// 친구를 기다리는 동안 보여줄 빈 자리 수
+const EMPTY_TODAY_SLOTS = 5
+const EMPTY_MEMBER_SLOTS = 2
+
+const SHARE_BUTTON_CLASS =
+  'flex h-[57px] items-center justify-center gap-1.5 rounded-[20px] border border-line bg-surface text-[13px] text-sub active:opacity-80'
+
+/** 방이 열리고 친구들이 다 모이기 전: 초대 링크 공유와 내 첫 사진 올리기 */
+function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: string }) {
+  const navigate = useNavigate()
+  const { room, members, todayFlowers, myTodo } = home
+  const { copied, copy, share } = useInviteShare(inviteToken ?? '')
+  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, ROOM_CAPACITY - members.length)
+  const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
+
+  return (
+    <main className="flex min-h-dvh flex-col bg-bg text-ink">
+      <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
+        <RoomHeader room={room} gathering />
+
+        <section className="mt-3.5 px-1.5">
+          <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
+          <ul className="mt-2 flex flex-wrap gap-[5px]">
+            {todayFlowers.length > 0
+              ? todayFlowers.map((f, i) => (
+                  <li key={`${f.memberId}-${i}`}>
+                    <Flower code={f.flowerCode} />
+                  </li>
+                ))
+              : Array.from({ length: EMPTY_TODAY_SLOTS }, (_, i) => (
+                  <li key={i}>
+                    <EmptySlot />
+                  </li>
+                ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-sub">
+            {todayFlowers.length > 0
+              ? `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`
+              : '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
+          </p>
+        </section>
+
+        <Card className="mt-5 px-[23px] pt-3.5 pb-[15px]">
+          <div className="flex items-center justify-between px-[3px] text-[11px]">
+            <p className="text-sub">친구를 기다리고 있어요</p>
+            <p>
+              {members.length}/{ROOM_CAPACITY}명
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-[5px] gap-y-2 px-[3px]">
+            <ul className="flex flex-wrap gap-[5px]">
+              {members.map((m) => (
+                <li key={m.id} className="rounded-full border border-dashed border-sub">
+                  <Flower code={m.flowerCode} size={28} />
+                </li>
+              ))}
+              {Array.from({ length: emptyMemberSlots }, (_, i) => (
+                <li key={`empty-${i}`}>
+                  <EmptySlot />
+                </li>
+              ))}
+            </ul>
+            <p className="ml-[7px] text-[11px] text-sub">{memberNames}</p>
+          </div>
+          {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 공유 버튼을 보여준다 */}
+          {inviteToken && (
+            <div className="mt-2.5 grid grid-cols-2 gap-[15px]">
+              <button type="button" onClick={() => copy()} className={SHARE_BUTTON_CLASS}>
+                <CopyIcon />
+                {copied ? '복사됨' : '링크복사'}
+              </button>
+              <button type="button" onClick={() => share()} className={SHARE_BUTTON_CLASS}>
+                <ShareIcon />
+                단톡방에 보내기
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <footer className="mt-auto px-5 pt-3 pb-6">
+        <Card className="px-[26px] pt-[15px] pb-6">
+          <p className="text-[11px] text-sub">내 할 일</p>
+          <p className="mt-1 text-[15px] font-bold">
+            {myTodo.needsFirstEntry ? '사진 올리고 한 마디 남기기' : '친구들이 모이길 기다리고 있어요'}
+          </p>
+          {myTodo.needsFirstEntry && (
+            <Button onClick={() => navigate(paths.photoUpload(room.id))} className="mt-3 w-full">
+              사진 고르기
+            </Button>
+          )}
+        </Card>
+      </footer>
+    </main>
   )
 }
 
@@ -100,30 +213,18 @@ function RoomHomePage() {
   if (error) return <NotFoundPage message={error} />
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
 
+  // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
+  if (home.room.status === 'COLLECTING' && home.members.length < ROOM_CAPACITY) {
+    return <GatheringHome home={home} inviteToken={session.inviteToken} />
+  }
+
   const { room, me, members, todayFlowers, myTodo } = home
 
   return (
     // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-16 pb-6">
-        <header className="px-1">
-          {/* TODO: 뒤로 가기 목적지 확정 필요. 지금은 브라우저 히스토리 기준이라
-            입장 화면으로 돌아가거나, 링크로 바로 들어온 경우 사이트를 벗어날 수 있음 */}
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2.5 text-[16px] font-bold"
-          >
-            <ChevronLeftIcon />
-            {room.name}
-          </button>
-          <div className="mt-3.5 flex items-center gap-2.5">
-            <span className="rounded-full bg-[#f6e3ea] px-3 py-0.5 text-[9px] text-point">
-              {STATUS_LABEL[room.status]}
-            </span>
-            <span className="text-[11px] text-sub">{deadlineText(room.deadlineAt)}</span>
-          </div>
-        </header>
+        <RoomHeader room={room} gathering={false} />
 
         <section className="mt-5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>

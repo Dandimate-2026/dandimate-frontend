@@ -1,6 +1,17 @@
 import { request } from './client'
-import { mockCreateRoom, mockInvitePreview, mockJoinRoom, mockRoomHome, USE_MOCK } from './mock'
+import {
+  MOCK_NEW_ROOM_ID,
+  mockCreateRoom,
+  mockInvitePreview,
+  mockJoinRoom,
+  mockNewRoomHome,
+  mockRoomHome,
+  USE_MOCK,
+} from './mock'
 import type { Consent, CreateRoomRequest, CreateRoomResult, InvitePreview, JoinRoomResult, RoomHome } from './types'
+
+/** 방 정원 (백엔드 명세상 고정값) */
+export const ROOM_CAPACITY = 8
 
 // TODO: 백엔드와 약관 버전 값 확정 필요
 export const CONSENT: Consent = {
@@ -31,6 +42,6 @@ export function joinRoom(inviteToken: string, nickname: string) {
 }
 
 export function getRoomHome(roomId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve(mockRoomHome)
+  if (USE_MOCK) return Promise.resolve(roomId === MOCK_NEW_ROOM_ID ? mockNewRoomHome : mockRoomHome)
   return request<RoomHome>(`/rooms/${roomId}`, { token })
 }
