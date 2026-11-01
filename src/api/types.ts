@@ -54,6 +54,21 @@ export interface JoinRoomResult {
   memberAccessToken: string
 }
 
+export interface CreateRoomRequest {
+  name: string
+  meetingDate: string
+  hostNickname: string
+  consent: Consent
+}
+
+export interface CreateRoomResult {
+  room: RoomSummary
+  member: Member
+  /** 원본 초대 토큰. 이 응답에서 한 번만 받는다 */
+  inviteToken: string
+  memberAccessToken: string
+}
+
 export interface RoomHome {
   room: RoomSummary
   me: Member

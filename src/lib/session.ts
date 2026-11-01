@@ -20,7 +20,7 @@ export function saveRoomSession(roomId: string, session: RoomSession) {
 }
 
 export function getRoomSession(roomId: string): RoomSession | null {
-  // 방 만들기 화면이 생기기 전까지 공유 화면 확인용
+  // mock 모드에서는 방을 만들지 않고 바로 들어와도 화면을 볼 수 있게 한다
   if (USE_MOCK && roomId === MOCK_ROOM_ID) {
     return { memberAccessToken: 'mock-token', inviteToken: MOCK_INVITE_TOKEN, roomName: '경주 1박2일' }
   }

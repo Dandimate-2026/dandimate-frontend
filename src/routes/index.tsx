@@ -1,10 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router'
-import { MOCK_INVITE_TOKEN, USE_MOCK } from '../api/mock'
+import { Route, Routes } from 'react-router'
 import AskbackPage from '../pages/AskbackPage'
 import FirstEntryPage from '../pages/FirstEntryPage'
 import InviteJoinPage from '../pages/InviteJoinPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
+import RoomCreatePage from '../pages/RoomCreatePage'
 import RoomHomePage from '../pages/RoomHomePage'
 import RoomSharePage from '../pages/RoomSharePage'
 import { paths } from './paths'
@@ -12,6 +12,8 @@ import { paths } from './paths'
 function AppRoutes() {
   return (
     <Routes>
+      {/* 첫 화면: 모임방 만들기 */}
+      <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
       {/* 모임방 홈 */}
       <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
       {/* 방 생성 직후: 초대 링크 공유 */}
@@ -24,8 +26,6 @@ function AppRoutes() {
       <Route path={paths.askback(':roomId', ':askbackId')} element={<AskbackPage />} />
       {/* 초대 링크로 들어온 친구: 이름 입력 후 입장 */}
       <Route path={paths.inviteJoin(':inviteToken')} element={<InviteJoinPage />} />
-      {/* TODO: 홈(방 만들기) 화면이 생기면 교체 */}
-      {USE_MOCK && <Route path="/" element={<Navigate to={paths.inviteJoin(MOCK_INVITE_TOKEN)} replace />} />}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
