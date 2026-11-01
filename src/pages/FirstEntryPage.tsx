@@ -3,16 +3,10 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { createEntry, skipFirstEntry, transcribe } from '../api/entries'
 import { USE_MOCK } from '../api/mock'
-import Button from '../components/Button'
-import {
-  ChevronLeftIcon,
-  ImagePlaceholderIcon,
-  MicIcon,
-  PencilIcon,
-  PlayIcon,
-  RetryIcon,
-} from '../components/entry/EntryIcons'
-import { formatDuration, useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
+import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
+import { ChevronLeftIcon, ImagePlaceholderIcon } from '../components/entry/EntryIcons'
+import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
+import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
@@ -27,9 +21,6 @@ const MIN_VOICE_MS = 5_000
 const MAX_VOICE_MS = 60_000
 const MAX_TEXT_LENGTH = 300
 
-// 녹음 중 파형 막대 높이 (시안 그대로)
-const WAVE_BARS = [6, 10, 8, 14, 20, 14, 8, 16, 24, 16, 10, 6, 10, 8, 6]
-
 // mock 모드에서 사진 올리기를 거치지 않고 바로 들어왔을 때 보여줄 사진
 const MOCK_PHOTOS: FirstEntryState['photos'] = [{ photoId: 'mock-1' }, { photoId: 'mock-2' }, { photoId: 'mock-3' }]
 
@@ -42,12 +33,6 @@ const MOCK_PHOTOS: FirstEntryState['photos'] = [{ photoId: 'mock-1' }, { photoId
  * - text: 말하기 대신 글로 직접 쓰기
  */
 type Step = 'idle' | 'recording' | 'transcribing' | 'review' | 'text'
-
-interface VoiceDraft {
-  transcriptionId: string
-  durationMs: number
-  audioUrl: string
-}
 
 /** 고른 사진마다 "이 사진, 왜 골랐어요?"에 음성(또는 글)으로 답하는 화면 */
 function FirstEntryPage() {
@@ -143,7 +128,7 @@ function FirstEntryPage() {
   }
 
   const handleSkip = async () => {
-    if (recorder.recording) recorder.stop()
+    recorder.cancel()
     try {
       await skipFirstEntry(photo.photoId, session.memberAccessToken)
     } catch {
@@ -189,22 +174,25 @@ function FirstEntryPage() {
       </div>
 
       {showAnswerCard ? (
-        <AnswerSection
-          step={step}
-          transcript={transcript}
-          draft={draft}
-          error={error}
-          saving={saving}
-          isLast={isLast}
-          onChange={setTranscript}
-          onRetry={() => {
-            setDraft(null)
-            setTranscript('')
-            setError(null)
-            setStep('idle')
-          }}
-          onConfirm={handleConfirm}
-        />
+        <section className="flex flex-1 flex-col pt-8">
+          <h2 className="px-[11px] text-[17px] font-bold">이 사진, 왜 골랐어요?</h2>
+          <AnswerForm
+            transcript={transcript}
+            maxLength={MAX_TEXT_LENGTH}
+            voice={step === 'review' ? draft : null}
+            error={error}
+            saving={saving}
+            confirmLabel={isLast ? '확정하고 마치기' : '확정하고 다음 사진'}
+            onChange={setTranscript}
+            onRetry={() => {
+              setDraft(null)
+              setTranscript('')
+              setError(null)
+              setStep('idle')
+            }}
+            onConfirm={handleConfirm}
+          />
+        </section>
       ) : (
         <VoiceSection
           step={step}
@@ -213,7 +201,7 @@ function FirstEntryPage() {
           onMicClick={handleMicClick}
           onStop={recorder.stop}
           onWrite={() => {
-            if (recorder.recording) recorder.stop()
+            recorder.cancel()
             setError(null)
             setStep('text')
           }}
@@ -239,50 +227,23 @@ function VoiceSection({
   onStop: () => void
   onWrite: () => void
 }) {
-  const filledBars = Math.ceil((elapsedMs / MAX_VOICE_MS) * WAVE_BARS.length)
-
   return (
     <section className="flex flex-1 flex-col items-center pt-4">
       <h2 className="text-[20px] font-bold">이 사진, 왜 골랐어요?</h2>
 
       {step === 'recording' && (
-        <div className="mt-4 flex h-6 items-center gap-3">
-          <div className="flex items-center gap-[3px]" aria-hidden="true">
-            {WAVE_BARS.map((h, i) => (
-              <span
-                key={i}
-                className={`w-[3px] rounded-full ${i < filledBars ? 'bg-point' : 'bg-line'}`}
-                style={{ height: h }}
-              />
-            ))}
-          </div>
-          <span className="text-[11px] text-point">
-            {formatDuration(elapsedMs)} / {formatDuration(MAX_VOICE_MS)}
-          </span>
+        <div className="mt-4">
+          <WaveProgress elapsedMs={elapsedMs} maxMs={MAX_VOICE_MS} />
         </div>
       )}
 
       <div className={step === 'recording' ? 'mt-3' : 'mt-[42px]'}>
-        {step === 'recording' ? (
-          <button
-            type="button"
-            onClick={onStop}
-            aria-label="녹음 멈추기"
-            className="flex size-[61px] items-center justify-center rounded-full border-[3px] border-[#f6e3ea] bg-point"
-          >
-            <span className="size-[18px] rounded bg-surface" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onMicClick}
-            disabled={step === 'transcribing'}
-            aria-label="녹음 시작"
-            className="flex size-16 items-center justify-center rounded-full bg-ink text-surface disabled:opacity-60"
-          >
-            <MicIcon />
-          </button>
-        )}
+        <RecordButton
+          recording={step === 'recording'}
+          disabled={step === 'transcribing'}
+          onStart={onMicClick}
+          onStop={onStop}
+        />
       </div>
 
       <p className={`mt-[30px] text-[11px] ${error ? 'text-point' : 'text-sub'}`}>
@@ -296,89 +257,6 @@ function VoiceSection({
       <button type="button" onClick={onWrite} className="mt-5 text-[11px] text-point">
         지금 말하기 어려워요 → 글로 답하기
       </button>
-    </section>
-  )
-}
-
-/** 받아 적은 글 확인 · 글로 직접 쓰기 */
-function AnswerSection({
-  step,
-  transcript,
-  draft,
-  error,
-  saving,
-  isLast,
-  onChange,
-  onRetry,
-  onConfirm,
-}: {
-  step: Step
-  transcript: string
-  draft: VoiceDraft | null
-  error: string | null
-  saving: boolean
-  isLast: boolean
-  onChange: (text: string) => void
-  onRetry: () => void
-  onConfirm: () => void
-}) {
-  const isVoice = step === 'review' && draft !== null
-
-  return (
-    <section className="flex flex-1 flex-col pt-8">
-      <h2 className="px-[11px] text-[17px] font-bold">이 사진, 왜 골랐어요?</h2>
-
-      <div className="mt-3.5 rounded-[20px] border border-line bg-surface px-[19px] pt-3.5 pb-4">
-        <div className="flex items-center justify-between text-[11px] text-sub">
-          <label htmlFor="entry-text">{isVoice ? '받아 적은 글 · 눌러서 고칠 수 있어요' : '글로 남기기'}</label>
-          {isVoice ? (
-            <span className="flex items-center gap-1">
-              <PencilIcon />
-              녹음 {formatDuration(draft.durationMs)}
-            </span>
-          ) : (
-            <span>
-              {transcript.length}/{MAX_TEXT_LENGTH}
-            </span>
-          )}
-        </div>
-        <textarea
-          id="entry-text"
-          value={transcript}
-          maxLength={MAX_TEXT_LENGTH}
-          rows={2}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="한두 문장이면 충분해요"
-          className="mt-2 w-full resize-none bg-transparent text-[13px] leading-[19px] outline-none placeholder:text-muted"
-        />
-      </div>
-      {error && <p className="mt-2 px-1 text-[11px] text-point">{error}</p>}
-
-      <div className="mt-auto pt-8">
-        <div className={`grid gap-4 ${isVoice ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          {isVoice && (
-            <Button
-              variant="outline"
-              onClick={() => void new Audio(draft.audioUrl).play()}
-              className="flex h-[51px] items-center justify-center gap-2 rounded-full"
-            >
-              <PlayIcon />
-              다시 듣기
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={onRetry}
-            className="flex h-[51px] items-center justify-center gap-2 rounded-full"
-          >
-            <RetryIcon />
-            {isVoice ? '다시 녹음' : '말로 하기'}
-          </Button>
-        </div>
-        <Button onClick={onConfirm} disabled={!transcript.trim() || saving} className="mt-3 w-full">
-          {saving ? '저장하는 중…' : isLast ? '확정하고 마치기' : '확정하고 다음 사진'}
-        </Button>
-      </div>
     </section>
   )
 }
