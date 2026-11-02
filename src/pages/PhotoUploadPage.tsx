@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { uploadPhotos } from '../api/photos'
+import { MAX_PHOTOS, uploadPhotos } from '../api/photos'
 import Button from '../components/Button'
 import { isAcceptedType, prepareImage } from '../lib/image'
 import { getRoomSession } from '../lib/session'
@@ -8,7 +8,6 @@ import { paths } from '../routes/paths'
 import type { FirstEntryState } from './FirstEntryPage'
 import NotFoundPage from './NotFoundPage'
 
-const MAX_PHOTOS = 3
 const LONG_PRESS_MS = 400
 // 길게 누르기 전에 이만큼 움직이면 누르기를 취소한다
 const MOVE_TOLERANCE = 8

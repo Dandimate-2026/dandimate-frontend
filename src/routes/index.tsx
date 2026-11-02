@@ -5,10 +5,12 @@ import InviteJoinPage from '../pages/InviteJoinPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
+import RoomCirculationPage from '../pages/RoomCirculationPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
 import RoomHomePage from '../pages/RoomHomePage'
 import RoomListPage from '../pages/RoomListPage'
 import RoomSharePage from '../pages/RoomSharePage'
+import RoomWeavingPage from '../pages/RoomWeavingPage'
 import { paths } from './paths'
 import RequireLogin from './RequireLogin'
 
@@ -33,6 +35,10 @@ function AppRoutes() {
         <Route path={paths.firstEntry(':roomId')} element={<FirstEntryPage />} />
         {/* AI가 나에게만 묻는 질문에 답하기 */}
         <Route path={paths.askback(':roomId', ':askbackId')} element={<AskbackPage />} />
+        {/* 친구 사진에 이야기 붙이기 */}
+        <Route path={paths.roomCirculation(':roomId')} element={<RoomCirculationPage />} />
+        {/* 엮으러 가기 다음: 엮는 중 → 두루마리 */}
+        <Route path={paths.roomWeaving(':roomId')} element={<RoomWeavingPage />} />
         {/* 초대 링크로 들어온 친구: 이름 입력 후 입장 */}
         <Route path={paths.inviteJoin(':inviteToken')} element={<InviteJoinPage />} />
       </Route>

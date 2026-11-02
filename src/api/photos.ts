@@ -2,6 +2,9 @@ import { ApiError, request } from './client'
 import { USE_MOCK } from './mock'
 import type { UploadFileRequest, UploadTicket } from './types'
 
+/** 한 사람이 올릴 수 있는 사진 수 */
+export const MAX_PHOTOS = 3
+
 /**
  * 사진 업로드는 3단계다.
  * 1. 업로드 주소 발급 → 2. 받은 주소로 파일 PUT → 3. 업로드 완료 알림

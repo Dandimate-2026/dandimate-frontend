@@ -83,6 +83,11 @@ export interface RoomHome {
   allCompleted: boolean
 }
 
+export interface CloseRoomResult {
+  roomStatus: RoomStatus
+  job: { id: string; type: 'WEAVE_SCROLL'; status: string }
+}
+
 export interface ErrorBody {
   error: { code: string; message: string; requestId: string }
 }

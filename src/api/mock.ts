@@ -2,6 +2,7 @@
 // .env.local 에 VITE_USE_MOCK=false 를 넣으면 실제 API를 호출한다
 import type {
   Askback,
+  CloseRoomResult,
   CreateRoomRequest,
   CreateRoomResult,
   InvitePreview,
@@ -19,6 +20,8 @@ export const MOCK_NEW_ROOM_ID = 'gathering'
 /** 두루마리가 완성된 방. 방 목록의 완성된 두루마리를 확인할 때 쓴다 */
 export const MOCK_DONE_ROOM_ID = 'done'
 export const MOCK_ROOM_IDS = [MOCK_ROOM_ID, MOCK_NEW_ROOM_ID, MOCK_DONE_ROOM_ID]
+/** 모두 다 봐서 엮을 수 있는 방. 방 목록에는 넣지 않고 주소로만 확인한다 */
+export const MOCK_READY_ROOM_ID = 'ready'
 export const MOCK_INVITE_TOKEN = 'demo'
 
 export const mockInvitePreview: InvitePreview = {
@@ -63,7 +66,7 @@ export function mockJoinRoom(nickname: string): JoinRoomResult {
 const mockMembers: RoomHome['members'] = [
   { id: 'm1', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA', photoCount: 2, storyCount: 3, responseRate: 1 },
   { id: 'm2', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA', photoCount: 2, storyCount: 1, responseRate: 0.55 },
-  { id: 'm3', nickname: '지수', role: 'MEMBER', flowerCode: 'FORGET_ME_NOT', photoCount: 2, storyCount: 2, responseRate: 0.75 },
+  { id: 'm3', nickname: '지수', role: 'MEMBER', flowerCode: 'FORGET_ME_NOT', photoCount: 3, storyCount: 2, responseRate: 0.75 },
 ]
 
 export const mockRoomHome: RoomHome = {
@@ -92,6 +95,25 @@ export const mockRoomHome: RoomHome = {
   },
   unreadCount: 0,
   allCompleted: false,
+}
+
+/** 모두 다 봐서 방장이 엮을 수 있는 방 */
+export const mockReadyRoomHome: RoomHome = {
+  ...mockRoomHome,
+  room: {
+    ...mockRoomHome.room,
+    id: MOCK_READY_ROOM_ID,
+    // 지금부터 12시간 뒤
+    deadlineAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+  },
+  me: mockMembers[0],
+  members: mockMembers.map((m) => ({ ...m, responseRate: 1 })),
+  myTodo: { needsFirstEntry: false, pendingCirculationCount: 0, topAskback: null },
+  allCompleted: true,
+}
+
+export function mockCloseRoom(): CloseRoomResult {
+  return { roomStatus: 'WEAVING', job: { id: 'mock-job', type: 'WEAVE_SCROLL', status: 'QUEUED' } }
 }
 
 const mockHost: Member = { id: 'mock-host', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA' }

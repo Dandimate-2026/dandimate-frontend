@@ -2,15 +2,26 @@ import { request } from './client'
 import {
   MOCK_DONE_ROOM_ID,
   MOCK_NEW_ROOM_ID,
+  MOCK_READY_ROOM_ID,
+  mockCloseRoom,
   mockCreateRoom,
   mockDoneRoomHome,
   mockInvitePreview,
   mockJoinRoom,
   mockNewRoomHome,
+  mockReadyRoomHome,
   mockRoomHome,
   USE_MOCK,
 } from './mock'
-import type { Consent, CreateRoomRequest, CreateRoomResult, InvitePreview, JoinRoomResult, RoomHome } from './types'
+import type {
+  CloseRoomResult,
+  Consent,
+  CreateRoomRequest,
+  CreateRoomResult,
+  InvitePreview,
+  JoinRoomResult,
+  RoomHome,
+} from './types'
 
 /** 방 정원 (백엔드 명세상 고정값) */
 export const ROOM_CAPACITY = 8
@@ -47,7 +58,19 @@ export function getRoomHome(roomId: string, token: string) {
   if (USE_MOCK) {
     if (roomId === MOCK_NEW_ROOM_ID) return Promise.resolve(mockNewRoomHome)
     if (roomId === MOCK_DONE_ROOM_ID) return Promise.resolve(mockDoneRoomHome)
+    if (roomId === MOCK_READY_ROOM_ID) return Promise.resolve(mockReadyRoomHome)
     return Promise.resolve(mockRoomHome)
   }
   return request<RoomHome>(`/rooms/${roomId}`, { token })
+}
+
+/** 방장이 마감 시각 전에 방을 닫고 두루마리 엮기를 시작한다 */
+export function closeRoom(roomId: string, token: string) {
+  if (USE_MOCK) return Promise.resolve(mockCloseRoom())
+  return request<CloseRoomResult>(`/rooms/${roomId}/close`, {
+    method: 'POST',
+    body: { mode: 'EARLY' },
+    token,
+    idempotent: true,
+  })
 }
