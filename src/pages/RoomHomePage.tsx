@@ -96,9 +96,12 @@ function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean
   const navigate = useNavigate()
   return (
     <header className="px-1">
-      {/* TODO: 뒤로 가기 목적지 확정 필요. 지금은 브라우저 히스토리 기준이라
-        입장 화면으로 돌아가거나, 링크로 바로 들어온 경우 사이트를 벗어날 수 있음 */}
-      <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-2.5 text-[16px] font-bold">
+      {/* 어디서 들어왔든(방 만들기·초대 링크·카톡 링크) 뒤로 가면 내 모임방 목록으로 간다 */}
+      <button
+        type="button"
+        onClick={() => navigate(paths.roomList())}
+        className="flex items-center gap-2.5 text-[16px] font-bold"
+      >
         <ChevronLeftIcon />
         {room.name}
       </button>

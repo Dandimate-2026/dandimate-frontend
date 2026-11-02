@@ -15,7 +15,6 @@ export const paths = {
   askback: (roomId: string, askbackId: string) => `/rooms/${roomId}/askbacks/${askbackId}`,
   roomCirculation: (roomId: string) => `/rooms/${roomId}/circulation`,
   roomWeaving: (roomId: string) => `/rooms/${roomId}/weaving`,
-  // TODO: 아래 화면은 아직 없음
   terms: () => '/terms',
   privacy: () => '/privacy',
 }

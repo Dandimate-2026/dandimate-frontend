@@ -5,6 +5,7 @@ import InviteJoinPage from '../pages/InviteJoinPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
+import PolicyPage from '../pages/PolicyPage'
 import RoomCirculationPage from '../pages/RoomCirculationPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
 import RoomHomePage from '../pages/RoomHomePage'
@@ -19,6 +20,9 @@ function AppRoutes() {
     <Routes>
       {/* 첫 화면: 카카오로 시작하기 */}
       <Route path={paths.login()} element={<LoginPage />} />
+      {/* 약관은 로그인 화면에서도 열 수 있어야 한다 */}
+      <Route path={paths.terms()} element={<PolicyPage kind="terms" />} />
+      <Route path={paths.privacy()} element={<PolicyPage kind="privacy" />} />
       {/* 아래 화면은 모두 로그인이 필요하다. 초대 링크로 들어온 친구도 로그인한 뒤 입장 화면으로 돌아온다 */}
       <Route element={<RequireLogin />}>
         {/* 내 모임방 목록 */}
