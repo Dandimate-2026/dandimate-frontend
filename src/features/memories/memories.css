@@ -1,0 +1,173 @@
+/* 이 파일은 memories.html에서만 불러온다. 기존 앱 전역 스타일은 변경하지 않는다. */
+body:has(.memory-app) { margin: 0; background: #ede9e3; }
+html:has(.memory-app) { scrollbar-width: none; }
+html:has(.memory-app)::-webkit-scrollbar { display: none; }
+.memory-app, .memory-sheet {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  color: var(--color-ink); font-size: 14px; line-height: 1.4;
+  -webkit-font-smoothing: antialiased; word-break: keep-all;
+}
+.memory-app { max-width: 430px; min-height: 100dvh; margin: auto; background: var(--color-bg); }
+.memory-app *, .memory-sheet * { box-sizing: border-box; }
+.memory-app button, .memory-sheet button, .memory-app a, .memory-sheet label[for] { -webkit-tap-highlight-color: transparent; }
+.memory-app button:not(:disabled), .memory-sheet button:not(:disabled) { cursor: pointer; }
+.memory-app button:focus-visible, .memory-app a:focus-visible, .memory-sheet button:focus-visible, .memory-sheet textarea:focus-visible, .memory-sheet input:focus-visible { outline: 2px solid var(--color-point); outline-offset: 4px; }
+.memory-app audio, .memory-sheet audio { width: 100%; min-width: 0; height: 38px; }
+.memory-page { min-height: max(780px, 100dvh); display: flex; flex-direction: column; padding: max(64px, env(safe-area-inset-top)) 20px max(34px, env(safe-area-inset-bottom)); }
+.memory-header { display: flex; align-items: center; justify-content: space-between; height: 24px; flex-shrink: 0; }
+.memory-back { display: flex; align-items: center; gap: 9px; border: 0; background: none; padding: 0; min-height: 32px; text-align: left; font-size: 16px; font-weight: 650; color: var(--color-ink); }
+.memory-back svg { flex-shrink: 0; }
+.memory-progress { font-size: 16px; font-weight: 600; }
+.memory-flower { display: block; flex-shrink: 0; object-fit: contain; }
+.memory-app .memory-card { border-radius: 20px; padding: 14px 13px; border-color: var(--color-line); background: var(--color-surface); }
+.memory-text-mode { display: flex; align-items: center; justify-content: flex-end; position: relative; margin: 12px 0 11px; min-height: 24px; gap: 9px; font-size: 10px; color: var(--color-sub); cursor: pointer; }
+.memory-text-mode input { position: absolute; right: 0; width: 41px; height: 24px; opacity: 0; cursor: pointer; }
+.memory-switch { width: 41px; height: 24px; border-radius: 20px; background: #efe9df; padding: 2px; pointer-events: none; }
+.memory-switch::before { content: ''; display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--color-surface); transition: transform .18s; }
+.memory-text-mode input:checked + .memory-switch { background: var(--color-point); }
+.memory-text-mode input:checked + .memory-switch::before { transform: translateX(17px); }
+.memory-text-mode input:focus-visible + .memory-switch { outline: 2px solid var(--color-point); outline-offset: 3px; }
+.memory-photo-owner { display: flex; align-items: center; justify-content: space-between; min-height: 21px; margin: 0 10px 8px 5px; gap: 8px; }
+.memory-photo-owner > span { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; }
+.memory-photo-owner small { font-size: 12px; color: var(--color-sub); white-space: nowrap; }
+.memory-photo { position: relative; height: 220px; border-radius: 12px; background: #efe9df; overflow: hidden; }
+.memory-photo > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.memory-photo-label { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; font-size: 12px; color: var(--color-sub); }
+.memory-photo-date { position: absolute; top: 10px; right: 15px; color: var(--color-sub); font-size: 12px; }
+.memory-photo.has-photo .memory-photo-date { background: var(--color-surface); border-radius: 10px; padding: 3px 6px; }
+.memory-stories { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.memory-story { position: relative; display: flex; align-items: flex-start; padding: 11px 12px; min-height: 65px; gap: 8px; background: var(--color-bg); border-radius: 12px; }
+.memory-story-content { flex: 1; min-width: 0; }
+.memory-story-author { display: flex; align-items: center; gap: 5px; min-height: 18px; color: var(--color-sub); font-size: 12px; }
+.memory-story p { font-size: 14px; line-height: 17px; margin-top: 3px; overflow-wrap: anywhere; word-break: normal; white-space: pre-line; }
+.memory-story.has-duration { min-height: 81px; }
+.memory-app .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.memory-play { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 0; flex-shrink: 0; border: 1px solid var(--color-line); border-radius: 50%; background: var(--color-surface); }
+.memory-play svg { width: 8px; height: 9px; }
+.memory-play span { font-size: 9px; }
+.memory-story.is-mine { padding-left: 41px; min-height: 60px; background: #f6e3ea; }
+.memory-story.is-mine .memory-story-author { color: var(--color-point); }
+.memory-story.text-only { padding-left: 12px; }
+.memory-story audio { margin-top: 8px; }
+.memory-audio-note { display: block; margin-top: 6px; font-size: 10px; line-height: 1.4; color: var(--color-sub); }
+.memory-locked { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100px; border: 1px dashed #d5ccbf; border-radius: 12px; padding: 12px; }
+.memory-locked img { margin-bottom: 9px; }
+.memory-locked p { font-size: 14px; }
+.memory-locked small { margin-top: 2px; font-size: 12px; color: var(--color-sub); }
+.memory-passed { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 29px; padding-top: 8px; margin-top: 5px; border-top: 1px dashed #d5ccbf; font-size: 12px; color: var(--color-sub); }
+.memory-actions { margin-top: auto; padding-top: 29px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.memory-actions > button { min-height: 52px; height: auto; border-radius: 999px; padding: 10px 8px; font-size: 16px; font-weight: 600; }
+.memory-actions > button:last-child { background: #fbf8f3; border-color: #eee7df; }
+.memory-complete-main { padding-top: 164px; text-align: center; }
+.memory-flower-garland { display: inline-flex; align-items: center; gap: 1px; padding: 5px 10px; height: 52px; border: 1px solid #eee7df; border-radius: 40px; background: #fbf8f3; }
+.memory-complete h1 { font-size: 20px; font-weight: 650; margin-top: 13px; line-height: 28px; }
+.memory-complete-main > p { font-size: 14px; line-height: 17px; color: var(--color-sub); margin-top: 2px; }
+.memory-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; text-align: left; }
+.memory-app .memory-stats .memory-card { padding: 12px 9px; min-height: 67px; }
+.memory-stats p { font-size: 12px; color: var(--color-sub); }
+.memory-stats strong { display: block; margin-top: 3px; font-size: 16px; color: #15130f; }
+.memory-complete-footer { margin-top: auto; padding-top: 40px; }
+.memory-complete-footer > button { width: 100%; font-size: 16px; }
+.memory-share { text-align: center; color: var(--color-sub); font-size: 12px; }
+.memory-share button { display: inline-flex; align-items: center; justify-content: center; gap: 20px; min-height: 34px; margin-top: 9px; }
+.memory-share p { margin-top: 6px; }
+.memory-weaving-main { text-align: center; padding-top: 186px; }
+.memory-scroll-flower { display: block; margin: 0 auto; }
+.memory-weaving h1 { font-size: 20px; font-weight: 650; margin-top: 26px; }
+.memory-weaving-main p { font-size: 16px; line-height: 20px; color: var(--color-sub); margin-top: 7px; }
+.memory-loading { display: flex; gap: 10px; justify-content: center; margin-top: 23px; }
+.memory-loading span { width: 34px; height: 4px; border-radius: 2px; background: var(--color-point); animation: memory-loading 1.6s ease-in-out infinite; }
+.memory-loading span:nth-child(2) { animation-delay: .2s; }
+.memory-loading span:nth-child(3) { background: var(--color-line); animation-delay: .4s; }
+@keyframes memory-loading { 50% { opacity: .4; } }
+.memory-weaving-footer { margin-top: auto; padding-top: 45px; padding-bottom: 30px; font-size: 12px; color: var(--color-sub); text-align: center; }
+.memory-weaving-footer .memory-share button { gap: 15px; }
+.memory-scroll { padding-top: 100px; padding-bottom: 20px; }
+.memory-trip-heading { border-bottom: 1px solid var(--color-line); padding-bottom: 10px; }
+.memory-trip-heading .memory-back { align-items: center; gap: 0; margin-left: -1px; }
+.memory-trip-heading h1 { font-size: 20px; font-weight: 650; }
+.memory-trip-heading > p { margin-left: 9px; margin-top: 1px; font-size: 12px; color: var(--color-sub); }
+.memory-members { display: flex; gap: 5px; align-items: center; margin-top: 7px; margin-left: 9px; list-style: none; padding: 0; }
+.memory-members li { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--color-sub); }
+.memory-chapter { padding: 28px 14px 20px; }
+.memory-chapter + .memory-chapter { border-top: 1px solid var(--color-line); }
+.memory-chapter-meta { font-size: 12px; color: var(--color-sub); margin-top: 17px; }
+.memory-narrative { font-size: 16px; line-height: 19px; margin-top: 4px; word-break: normal; }
+.memory-quotes { margin-top: 10px; }
+.memory-quote + .memory-quote { margin-top: 10px; }
+.memory-quote cite { display: flex; align-items: center; gap: 4px; font-style: normal; font-size: 12px; color: var(--color-sub); }
+.memory-quote p { font-size: 15px; font-weight: 650; line-height: 20px; margin-top: 3px; word-break: normal; }
+.memory-differences { margin: 28px -14px 0; min-height: 148px; padding: 13px 14px; border-radius: 12px; background: #f6e3ea; }
+.memory-difference-title { font-size: 12px; color: var(--color-point); margin-bottom: 6px; }
+.memory-differences .memory-quote + .memory-quote { margin-top: 5px; }
+.memory-afterword { margin-top: 20px; }
+.memory-chapter-actions { display: flex; gap: 5px; align-items: center; margin-top: 10px; }
+.memory-reaction, .memory-reply { padding: 6px 12px; border: 1px solid var(--color-line); background: var(--color-surface); border-radius: 999px; min-height: 33px; white-space: nowrap; font-size: 12px; }
+.memory-reaction[aria-pressed="true"] { background: #f6e3ea; border-color: var(--color-point); color: var(--color-point); }
+.memory-reply { border-color: var(--color-ink); }
+.memory-original-link { margin-left: auto; color: var(--color-sub); font-size: 10px; white-space: nowrap; padding: 6px 0; }
+.memory-added-reply { margin-top: 12px; }
+.memory-app .memory-rating { padding: 18px 19px 13px; margin-top: 0; }
+.memory-rating h2 { font-size: 16px; font-weight: 650; }
+.memory-rating > p { font-size: 12px; color: var(--color-sub); margin-top: 3px; }
+.memory-rating-options { display: flex; justify-content: space-around; margin: 9px 10px 4px; }
+.memory-rating-options label { position: relative; display: block; width: 32px; height: 32px; cursor: pointer; }
+.memory-rating-options input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.memory-rating-options span { display: block; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--color-sub); }
+.memory-rating-options input:checked + span { background: var(--color-point); border-color: var(--color-point); }
+.memory-rating-options input:focus-visible + span { outline: 2px solid var(--color-point); outline-offset: 3px; }
+.memory-rating-scale { display: flex; justify-content: space-between; color: var(--color-sub); font-size: 10px; }
+.memory-app .memory-rating .memory-rating-thanks { color: var(--color-point); margin-top: 10px; }
+.memory-more { border: 1px dashed var(--color-line); border-radius: 24px; padding: 17px 24px; margin-top: 15px; text-align: center; }
+.memory-more h2 { font-size: 16px; font-weight: 650; margin-bottom: 9px; }
+.memory-more button { width: 100%; font-size: 16px; background: var(--color-surface); color: var(--color-ink); }
+.memory-app .memory-extra { margin-top: 15px; }
+.memory-extra p { margin-top: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.memory-sheet { position: fixed; inset: auto 0 0; margin: 0 auto; width: min(100%, 430px); max-width: 430px; max-height: calc(100dvh - 40px); background: #f5f5f3; border: 0; border-radius: 24px 24px 0 0; padding: 0; overflow: auto; }
+.memory-sheet::backdrop { background: rgb(42 38 35 / 45%); }
+.memory-sheet-body { padding: 28px 20px max(40px, env(safe-area-inset-bottom)); position: relative; }
+.memory-sheet-close { position: absolute; top: 0; left: calc(50% - 32px); width: 64px; height: 24px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; }
+.memory-sheet-close span { width: 40px; height: 4px; border-radius: 4px; background: var(--color-line); }
+.memory-sheet h2 { font-size: 20px; font-weight: 650; line-height: 28px; outline: none; }
+.memory-sheet blockquote { border-left: 2px solid var(--color-point); padding-left: 3px; white-space: pre-line; max-width: 288px; font-size: 12px; color: var(--color-sub); line-height: 14px; margin-top: 14px; }
+.memory-sheet h3 { font-size: 20px; line-height: 24px; font-weight: 650; margin-top: 16px; letter-spacing: -.4px; }
+.memory-sheet-hint { font-size: 12px; color: var(--color-sub); margin-top: 4px; }
+.memory-recorder { display: flex; flex-direction: column; align-items: center; margin-top: 14px; gap: 16px; }
+.memory-recorder > p { color: var(--color-sub); font-size: 12px; line-height: 18px; }
+.memory-text-link { font-size: 12px; color: var(--color-point); background: none; border: 0; }
+.memory-mode-link { display: block; margin: 12px auto 0; min-height: 28px; }
+.memory-sheet .memory-save { display: block; width: 100%; margin-top: 16px; }
+.memory-write-field { position: relative; margin-top: 16px; }
+.memory-write-field label { display: block; font-size: 12px; color: var(--color-sub); margin-bottom: 6px; }
+.memory-write-field textarea { width: 100%; display: block; border: 1px solid var(--color-line); padding: 12px; border-radius: 12px; background: var(--color-surface); resize: vertical; font-size: 16px; line-height: 1.5; min-height: 100px; }
+.memory-write-field > span { display: block; text-align: right; font-size: 11px; color: var(--color-sub); margin-top: 4px; }
+.memory-write-field audio { margin-top: 10px; }
+.memory-error { color: var(--color-point); font-size: 12px; margin-top: 12px; }
+.memory-sheet-preview-photo { padding: 28px 14px; }
+.memory-reopen-sheet { margin: 30px 14px 0; }
+.memory-original-stories { display: grid; gap: 10px; margin-top: 20px; }
+.memory-upload { margin-top: 20px; }
+.memory-upload label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.memory-upload input { max-width: 100%; font-size: 12px; }
+.memory-upload .memory-photo { margin-top: 12px; }
+.memory-preview-index { padding: 48px 24px 32px; }
+.memory-preview-eyebrow { font-size: 12px; color: var(--color-point); margin-top: 12px; }
+.memory-preview-index h1 { margin-top: 8px; font-size: 27px; font-weight: 650; line-height: 1.3; letter-spacing: -.7px; }
+.memory-preview-description { margin-top: 15px; color: var(--color-sub); font-size: 13px; line-height: 1.6; }
+.memory-preview-index nav { display: grid; gap: 9px; margin-top: 26px; }
+.memory-preview-index nav a { display: flex; align-items: center; gap: 13px; text-decoration: none; border: 1px solid var(--color-line); padding: 16px 13px; border-radius: 16px; background: var(--color-surface); }
+.memory-screen-number { font-size: 11px; font-weight: 700; color: var(--color-point); min-width: 36px; }
+.memory-preview-index strong { font-size: 14px; font-weight: 600; }
+.memory-preview-index small { display: block; font-size: 11px; color: var(--color-sub); margin-top: 3px; }
+.memory-preview-footnote { margin-top: 24px; font-size: 11px; color: var(--color-sub); line-height: 1.6; }
+@media (max-width: 350px) {
+  .memory-page { padding-left: 16px; padding-right: 16px; }
+  .memory-photo-owner { margin-right: 0; margin-left: 0; }
+  .memory-photo-owner > span { font-size: 13px; }
+  .memory-chapter { padding-left: 10px; padding-right: 10px; }
+  .memory-chapter-actions { flex-wrap: wrap; }
+  .memory-original-link { margin-left: 3px; }
+  .memory-sheet h3 { font-size: 18px; }
+  .memory-actions > button { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .memory-loading span { animation: none; } .memory-switch::before { transition: none; } }
