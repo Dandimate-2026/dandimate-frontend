@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router'
 import AskbackPage from '../pages/AskbackPage'
 import FirstEntryPage from '../pages/FirstEntryPage'
 import InviteJoinPage from '../pages/InviteJoinPage'
+import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
@@ -9,26 +10,32 @@ import RoomHomePage from '../pages/RoomHomePage'
 import RoomListPage from '../pages/RoomListPage'
 import RoomSharePage from '../pages/RoomSharePage'
 import { paths } from './paths'
+import RequireLogin from './RequireLogin'
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* 첫 화면: 내 모임방 목록 */}
-      <Route path={paths.roomList()} element={<RoomListPage />} />
-      {/* 모임방 만들기 */}
-      <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
-      {/* 모임방 홈 */}
-      <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
-      {/* 방 생성 직후: 초대 링크 공유 */}
-      <Route path={paths.roomShare(':roomId')} element={<RoomSharePage />} />
-      {/* 이야기를 남길 사진 고르기 */}
-      <Route path={paths.photoUpload(':roomId')} element={<PhotoUploadPage />} />
-      {/* 고른 사진마다 첫 한마디 남기기 (음성 또는 글) */}
-      <Route path={paths.firstEntry(':roomId')} element={<FirstEntryPage />} />
-      {/* AI가 나에게만 묻는 질문에 답하기 */}
-      <Route path={paths.askback(':roomId', ':askbackId')} element={<AskbackPage />} />
-      {/* 초대 링크로 들어온 친구: 이름 입력 후 입장 */}
-      <Route path={paths.inviteJoin(':inviteToken')} element={<InviteJoinPage />} />
+      {/* 첫 화면: 카카오로 시작하기 */}
+      <Route path={paths.login()} element={<LoginPage />} />
+      {/* 아래 화면은 모두 로그인이 필요하다. 초대 링크로 들어온 친구도 로그인한 뒤 입장 화면으로 돌아온다 */}
+      <Route element={<RequireLogin />}>
+        {/* 내 모임방 목록 */}
+        <Route path={paths.roomList()} element={<RoomListPage />} />
+        {/* 모임방 만들기 */}
+        <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
+        {/* 모임방 홈 */}
+        <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
+        {/* 방 생성 직후: 초대 링크 공유 */}
+        <Route path={paths.roomShare(':roomId')} element={<RoomSharePage />} />
+        {/* 이야기를 남길 사진 고르기 */}
+        <Route path={paths.photoUpload(':roomId')} element={<PhotoUploadPage />} />
+        {/* 고른 사진마다 첫 한마디 남기기 (음성 또는 글) */}
+        <Route path={paths.firstEntry(':roomId')} element={<FirstEntryPage />} />
+        {/* AI가 나에게만 묻는 질문에 답하기 */}
+        <Route path={paths.askback(':roomId', ':askbackId')} element={<AskbackPage />} />
+        {/* 초대 링크로 들어온 친구: 이름 입력 후 입장 */}
+        <Route path={paths.inviteJoin(':inviteToken')} element={<InviteJoinPage />} />
+      </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
