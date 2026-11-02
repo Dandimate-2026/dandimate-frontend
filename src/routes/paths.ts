@@ -1,6 +1,8 @@
 // 화면 경로를 한곳에서 관리한다. 페이지에서는 문자열 대신 이 함수를 쓴다.
 
 export const paths = {
+  /** redirect: 로그인한 뒤 돌아갈 주소 */
+  login: (redirect?: string) => (redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'),
   // 이 기기에 저장된 방이 없으면 방 만들기로 보낸다
   roomList: () => '/',
   roomCreate: () => '/rooms/new',
@@ -14,4 +16,5 @@ export const paths = {
   // TODO: 아래 화면은 아직 없음
   roomCirculation: (roomId: string) => `/rooms/${roomId}/circulation`,
   terms: () => '/terms',
+  privacy: () => '/privacy',
 }

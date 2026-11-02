@@ -1,0 +1,85 @@
+import { useState } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
+import type { FlowerCode } from '../api/types'
+import Flower from '../components/Flower'
+import { isLoggedIn, loginWithKakao } from '../lib/auth'
+import { paths } from '../routes/paths'
+
+const FLOWER_ROW: FlowerCode[] = ['AZALEA', 'CANOLA', 'FORGET_ME_NOT', 'FORSYTHIA', 'LILAC']
+
+function KakaoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
+      <path d="M9 1.5C4.58 1.5 1 4.32 1 7.8c0 2.25 1.5 4.22 3.75 5.33l-.77 2.82c-.07.25.22.45.43.31l3.36-2.22c.4.05.82.08 1.23.08 4.42 0 8-2.82 8-6.3S13.42 1.5 9 1.5Z" />
+    </svg>
+  )
+}
+
+/** 로그인 뒤 돌아갈 주소. 다른 사이트로 넘어가지 않도록 앱 안 경로만 허용한다 */
+function safeRedirect(redirect: string | null) {
+  return redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : paths.roomList()
+}
+
+/** 첫 화면: 카카오로 시작하기 */
+function LoginPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirect = safeRedirect(searchParams.get('redirect'))
+  const [loggingIn, setLoggingIn] = useState(false)
+
+  if (isLoggedIn() && !loggingIn) return <Navigate to={redirect} replace />
+
+  const handleLogin = async () => {
+    setLoggingIn(true)
+    await loginWithKakao()
+    navigate(redirect, { replace: true })
+  }
+
+  return (
+    <main className="flex min-h-dvh flex-col bg-bg px-5 pt-12 pb-8 text-ink">
+      <section className="flex flex-1 flex-col items-center justify-center text-center">
+        <Flower code="ROYAL_AZALEA" size={66} />
+        <h1 className="mt-[18px] text-[32px] leading-10 font-extrabold">두루두루</h1>
+        <p className="mt-3 text-[14px] leading-[22px] text-sub">
+          친구들과 함께 엮는
+          <br />
+          우리만의 두루마리
+        </p>
+        <ul className="mt-8 flex gap-1.5">
+          {FLOWER_ROW.map((code) => (
+            <li key={code}>
+              <Flower code={code} size={24} />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <footer className="pt-6">
+        <button
+          type="button"
+          onClick={handleLogin}
+          disabled={loggingIn}
+          className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] text-[15px] font-semibold text-black/85 active:opacity-80"
+        >
+          <KakaoIcon />
+          카카오로 시작하기
+        </button>
+        <p className="mt-4 text-center text-[11px] leading-[17px] text-sub">
+          시작하면{' '}
+          <Link to={paths.terms()} className="text-point">
+            이용약관
+          </Link>
+          과{' '}
+          <Link to={paths.privacy()} className="text-point">
+            개인정보 처리방침
+          </Link>
+          ,
+          <br />
+          사진·음성의 외부 AI 처리에 동의하게 돼요
+        </p>
+      </footer>
+    </main>
+  )
+}
+
+export default LoginPage
