@@ -1,7 +1,9 @@
 import { request } from './client'
 import {
+  MOCK_DONE_ROOM_ID,
   MOCK_NEW_ROOM_ID,
   mockCreateRoom,
+  mockDoneRoomHome,
   mockInvitePreview,
   mockJoinRoom,
   mockNewRoomHome,
@@ -42,6 +44,10 @@ export function joinRoom(inviteToken: string, nickname: string) {
 }
 
 export function getRoomHome(roomId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve(roomId === MOCK_NEW_ROOM_ID ? mockNewRoomHome : mockRoomHome)
+  if (USE_MOCK) {
+    if (roomId === MOCK_NEW_ROOM_ID) return Promise.resolve(mockNewRoomHome)
+    if (roomId === MOCK_DONE_ROOM_ID) return Promise.resolve(mockDoneRoomHome)
+    return Promise.resolve(mockRoomHome)
+  }
   return request<RoomHome>(`/rooms/${roomId}`, { token })
 }

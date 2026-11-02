@@ -6,13 +6,16 @@ import NotFoundPage from '../pages/NotFoundPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
 import RoomHomePage from '../pages/RoomHomePage'
+import RoomListPage from '../pages/RoomListPage'
 import RoomSharePage from '../pages/RoomSharePage'
 import { paths } from './paths'
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* 첫 화면: 모임방 만들기 */}
+      {/* 첫 화면: 내 모임방 목록 */}
+      <Route path={paths.roomList()} element={<RoomListPage />} />
+      {/* 모임방 만들기 */}
       <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
       {/* 모임방 홈 */}
       <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
