@@ -15,7 +15,10 @@ export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !==
 
 export const MOCK_ROOM_ID = 'demo'
 /** 방 만들기로 막 연 방. 친구를 기다리는 화면을 확인할 때 쓴다 */
-export const MOCK_NEW_ROOM_ID = 'new'
+export const MOCK_NEW_ROOM_ID = 'gathering'
+/** 두루마리가 완성된 방. 방 목록의 완성된 두루마리를 확인할 때 쓴다 */
+export const MOCK_DONE_ROOM_ID = 'done'
+export const MOCK_ROOM_IDS = [MOCK_ROOM_ID, MOCK_NEW_ROOM_ID, MOCK_DONE_ROOM_ID]
 export const MOCK_INVITE_TOKEN = 'demo'
 
 export const mockInvitePreview: InvitePreview = {
@@ -97,8 +100,8 @@ const mockHost: Member = { id: 'mock-host', nickname: '서연', role: 'HOST', fl
 export const mockNewRoomHome: RoomHome = {
   room: {
     id: MOCK_NEW_ROOM_ID,
-    name: mockInvitePreview.roomName,
-    meetingDate: mockInvitePreview.meetingDate,
+    name: '가을 MT',
+    meetingDate: '2026-11-01',
     status: 'COLLECTING',
     // 지금부터 47시간 뒤
     deadlineAt: new Date(Date.now() + 47 * 60 * 60 * 1000).toISOString(),
@@ -109,6 +112,30 @@ export const mockNewRoomHome: RoomHome = {
   myTodo: { needsFirstEntry: true, pendingCirculationCount: 0, topAskback: null },
   unreadCount: 0,
   allCompleted: false,
+}
+
+const mockDoneMembers: RoomHome['members'] = [
+  { id: 'd1', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA', photoCount: 3 },
+  { id: 'd2', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA', photoCount: 2 },
+  { id: 'd3', nickname: '지수', role: 'MEMBER', flowerCode: 'FORGET_ME_NOT', photoCount: 2 },
+  { id: 'd4', nickname: '하린', role: 'MEMBER', flowerCode: 'LILAC', photoCount: 2 },
+]
+
+/** 두루마리가 완성되어 답가를 받는 방 */
+export const mockDoneRoomHome: RoomHome = {
+  room: {
+    id: MOCK_DONE_ROOM_ID,
+    name: '여름 부산 바다',
+    meetingDate: '2026-08-14',
+    status: 'GROWING',
+    deadlineAt: '2026-08-16T00:00:00+09:00',
+  },
+  me: mockDoneMembers[0],
+  members: mockDoneMembers,
+  todayFlowers: [],
+  myTodo: { needsFirstEntry: false, pendingCirculationCount: 0, topAskback: null },
+  unreadCount: 2,
+  allCompleted: true,
 }
 
 export const mockAskback: Askback = {

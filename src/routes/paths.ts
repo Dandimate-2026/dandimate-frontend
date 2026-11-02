@@ -1,7 +1,9 @@
 // 화면 경로를 한곳에서 관리한다. 페이지에서는 문자열 대신 이 함수를 쓴다.
 
 export const paths = {
-  roomCreate: () => '/',
+  // 이 기기에 저장된 방이 없으면 방 만들기로 보낸다
+  roomList: () => '/',
+  roomCreate: () => '/rooms/new',
   roomHome: (roomId: string) => `/rooms/${roomId}`,
   roomShare: (roomId: string) => `/rooms/${roomId}/share`,
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
