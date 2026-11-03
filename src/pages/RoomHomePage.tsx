@@ -10,6 +10,7 @@ import { SparkleIcon } from '../components/entry/EntryIcons'
 import Flower, { EmptySlot } from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
+import { shareToKakao } from '../lib/kakao'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
@@ -401,6 +402,8 @@ function RoomHomePage() {
   const [weaveError, setWeaveError] = useState<string | null>(null)
   // 시간이 다 됐다는 시트는 이 화면에 들어올 때마다 한 번 보여주고, 닫으면 다시 띄우지 않는다
   const [timeUpClosed, setTimeUpClosed] = useState(false)
+  // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
+  const { share: shareInvite } = useInviteShare(session?.inviteToken ?? '')
 
   // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
   const token = session?.memberAccessToken
@@ -442,6 +445,20 @@ function RoomHomePage() {
       setWeaveError('엮기를 시작하지 못했어요. 다시 시도해 주세요')
       setWeaving(false)
     }
+  }
+
+  /** 공유 화면으로 가지 않고 바로 기기 공유창(카카오톡 키가 있으면 카카오톡 공유)을 연다 */
+  const handleShareToChat = async () => {
+    const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
+    if (session.inviteToken) {
+      await shareInvite(text)
+      return
+    }
+    const url = `${window.location.origin}${paths.roomHome(room.id)}`
+    if (await shareToKakao(text, url)) return
+    if (navigator.share) await navigator.share({ text, url }).catch(() => {})
+    else await navigator.clipboard?.writeText(`${text}
+${url}`).catch(() => {})
   }
 
   const timeUpSheet =
@@ -566,7 +583,7 @@ function RoomHomePage() {
         <div className="mt-4 flex justify-center">
           <button
             type="button"
-            onClick={() => navigate(paths.roomShare(room.id))}
+            onClick={() => void handleShareToChat()}
             className="flex items-center gap-2 py-0.5 text-[11px] text-sub active:opacity-80"
           >
             <ShareIcon />
