@@ -19,6 +19,14 @@ const NOTIFICATION_TEXT: Record<NotificationType, { title: string; detail: strin
   ASKBACK_RECEIVED: { title: '나에게 질문이 왔어요', detail: '한 문장만 답하면 이야기가 더 풍성해져요' },
   SCROLL_READY: { title: '두루마리가 완성됐어요', detail: '우리 이야기를 펼쳐 보세요' },
   REPLY_APPLIED: { title: '답가가 두루마리에 엮였어요', detail: '바뀐 문단을 확인해 보세요' },
+  PLAN_UPGRADE_REQUESTED: { title: '플랜을 바꿔 달라는 요청이 왔어요', detail: '친구가 더 남기고 싶어 해요' },
+}
+
+// 플랜 변경 요청은 어떤 한도 때문인지 설명을 바꿔 보여준다
+const PLAN_REQUEST_DETAIL: Record<string, string> = {
+  PHOTO: '친구가 사진을 더 올리고 싶어 해요',
+  VOICE: '친구가 목소리로 더 남기고 싶어 해요',
+  REWEAVE: '친구가 두루마리를 더 엮고 싶어 해요',
 }
 
 /** 모임방 알림: 받은 질문, 두루마리 완성, 답가 반영 */
@@ -45,9 +53,10 @@ function RoomNotificationsPage() {
   const handleOpen = (item: RoomNotification) => {
     // 읽음 표시가 실패해도 이동은 막지 않는다
     if (!item.readAt) markNotificationRead(item.id, session.memberAccessToken).catch(() => {})
-    navigate(
-      item.type === 'ASKBACK_RECEIVED' ? paths.askback(roomId, item.resourceId) : paths.roomWeaving(roomId),
-    )
+    if (item.type === 'ASKBACK_RECEIVED') navigate(paths.askback(roomId, item.resourceId))
+    // 방장이 플랜 변경 요청을 누르면 플랜 화면으로 간다
+    else if (item.type === 'PLAN_UPGRADE_REQUESTED') navigate(paths.roomPlan(roomId))
+    else navigate(paths.roomWeaving(roomId))
   }
 
   return (
@@ -85,7 +94,9 @@ function RoomNotificationsPage() {
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-semibold">{text.title}</span>
-                    <span className="mt-0.5 block text-[11px] text-sub">{text.detail}</span>
+                    <span className="mt-0.5 block text-[11px] text-sub">
+                      {(item.type === 'PLAN_UPGRADE_REQUESTED' && PLAN_REQUEST_DETAIL[item.resourceType]) || text.detail}
+                    </span>
                   </span>
                   <span className="shrink-0 text-[10px] text-sub">{timeAgo(item.createdAt)}</span>
                   {unread && <span className="sr-only">안 읽음</span>}

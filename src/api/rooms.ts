@@ -5,6 +5,7 @@ import {
   MOCK_NEW_ROOM_ID,
   MOCK_READY_ROOM_ID,
   MOCK_TIMEUP_ROOM_ID,
+  MOCK_LIMIT_ROOM_ID,
   mockCloseRoom,
   mockCreateRoom,
   mockDoneRoomHome,
@@ -14,6 +15,7 @@ import {
   mockReadyRoomHome,
   mockRoomHome,
   mockTimeUpRoomHome,
+  mockLimitRoomHome,
   USE_MOCK,
 } from './mock'
 import type {
@@ -24,6 +26,7 @@ import type {
   InvitePreview,
   JoinRoomResult,
   MyRoom,
+  PlanRequestReason,
   RoomHome,
 } from './types'
 
@@ -72,6 +75,7 @@ export function getRoomHome(roomId: string, token: string) {
     if (roomId === MOCK_DONE_ROOM_ID) return Promise.resolve(mockDoneRoomHome)
     if (roomId === MOCK_READY_ROOM_ID) return Promise.resolve(mockReadyRoomHome)
     if (roomId === MOCK_TIMEUP_ROOM_ID) return Promise.resolve(mockTimeUpRoomHome)
+    if (roomId === MOCK_LIMIT_ROOM_ID) return Promise.resolve(mockLimitRoomHome)
     return Promise.resolve(mockRoomHome)
   }
   return request<RoomHome>(`/rooms/${roomId}`, { token })
@@ -122,4 +126,13 @@ export async function rotateInviteToken(roomId: string, token: string) {
 export function deleteRoom(roomId: string, token: string) {
   if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}`, { method: 'DELETE', token })
+}
+
+/**
+ * 멤버가 방장에게 플랜을 바꿔 달라고 요청한다. 방장의 방 알림(🔔)에 PLAN_UPGRADE_REQUESTED로 들어간다
+ * TODO(백엔드 미지원): 공개 API에 아직 없다. 주소·요청 모양은 가정한 값이라 실제 모드에서는 실패한다
+ */
+export function requestPlanUpgrade(roomId: string, reason: PlanRequestReason) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}/plan-requests`, { method: 'POST', body: { reason }, idempotent: true })
 }
