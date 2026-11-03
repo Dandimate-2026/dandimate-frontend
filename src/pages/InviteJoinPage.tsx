@@ -109,7 +109,7 @@ function InviteJoinPage() {
       </form>
 
       <p className="mt-7 text-center text-[11px] leading-[14px] text-sub">
-        설치·가입 없이 이름만 있으면 돼요
+        이름만 정하면 바로 들어갈 수 있어요
         <br />
         들어가면{' '}
         <Link to={paths.terms()} className="text-point">

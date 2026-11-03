@@ -228,7 +228,7 @@ function RoomCreatePage() {
           <br />
           우리 이야기가 두루마리로
         </h1>
-        <p className="mt-3 text-[11px] text-sub">설치·가입 없이 링크 하나로 친구들과 함께 써요</p>
+        <p className="mt-3 text-[11px] text-sub">링크 하나로 친구들과 함께 써요</p>
       </section>
 
       <form onSubmit={handleSubmit} className="mt-auto">

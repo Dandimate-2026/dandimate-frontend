@@ -11,6 +11,10 @@ import type { FirstEntryState } from './FirstEntryPage'
 import NotFoundPage from './NotFoundPage'
 
 const LONG_PRESS_MS = 400
+// 사진 칸은 한 줄에 3칸
+const GRID_COLUMNS = 3
+// 칸 사이 간격 (grid gap-[9px])
+const GRID_GAP = 9
 // 길게 누르기 전에 이만큼 움직이면 누르기를 취소한다
 const MOVE_TOLERANCE = 8
 
@@ -76,7 +80,7 @@ function PhotoUploadPage() {
   /** 1인당 사진 한도 (플랜별 3/6/10장) */
   const perMember = quota?.photosPerMember ?? MAX_PHOTOS
   /** 이번에 더 고를 수 있는 장수 */
-  const maxPhotos = Math.min(quota?.myPhotosRemaining ?? MAX_PHOTOS, MAX_PHOTOS)
+  const maxPhotos = quota?.myPhotosRemaining ?? MAX_PHOTOS
 
   // 화면을 떠날 때 미리보기용 URL을 정리한다
   const photosRef = useRef(photos)
@@ -129,12 +133,16 @@ function PhotoUploadPage() {
       return
     }
 
-    // 사진 칸은 한 줄 3칸이라, 손가락의 가로 위치로 놓일 자리를 정한다
+    // 사진 칸은 한 줄에 3칸씩 여러 줄일 수 있어서(Lite·Pro), 손가락의 가로·세로 위치로 놓일 자리를 정한다
     const list = listRef.current?.getBoundingClientRect()
-    if (!list) return
-    const colWidth = list.width / MAX_PHOTOS
+    const cell = listRef.current?.firstElementChild?.getBoundingClientRect()
+    if (!list || !cell) return
+    const colWidth = list.width / GRID_COLUMNS
+    const rowHeight = cell.height + GRID_GAP
     const from = photos.findIndex((p) => p.id === id)
-    const to = Math.min(Math.max(Math.floor((e.clientX - list.left) / colWidth), 0), photos.length - 1)
+    const col = Math.min(Math.max(Math.floor((e.clientX - list.left) / colWidth), 0), GRID_COLUMNS - 1)
+    const row = Math.max(Math.floor((e.clientY - list.top) / rowHeight), 0)
+    const to = Math.min(row * GRID_COLUMNS + col, photos.length - 1)
 
     if (to !== from) {
       setPhotos((prev) => {
@@ -144,9 +152,10 @@ function PhotoUploadPage() {
         return next
       })
       // 칸이 옮겨진 만큼 기준점을 옮겨 사진이 손가락 아래에 머물게 한다
-      pressStart.current.x += (to - from) * colWidth
+      pressStart.current.x += ((to % GRID_COLUMNS) - (from % GRID_COLUMNS)) * colWidth
+      pressStart.current.y += (Math.floor(to / GRID_COLUMNS) - Math.floor(from / GRID_COLUMNS)) * rowHeight
     }
-    setDragOffset({ x: e.clientX - pressStart.current.x, y: dy })
+    setDragOffset({ x: e.clientX - pressStart.current.x, y: e.clientY - pressStart.current.y })
   }
 
   const handlePointerEnd = () => {
@@ -247,7 +256,7 @@ function PhotoUploadPage() {
           </li>
         )}
         {/* 플랜 한도에 닿으면 남는 칸을 잠금 칸으로 보여주고, 누르면 한도 시트를 띄운다 */}
-        {atLimit && photos.length < MAX_PHOTOS && (
+        {atLimit && (photos.length === 0 || photos.length % GRID_COLUMNS !== 0) && (
           <li>
             <button
               type="button"
@@ -284,7 +293,7 @@ function PhotoUploadPage() {
       </div>
 
       {/* 칸이 사진으로 꽉 차서 잠금 칸을 둘 자리가 없으면, 그 아래에 잠금 줄을 보여준다. 누르면 한도 시트를 띄운다 */}
-      {atLimit && photos.length >= MAX_PHOTOS && (
+      {atLimit && photos.length > 0 && photos.length % GRID_COLUMNS === 0 && (
         <button
           type="button"
           onClick={() => setLimitOpen(true)}

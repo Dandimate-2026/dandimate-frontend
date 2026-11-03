@@ -148,7 +148,7 @@ function RoomCirculationPage() {
         </main>
         : done ? <CirculationComplete addedCount={cards.filter((item) => item.myResponse.status === 'ADDON').length} photoCount={cards.length} roomName={session.roomName} onBack={() => setDone(false)} onHome={backToHome} />
           : <CirculationPage photo={photo} position={index + 1} total={cards.length} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onUndoPass={() => void undo()} onNext={next} />}
-    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} maxLength={300}
+    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} maxLength={200}
       onTranscribe={(audio) => transcribe(photo.id, token, audio, 'ADDON')}
       onSave={saveAddition} onClose={() => setSheetOpen(false)} />}
   </div>
