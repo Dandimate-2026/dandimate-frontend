@@ -7,6 +7,7 @@ import Button from '../components/Button'
 import CirculationPage from '../features/memories/CirculationPage'
 import { CirculationComplete } from '../features/memories/CompletionPages'
 import ContributionSheet from '../features/memories/ContributionSheet'
+import { useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
 import { MemoryFlower, MemoryHeader } from '../features/memories/components'
 import type { FlowerColor, MemoryContribution, MemoryPhoto, MemoryResponse } from '../features/memories/types'
 import '../features/memories/memories.css'
@@ -48,6 +49,8 @@ function RoomCirculationPage() {
   const navigate = useNavigate()
   const session = getRoomSession(roomId)
   const token = session?.memberAccessToken ?? ''
+  // 덧붙임 녹음 최대 길이는 플랜별(20/30/60초)이라 방 한도를 불러온다
+  const quotaHome = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const [cards, setCards] = useState<CirculationCard[]>([])
   const [index, setIndex] = useState(0)
   const [done, setDone] = useState(false)
@@ -148,7 +151,7 @@ function RoomCirculationPage() {
         </main>
         : done ? <CirculationComplete addedCount={cards.filter((item) => item.myResponse.status === 'ADDON').length} photoCount={cards.length} roomName={session.roomName} onBack={() => setDone(false)} onHome={backToHome} />
           : <CirculationPage photo={photo} position={index + 1} total={cards.length} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onUndoPass={() => void undo()} onNext={next} />}
-    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} maxLength={200}
+    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} maxLength={200} maxVoiceMs={voiceMaxMs(quotaHome?.room.quota, 'other')}
       onTranscribe={(audio) => transcribe(photo.id, token, audio, 'ADDON')}
       onSave={saveAddition} onClose={() => setSheetOpen(false)} />}
   </div>

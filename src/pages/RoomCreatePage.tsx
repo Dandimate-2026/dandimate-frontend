@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { createRoom, MIN_ROOM_CAPACITY, ROOM_CAPACITY } from '../api/rooms'
+import { MIN_ROOM_CAPACITY, ROOM_CAPACITY } from '../api/rooms'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { formatDateSpaced, todayIsoDate } from '../lib/date'
-import { saveRoomSession } from '../lib/session'
+import { getRoomDraft, saveRoomDraft } from '../lib/roomDraft'
 import { paths } from '../routes/paths'
 
 const MAX_ROOM_NAME_LENGTH = 20
@@ -189,35 +189,21 @@ function Field({ htmlFor, label, children }: { htmlFor: string; label: string; c
 /** 방장이 모임 이름·날짜·자기 이름을 정해 모임방을 여는 첫 화면 */
 function RoomCreatePage() {
   const navigate = useNavigate()
-  const [roomName, setRoomName] = useState('')
-  const [meetingDate, setMeetingDate] = useState(todayIsoDate)
-  const [nickname, setNickname] = useState('')
-  const [capacity, setCapacity] = useState(DEFAULT_CAPACITY)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // 플랜 화면에서 뒤로 돌아왔으면 입력했던 내용을 다시 채운다
+  const [draft] = useState(getRoomDraft)
+  const [roomName, setRoomName] = useState(draft?.name ?? '')
+  const [meetingDate, setMeetingDate] = useState(draft?.meetingDate ?? todayIsoDate)
+  const [nickname, setNickname] = useState(draft?.hostNickname ?? '')
+  const [capacity, setCapacity] = useState(draft?.capacity ?? DEFAULT_CAPACITY)
 
-  const canSubmit = roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && !submitting
+  const canSubmit = roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0
 
-  const handleSubmit = async (e: FormEvent) => {
+  // 서버는 방을 만들 때 플랜을 받으므로, 여기서는 입력만 들고 플랜 선택으로 넘어간다. 방은 플랜을 고른 뒤 만든다
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
-    setSubmitting(true)
-    setError(null)
-    try {
-      // TODO: 유료 플랜은 서버 결제 검증이 붙기 전까지 만들 수 없어(503), 우선 FREE로 만들고 플랜 화면에서 고르게 둔다
-      const { room, inviteToken } = await createRoom({
-        name: roomName.trim(),
-        meetingDate,
-        hostNickname: nickname.trim(),
-        planType: 'FREE',
-        capacity,
-      })
-      saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
-      navigate(paths.roomPlan(room.id), { replace: true })
-    } catch {
-      setError('모임방을 만들지 못했어요. 다시 시도해 주세요')
-      setSubmitting(false)
-    }
+    saveRoomDraft({ name: roomName.trim(), meetingDate, hostNickname: nickname.trim(), capacity })
+    navigate(paths.roomCreatePlan())
   }
 
   return (
@@ -285,9 +271,8 @@ function RoomCreatePage() {
             <p className="mt-2 pl-[18px] text-[11px] text-sub">나를 포함해 최대 {ROOM_CAPACITY}명까지 들어올 수 있어요</p>
           </div>
 
-          {error && <p className="mt-2 text-[12px] text-point">{error}</p>}
           <Button type="submit" disabled={!canSubmit} className="mt-4 w-full">
-            {submitting ? '만드는 중…' : '모임방 만들기'}
+            모임방 만들기
           </Button>
         </Card>
       </form>

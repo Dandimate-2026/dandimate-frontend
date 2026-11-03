@@ -1,5 +1,5 @@
 import { ApiError, request } from './client'
-import { USE_MOCK } from './mock'
+import { recordMockPhotos, USE_MOCK } from './mock'
 import type { UploadFileRequest, UploadTicket } from './types'
 
 /** 한 사람이 올릴 수 있는 사진 수 */
@@ -15,7 +15,11 @@ export async function uploadPhotos(
   token: string,
   files: { request: UploadFileRequest; blob: Blob }[],
 ): Promise<string[]> {
-  if (USE_MOCK) return files.map((f) => `mock-${f.request.clientFileId}`)
+  if (USE_MOCK) {
+    const ids = files.map((f) => `mock-${f.request.clientFileId}`)
+    recordMockPhotos(roomId, ids)
+    return ids
+  }
 
   const { uploads } = await request<{ uploads: UploadTicket[] }>(`/rooms/${roomId}/photos/upload-requests`, {
     method: 'POST',

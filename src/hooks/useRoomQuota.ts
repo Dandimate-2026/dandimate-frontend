@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { getRoomHome, requestPlanUpgrade } from '../api/rooms'
-import type { PlanRequestReason, RoomHome } from '../api/types'
+import type { PlanRequestReason, RoomHome, RoomQuota } from '../api/types'
 import { paths } from '../routes/paths'
 
 /**
@@ -76,4 +76,26 @@ export function usePlanLimitAction(
       }
 
   return { isHost, action, notice }
+}
+
+// 서버가 한도를 알려 주지 않으면 가장 짧은 Free 기준으로 막는다. 길게 녹음했다가 서버에서 거절당하지 않도록
+const FREE_FIRST_MAX_SECONDS = 30
+const FREE_OTHER_MAX_SECONDS = 20
+
+/** 녹음 최대 길이(ms). 첫 한마디는 플랜별 30/60/120초, 덧붙임·되묻기 답변·답가는 20/30/60초 */
+export function voiceMaxMs(quota: RoomQuota | undefined, kind: 'first' | 'other') {
+  const seconds =
+    kind === 'first'
+      ? (quota?.firstMaxSeconds ?? FREE_FIRST_MAX_SECONDS)
+      : (quota?.otherMaxSeconds ?? FREE_OTHER_MAX_SECONDS)
+  return seconds * 1000
+}
+
+/** 60000 → '1분', 30000 → '30초', 90000 → '1분 30초' */
+export function formatVoiceLimit(ms: number) {
+  const total = Math.round(ms / 1000)
+  const minutes = Math.floor(total / 60)
+  const seconds = total % 60
+  if (minutes === 0) return `${seconds}초`
+  return seconds === 0 ? `${minutes}분` : `${minutes}분 ${seconds}초`
 }

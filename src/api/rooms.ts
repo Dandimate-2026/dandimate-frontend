@@ -1,6 +1,7 @@
 import { request } from './client'
 import {
   asMockRole,
+  withMockActivity,
   MOCK_DONE_ROOM_ID,
   MOCK_INVITE_TOKEN,
   MOCK_NEW_ROOM_ID,
@@ -71,7 +72,8 @@ export function joinRoom(inviteToken: string, nickname: string) {
 }
 
 export function getRoomHome(roomId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve(asMockRole(mockRoomHomeById(roomId)))
+  // 역할을 먼저 정하고, 그 '나'에게 이 기기에서 남긴 사진·한마디를 반영한다
+  if (USE_MOCK) return Promise.resolve(withMockActivity(asMockRole(mockRoomHomeById(roomId))))
   return request<RoomHome>(`/rooms/${roomId}`, { token })
 }
 

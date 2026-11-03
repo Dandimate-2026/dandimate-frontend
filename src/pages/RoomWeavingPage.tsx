@@ -10,7 +10,7 @@ import { WeavingPage } from '../features/memories/CompletionPages'
 import LiveScrollPage from '../features/memories/LiveScrollPage'
 import type { MemoryContribution } from '../features/memories/types'
 import '../features/memories/memories.css'
-import { isLimitError, usePlanLimitAction } from '../hooks/useRoomQuota'
+import { isLimitError, usePlanLimitAction, voiceMaxMs } from '../hooks/useRoomQuota'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
@@ -131,6 +131,7 @@ function RoomWeavingPage() {
     </> : <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name ?? session.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
     {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} maxLength={200}
       onTranscribe={transcribeReplyWithLimit}
+      maxVoiceMs={voiceMaxMs(home?.room.quota, 'other')}
       onSave={saveReply} onClose={() => setReplyTarget(null)} />}
     {voiceLimitOpen && (
       <VoiceLimitSheet

@@ -7,7 +7,7 @@ import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon } from '../components/entry/EntryIcons'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
 import { VoiceLimitSheet } from '../components/PlanLimitSheet'
-import { isLimitError, usePlanLimitAction, useRoomHomeForQuota } from '../hooks/useRoomQuota'
+import { formatVoiceLimit, isLimitError, usePlanLimitAction, useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
 import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -18,9 +18,8 @@ export interface FirstEntryState {
   photos: { photoId: string; file?: File }[]
 }
 
-// 첫 한마디 음성은 5~60초, 글은 300자까지 (백엔드 명세)
+// 첫 한마디 음성은 5초부터 플랜별 최대 30/60/120초, 글은 300자까지 (백엔드 명세)
 const MIN_VOICE_MS = 5_000
-const MAX_VOICE_MS = 60_000
 const MAX_TEXT_LENGTH = 300
 
 // mock 모드에서 사진 올리기를 거치지 않고 바로 들어왔을 때 보여줄 사진
@@ -55,6 +54,7 @@ function FirstEntryPage() {
   const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const quota = home?.room.quota
   const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setError)
+  const maxVoiceMs = voiceMaxMs(quota, 'first')
 
   const photo = photos[index]
   const isLast = index === photos.length - 1
@@ -86,7 +86,7 @@ function FirstEntryPage() {
     }
   }
 
-  const recorder = useVoiceRecorder({ maxMs: MAX_VOICE_MS, onFinish: handleRecorded })
+  const recorder = useVoiceRecorder({ maxMs: maxVoiceMs, onFinish: handleRecorded })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (!photo) return <NotFoundPage message="한마디를 남길 사진이 없어요" />
@@ -214,6 +214,7 @@ function FirstEntryPage() {
         <VoiceSection
           step={step}
           elapsedMs={recorder.elapsedMs}
+          maxMs={maxVoiceMs}
           error={error}
           onMicClick={handleMicClick}
           onStop={recorder.stop}
@@ -249,6 +250,7 @@ function FirstEntryPage() {
 function VoiceSection({
   step,
   elapsedMs,
+  maxMs,
   error,
   onMicClick,
   onStop,
@@ -256,6 +258,7 @@ function VoiceSection({
 }: {
   step: Step
   elapsedMs: number
+  maxMs: number
   error: string | null
   onMicClick: () => void
   onStop: () => void
@@ -267,7 +270,7 @@ function VoiceSection({
 
       {step === 'recording' && (
         <div className="mt-4">
-          <WaveProgress elapsedMs={elapsedMs} maxMs={MAX_VOICE_MS} />
+          <WaveProgress elapsedMs={elapsedMs} maxMs={maxMs} />
         </div>
       )}
 
@@ -286,7 +289,7 @@ function VoiceSection({
             ? '다시 누르면 녹음이 멈춰요'
             : step === 'transcribing'
               ? '받아 적는 중이에요…'
-              : '눌러서 한두 문장만 말해 주세요 · 최대 1분')}
+              : `눌러서 한두 문장만 말해 주세요 · 최대 ${formatVoiceLimit(maxMs)}`)}
       </p>
       <button type="button" onClick={onWrite} className="mt-5 text-[11px] text-point">
         지금 말하기 어려워요 → 글로 답하기

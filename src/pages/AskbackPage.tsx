@@ -8,15 +8,14 @@ import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon, SparkleIcon } from '../components/entry/EntryIcons'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
 import { VoiceLimitSheet } from '../components/PlanLimitSheet'
-import { isLimitError, usePlanLimitAction, useRoomHomeForQuota } from '../hooks/useRoomQuota'
+import { formatVoiceLimit, isLimitError, usePlanLimitAction, useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
 import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
-// 되묻기 답은 음성 1~30초, 글 200자까지 (백엔드 명세)
+// 되묻기 답은 음성 1초부터 플랜별 최대 20/30/60초, 글 200자까지 (백엔드 명세)
 const MIN_VOICE_MS = 1_000
-const MAX_VOICE_MS = 30_000
 const MAX_TEXT_LENGTH = 200
 
 /**
@@ -57,6 +56,7 @@ function AskbackPage() {
   const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const quota = home?.room.quota
   const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setError)
+  const maxVoiceMs = voiceMaxMs(quota, 'other')
 
   useEffect(() => {
     getAskback(askbackId, token)
@@ -95,7 +95,7 @@ function AskbackPage() {
     }
   }
 
-  const recorder = useVoiceRecorder({ maxMs: MAX_VOICE_MS, onFinish: handleRecorded })
+  const recorder = useVoiceRecorder({ maxMs: maxVoiceMs, onFinish: handleRecorded })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (loadError) return <NotFoundPage message={loadError} />
@@ -250,13 +250,13 @@ function AskbackPage() {
               </div>
               <div className="mt-3 flex h-6 items-center">
                 {step === 'recording' ? (
-                  <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={MAX_VOICE_MS} />
+                  <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={maxVoiceMs} />
                 ) : (
                   <p className={`text-[11px] ${error ? 'text-point' : 'text-sub'}`}>
                     {error ??
                       (step === 'transcribing'
                         ? '받아 적는 중이에요…'
-                        : '눌러서 한 문장만 말해 주세요 · 최대 30초')}
+                        : `눌러서 한 문장만 말해 주세요 · 최대 ${formatVoiceLimit(maxVoiceMs)}`)}
                   </p>
                 )}
               </div>

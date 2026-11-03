@@ -17,6 +17,7 @@
 | 설정: 모임 이름·날짜 변경 (방장) | `PATCH /rooms/{roomId}` |
 | 설정: 초대 링크 새로 만들기 (방장) | `POST /rooms/{roomId}/invite-token/rotate` |
 | 설정: 모임방 삭제 (방장) | `DELETE /rooms/{roomId}` |
+| 플랜 선택·결제 화면 | `GET /plans` (가격·한도·생성 가능 여부), 고른 플랜으로 `POST /rooms` |
 | 설정: 첫 두루마리 시각 변경 (방장) | `PATCH /rooms/{roomId}`의 `deadlineAt` |
 | 알림 목록·읽음 | `GET /rooms/{roomId}/notifications`, `POST /notifications/{notificationId}/read` |
 | 모임방 홈 실시간 갱신 | `POST /rooms/{roomId}/event-token` → `GET /rooms/{roomId}/events` (SSE). 실패하면 `GET /rooms/{roomId}` 5초 간격 조회 |

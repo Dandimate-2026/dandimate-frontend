@@ -92,6 +92,8 @@ export const mockRoomHome: RoomHome = {
       photosPerMember: 3,
       myPhotoCount: 0,
       myPhotosRemaining: 3,
+      firstMaxSeconds: 30,
+      otherMaxSeconds: 20,
       voiceLimitMs: 15 * 60 * 1000,
       voiceUsedMs: 3 * 60 * 1000,
       voiceRemainingMs: 12 * 60 * 1000,
@@ -160,6 +162,8 @@ export const mockLimitRoomHome: RoomHome = {
       photosPerMember: 3,
       myPhotoCount: 3,
       myPhotosRemaining: 0,
+      firstMaxSeconds: 30,
+      otherMaxSeconds: 20,
       voiceLimitMs: 15 * 60 * 1000,
       voiceUsedMs: 15 * 60 * 1000,
       voiceRemainingMs: 0,
@@ -185,6 +189,21 @@ export const mockNewRoomHome: RoomHome = {
     status: 'COLLECTING',
     // 지금부터 47시간 뒤
     deadlineAt: new Date(Date.now() + 47 * 60 * 60 * 1000).toISOString(),
+    planType: 'FREE',
+    // 막 만든 Free 방이라 한도를 하나도 쓰지 않았다
+    quota: {
+      photosPerMember: 3,
+      myPhotoCount: 0,
+      myPhotosRemaining: 3,
+      firstMaxSeconds: 30,
+      otherMaxSeconds: 20,
+      voiceLimitMs: 15 * 60 * 1000,
+      voiceUsedMs: 0,
+      voiceRemainingMs: 15 * 60 * 1000,
+      regenerationLimit: 3,
+      regenerationCount: 0,
+      regenerationsRemaining: 3,
+    },
   },
   me: mockHost,
   // 멤버로 데모할 때 볼 수 있게 친구 한 명이 먼저 들어와 있다
@@ -216,6 +235,8 @@ export const mockDoneRoomHome: RoomHome = {
       regenerationLimit: 3,
       regenerationCount: 3,
       regenerationsRemaining: 0,
+      firstMaxSeconds: 30,
+      otherMaxSeconds: 20,
       voiceLimitMs: 15 * 60 * 1000,
       voiceUsedMs: 15 * 60 * 1000,
       voiceRemainingMs: 0,
@@ -286,4 +307,82 @@ export function asMockRole(home: RoomHome): RoomHome {
   if (home.me.role === role) return home
   const me = home.members.find((m) => m.role === role)
   return me ? { ...home, me } : home
+}
+
+// 데모에서 이 기기로 올린 사진·남긴 한마디를 기억해 두고 모임방 홈에 반영한다 (꽃이 피고 할 일이 바뀌게)
+const MOCK_ACTIVITY_KEY = 'duruduru:mock-activity'
+
+interface MockActivity {
+  /** 방별로 올린 사진 수와 남긴 한마디 수 */
+  rooms: Record<string, { photos: number; entries: number }>
+  /** mock 사진 id가 어느 방 사진인지 */
+  photoRoom: Record<string, string>
+}
+
+function readMockActivity(): MockActivity {
+  try {
+    const raw = sessionStorage.getItem(MOCK_ACTIVITY_KEY)
+    if (raw) return JSON.parse(raw) as MockActivity
+  } catch {
+    // 저장소를 쓸 수 없으면 기록 없이 보여준다
+  }
+  return { rooms: {}, photoRoom: {} }
+}
+
+function writeMockActivity(activity: MockActivity) {
+  try {
+    sessionStorage.setItem(MOCK_ACTIVITY_KEY, JSON.stringify(activity))
+  } catch {
+    // 무시
+  }
+}
+
+export function recordMockPhotos(roomId: string, photoIds: string[]) {
+  const activity = readMockActivity()
+  const room = activity.rooms[roomId] ?? { photos: 0, entries: 0 }
+  activity.rooms[roomId] = { ...room, photos: room.photos + photoIds.length }
+  photoIds.forEach((id) => (activity.photoRoom[id] = roomId))
+  writeMockActivity(activity)
+}
+
+/** 첫 한마디를 남긴 사진. 그 사진이 올라간 방에 꽃이 하나 핀다 */
+export function recordMockEntry(photoId: string) {
+  const activity = readMockActivity()
+  const roomId = activity.photoRoom[photoId]
+  if (!roomId) return
+  const room = activity.rooms[roomId] ?? { photos: 0, entries: 0 }
+  activity.rooms[roomId] = { ...room, entries: room.entries + 1 }
+  writeMockActivity(activity)
+}
+
+/** 이 기기에서 남긴 사진·한마디만큼 내 사진 수, 오늘 핀 꽃, 내 할 일, 한도를 바꿔 돌려준다 */
+export function withMockActivity(home: RoomHome): RoomHome {
+  const done = readMockActivity().rooms[home.room.id]
+  if (!done) return home
+  const me = {
+    ...home.me,
+    photoCount: (home.me.photoCount ?? 0) + done.photos,
+    storyCount: (home.me.storyCount ?? 0) + done.entries,
+  }
+  const quota = home.room.quota
+  return {
+    ...home,
+    room: quota
+      ? {
+          ...home.room,
+          quota: {
+            ...quota,
+            myPhotoCount: (quota.myPhotoCount ?? 0) + done.photos,
+            myPhotosRemaining: Math.max((quota.myPhotosRemaining ?? 0) - done.photos, 0),
+          },
+        }
+      : home.room,
+    me,
+    members: home.members.map((m) => (m.id === me.id ? me : m)),
+    todayFlowers: [
+      ...home.todayFlowers,
+      ...Array.from({ length: done.entries }, () => ({ memberId: me.id, flowerCode: me.flowerCode, entryKind: 'FIRST' as const })),
+    ],
+    myTodo: { ...home.myTodo, needsFirstEntry: home.myTodo.needsFirstEntry && done.entries === 0 },
+  }
 }

@@ -34,6 +34,9 @@ function AppRoutes() {
         <Route path={paths.roomList()} element={<RoomListPage />} />
         {/* 모임방 만들기 */}
         <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
+        {/* 방 만들기 다음: 플랜을 고르고(유료면 결제) 그 플랜으로 방을 만든다 */}
+        <Route path={paths.roomCreatePlan()} element={<RoomPlanPage />} />
+        <Route path={paths.roomCreateCheckout()} element={<RoomCheckoutPage />} />
         {/* 모임방 홈 */}
         <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
         {/* 모임방 설정: 초대 링크, 함께하는 사람, 나가기 */}
