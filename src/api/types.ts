@@ -49,6 +49,10 @@ export interface RoomQuota {
   myPhotoCount?: number
   myPhotosRemaining?: number
   photosRemaining?: number
+  /** 첫 한마디 녹음 최대 초 (플랜별 30/60/120) */
+  firstMaxSeconds?: number
+  /** 덧붙임·되묻기 답변·답가 녹음 최대 초 (플랜별 20/30/60) */
+  otherMaxSeconds?: number
   voiceLimitMs?: number
   voiceUsedMs?: number
   voiceRemainingMs?: number

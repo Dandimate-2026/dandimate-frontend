@@ -87,7 +87,7 @@ export function transcribeReply(paragraphId: string, token: string, audio: Blob)
   if (USE_MOCK) return mockTranscribe('함께 웃었던 그 장면이 아직 기억나요.')
   const form = new FormData()
   form.append('file', audio, `voice.${audio.type.includes('mp4') ? 'm4a' : 'webm'}`)
-  return request<TranscriptionDraft>(`/paragraphs/${paragraphId}/transcriptions`, { method: 'POST', body: form, token })
+  return request<TranscriptionDraft>(`/paragraphs/${paragraphId}/transcriptions`, { method: 'POST', body: form, token, idempotent: true })
 }
 
 export function setAhMatda(paragraphId: string, token: string, active: boolean) {
