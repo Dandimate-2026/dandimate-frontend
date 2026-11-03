@@ -48,7 +48,16 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api(?:\/|$)/],
+        // 아래 주소는 저장해 둔 앱 화면(index.html)으로 바꾸지 않고 반드시 백엔드 서버로 보낸다
+        // (API, 카카오 로그인 시작·콜백, 백엔드가 직접 띄우는 Swagger 문서)
+        navigateFallbackDenylist: [
+          /^\/api(?:\/|$)/,
+          /^\/oauth2(?:\/|$)/,
+          /^\/login\/oauth2(?:\/|$)/,
+          /^\/swagger-ui(?:\.html|\/|$)/,
+          /^\/openapi(?:\/|$)/,
+          /^\/webjars(?:\/|$)/,
+        ],
         runtimeCaching: [
           {
             // 필요한 글꼴 서브셋만 캐시해 최초 방문 시 전체 폰트 다운로드를 피합니다.
