@@ -4,6 +4,7 @@ import {
   MOCK_INVITE_TOKEN,
   MOCK_NEW_ROOM_ID,
   MOCK_READY_ROOM_ID,
+  MOCK_TIMEUP_ROOM_ID,
   mockCloseRoom,
   mockCreateRoom,
   mockDoneRoomHome,
@@ -12,6 +13,7 @@ import {
   mockNewRoomHome,
   mockReadyRoomHome,
   mockRoomHome,
+  mockTimeUpRoomHome,
   USE_MOCK,
 } from './mock'
 import type {
@@ -69,6 +71,7 @@ export function getRoomHome(roomId: string, token: string) {
     if (roomId === MOCK_NEW_ROOM_ID) return Promise.resolve(mockNewRoomHome)
     if (roomId === MOCK_DONE_ROOM_ID) return Promise.resolve(mockDoneRoomHome)
     if (roomId === MOCK_READY_ROOM_ID) return Promise.resolve(mockReadyRoomHome)
+    if (roomId === MOCK_TIMEUP_ROOM_ID) return Promise.resolve(mockTimeUpRoomHome)
     return Promise.resolve(mockRoomHome)
   }
   return request<RoomHome>(`/rooms/${roomId}`, { token })
