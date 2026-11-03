@@ -1,18 +1,17 @@
 # 백엔드 연동 현황
 
-`feature/develop`(PR #20 머지 시점) 기준으로, 백엔드와 연결되지 않았거나 프론트에만 있는 부분을 정리한 문서입니다.
+공개 Swagger 0.1.0과 현재 프론트 기준으로, 서버 계약이 없거나 응답 필드가 부족한 부분을 정리한 문서입니다.
 
 ## 1. 백엔드 API가 없어 프론트에서 임시 처리 중
 
 | 기능 | 현재 동작 | 위치 |
 |---|---|---|
 | 카카오 로그인 | 로그인 API 없음. 누르면 기기에 로그인 표시만 저장 | `src/lib/auth.ts` |
-| 결제 | 결제 API 없음. 누르면 결제된 것으로 처리 | `src/api/plans.ts` |
+| 결제·쿠폰 | 공개 Swagger 0.1.0에 API 없음. 실제 모드에서는 결제 버튼을 비활성화 | `src/api/plans.ts`, `src/pages/RoomCheckoutPage.tsx` |
 | 플랜·가격 | 시안 예시 값을 프론트에 하드코딩 | `src/lib/plans.ts` |
-| 돌려보기 | `GET /rooms/{roomId}/circulation` 미연결. 시안 사진 2장 표시 | `src/pages/RoomCirculationPage.tsx` |
-| 엮기·두루마리 | 엮기 작업 상태(`GET /jobs/{jobId}`)·두루마리 API 미연결. 시안 데이터로 표시 | `src/pages/RoomWeavingPage.tsx`, `src/features/memories/data.ts` |
-| "아 맞다!" 반응 | 화면 안에서만 숫자 증가, 저장 안 됨 | `src/features/memories/ScrollPage.tsx` |
-| 덧붙임(답가) | memories 화면 안에서만 동작, 서버로 보내지 않음 | `src/features/memories/ContributionSheet.tsx` |
+| 시안 미리보기 | `memories.html`은 서버를 호출하지 않는 독립 시안 | `src/features/memories/MemoryPreview.tsx` |
+| 두루마리 답가 본문 목록 | 공개 응답에 `replyCount`만 있고 답가 본문 목록은 없음 | `src/features/memories/LiveScrollPage.tsx` |
+| 내 반응·평가 조회 | 공개 응답에 현재 사용자의 반응/평가 값이 없어 새로고침 후 선택 상태를 복원할 수 없음 | `src/features/memories/LiveScrollPage.tsx` |
 | 방 나가기 | 나가기 API 없음. 이 기기에 저장된 방 정보만 지움 | `src/pages/RoomSettingsPage.tsx` |
 
 ## 2. 응답·요청에 필드가 없어 비워두거나 대체 중
@@ -23,7 +22,7 @@
 | 방 목록 대표 사진 | 응답에 없어 빈 칸 | `src/pages/RoomListPage.tsx` |
 | 방 목록 답가 수 | 응답에 없어 안 읽은 알림 수로 대체 | `src/pages/RoomListPage.tsx` |
 | 초대한 사람 이름 | `InvitePreview` 응답에 없음 | `src/pages/InviteJoinPage.tsx` |
-| 방 만들 때 인원 `capacity` | 요청에 보내고 있으나 백엔드 반영 여부 미확인 | `src/api/types.ts` |
+| 방 만들 때 인원 `capacity` | 생성 요청 계약에 필드가 없어 보내지 않음. 화면에는 최대 8명으로 표시 | `src/api/types.ts`, `src/pages/RoomCreatePage.tsx` |
 | 방별 정원 | 홈에서 8명 고정 상수(`ROOM_CAPACITY`)로 표시 | `src/pages/RoomHomePage.tsx` |
 | 약관 동의 버전 | `'2026-10'` 임시 값 | `src/api/rooms.ts` |
 
@@ -50,7 +49,7 @@
 ## 백엔드 요청 우선순위
 
 1. 로그인 API와 로그인 기준 내 방 목록 API
-2. 방 만들기 `capacity` 반영, 홈 응답에 방별 정원
-3. 돌려보기, 엮기, 두루마리, 반응, 덧붙임 API
+2. 방별 정원을 선택해야 한다면 생성 요청의 `capacity`와 홈 응답의 정원 필드 추가
+3. 결제·쿠폰 API와 PG 연동 계약, 두루마리 답가 본문/내 반응·평가 조회 필드
 4. 방 나가기와 설정 관련 API
 5. 응답 필드 추가: 초대한 사람 이름, 대표 사진, 답가 수
