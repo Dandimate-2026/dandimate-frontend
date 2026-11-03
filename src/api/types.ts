@@ -58,8 +58,6 @@ export interface CreateRoomRequest {
   name: string
   meetingDate: string
   hostNickname: string
-  /** 방장을 포함한 함께할 인원 (TODO: 백엔드 반영 여부 확인 필요) */
-  capacity: number
   consent: Consent
 }
 
@@ -161,3 +159,47 @@ export type AskbackAnswerRequest =
 export type CreateEntryRequest =
   | { kind: EntryKind; inputMode: 'VOICE'; transcriptionId: string; transcript: string }
   | { kind: EntryKind; inputMode: 'TEXT'; transcript: string }
+
+export interface CirculationCard {
+  photo: Photo
+  firstEntry: Entry | null
+  myResponse: { status: 'NONE' | 'ADDON' | 'PASSED' | 'OWN_PHOTO' }
+  locked: boolean
+  lockReason?: 'RESPOND_FIRST' | null
+  otherEntries: Entry[]
+}
+
+export interface CirculationResponse {
+  cards: CirculationCard[]
+  nextCursor?: string | null
+}
+
+export interface ScrollParagraph {
+  id: string
+  photo: Photo
+  body: string
+  version: number
+  sources: { entryId: string; member: Member; quote: string }[]
+  replyCount: number
+  ahMatdaCount: number
+  aiGenerated: true
+}
+
+export interface Scroll {
+  id: string
+  version: number
+  participantCount: number
+  memberCount: number
+  generatedAt?: string
+  paragraphs: ScrollParagraph[]
+}
+
+export interface Job {
+  id: string
+  type: 'ASKBACK_ANALYZE' | 'WEAVE_SCROLL' | 'REPLY_REWEAVE' | 'MEDIA_DELETE'
+  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+  progress?: { completed: number; total: number }
+  errorCode?: string | null
+  createdAt: string
+  updatedAt: string
+}

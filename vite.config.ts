@@ -71,7 +71,7 @@ export default defineConfig({
     open: true,
     // 로컬 개발 시 /api 요청을 백엔드로 넘겨 CORS 문제를 피한다
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': { target: 'https://43-201-73-60.sslip.io', changeOrigin: true },
     },
   },
 })

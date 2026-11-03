@@ -12,7 +12,7 @@ import type {
   TranscriptionDraft,
 } from './types'
 
-export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false'
+export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
 
 export const MOCK_ROOM_ID = 'demo'
 /** 방 만들기로 막 연 방. 친구를 기다리는 화면을 확인할 때 쓴다 */

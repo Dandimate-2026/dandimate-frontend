@@ -1,6 +1,7 @@
 import type { ErrorBody } from './types'
 
-const BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1`
+const configuredBase = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://43-201-73-60.sslip.io/api/v1')).replace(/\/$/, '')
+const BASE_URL = configuredBase.endsWith('/api/v1') ? configuredBase : `${configuredBase}/api/v1`
 
 export class ApiError extends Error {
   status: number
