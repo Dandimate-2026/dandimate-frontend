@@ -19,10 +19,12 @@ export const MOCK_ROOM_ID = 'demo'
 /** 방 만들기로 막 연 방. 친구를 기다리는 화면을 확인할 때 쓴다 */
 export const MOCK_NEW_ROOM_ID = 'gathering'
 /** 두루마리가 완성된 방. 방 목록의 완성된 두루마리를 확인할 때 쓴다 */
-export const MOCK_DONE_ROOM_ID = 'done'
-export const MOCK_ROOM_IDS = [MOCK_ROOM_ID, MOCK_NEW_ROOM_ID, MOCK_DONE_ROOM_ID]
-/** 모두 다 봐서 엮을 수 있는 방. 방 목록에는 넣지 않고 주소로만 확인한다 */
-export const MOCK_READY_ROOM_ID = 'ready'
+export const MOCK_DONE_ROOM_ID = 'grown'
+/** 모두 다 봐서 엮을 수 있는 방 ('엮으러 가기' 시안 화면) */
+export const MOCK_READY_ROOM_ID = 'done'
+/** 약속한 시간이 다 됐는데 아직 엮지 않은 방 */
+export const MOCK_TIMEUP_ROOM_ID = 'timeup'
+export const MOCK_ROOM_IDS = [MOCK_ROOM_ID, MOCK_READY_ROOM_ID, MOCK_TIMEUP_ROOM_ID, MOCK_NEW_ROOM_ID, MOCK_DONE_ROOM_ID]
 export const MOCK_INVITE_TOKEN = 'demo'
 
 export const mockInvitePreview: InvitePreview = {
@@ -74,6 +76,7 @@ export const mockRoomHome: RoomHome = {
     name: mockInvitePreview.roomName,
     meetingDate: mockInvitePreview.meetingDate,
     status: 'CIRCULATING',
+    capacity: 5,
     // 지금부터 31시간 뒤
     deadlineAt: new Date(Date.now() + 31 * 60 * 60 * 1000).toISOString(),
   },
@@ -109,6 +112,19 @@ export const mockReadyRoomHome: RoomHome = {
   members: mockMembers.map((m) => ({ ...m, responseRate: 1 })),
   myTodo: { needsFirstEntry: false, pendingCirculationCount: 0, topAskback: null },
   allCompleted: true,
+}
+
+/** 약속한 시간이 지났는데 아직 엮지 않은 방 (방장 시점) */
+export const mockTimeUpRoomHome: RoomHome = {
+  ...mockRoomHome,
+  room: {
+    ...mockRoomHome.room,
+    id: MOCK_TIMEUP_ROOM_ID,
+    name: '제주 2박3일',
+    // 1시간 전에 마감
+    deadlineAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+  me: mockMembers[0],
 }
 
 export function mockCloseRoom(): CloseRoomResult {

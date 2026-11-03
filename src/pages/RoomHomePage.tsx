@@ -93,7 +93,8 @@ function ScrollIcon() {
 
 /** 참여현황 한 줄: 꽃 + 이름, 사진/이야기 수(다 봤으면 체크), 참여율 막대 */
 function MemberProgress({ member, done }: { member: Member; done: boolean }) {
-  const rate = Math.min(Math.max(member.responseRate ?? 0, 0), 1)
+  // 모두 다 봤으면 막대를 꽉 채운다
+  const rate = done ? 1 : Math.min(Math.max(member.responseRate ?? 0, 0), 1)
   return (
     <li>
       <div className="flex items-center justify-between">
@@ -321,6 +322,74 @@ function MyTodoCard({ home }: { home: RoomHome }) {
   )
 }
 
+/** 약속한 시간이 다 됐을 때 아래에서 올라오는 알림 시트 */
+function TimeUpSheet({
+  isHost,
+  weaving,
+  error,
+  onWeave,
+  onClose,
+}: {
+  isHost: boolean
+  weaving: boolean
+  error: string | null
+  onWeave: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-20 flex items-end justify-center bg-ink/40" onClick={onClose}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="timeup-title"
+        onClick={(e) => e.stopPropagation()}
+        className="flex w-full max-w-[430px] flex-col items-center rounded-t-[28px] bg-surface px-6 pt-3 pb-8 text-center text-ink"
+      >
+        <span className="h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+        <div className="mt-6">
+          <ScrollIcon />
+        </div>
+        <h2 id="timeup-title" className="mt-3 text-[18px] font-bold">
+          약속한 시간이 다 됐어요
+        </h2>
+        <p className="mt-2 text-[13px] leading-5 text-sub">
+          {isHost ? (
+            <>
+              지금까지 모인 이야기로
+              <br />첫 두루마리를 엮어 볼까요?
+            </>
+          ) : (
+            <>
+              방장이 엮으면
+              <br />첫 두루마리가 나와요
+            </>
+          )}
+        </p>
+        {error && <p className="mt-2 text-[12px] text-point">{error}</p>}
+        {isHost ? (
+          <>
+            <Button onClick={onWeave} disabled={weaving} className="mt-6 w-full">
+              {weaving ? '엮는 중…' : '엮으러 가기'}
+            </Button>
+            <button type="button" onClick={onClose} className="mt-3 py-1 text-[13px] text-sub active:opacity-80">
+              조금 있다가 할게요
+            </button>
+          </>
+        ) : (
+          <Button onClick={onClose} className="mt-6 w-full">
+            확인
+          </Button>
+        )}
+      </section>
+    </div>
+  )
+}
+
+/** 마감 시각이 지났는데 아직 엮지 않은 방인지 */
+function isTimeUp(room: RoomSummary) {
+  return (room.status === 'COLLECTING' || room.status === 'CIRCULATING') && new Date(room.deadlineAt).getTime() <= Date.now()
+}
+
 /** 모임방 홈: 방 상태, 오늘 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
 function RoomHomePage() {
   const { roomId = '' } = useParams()
@@ -330,6 +399,8 @@ function RoomHomePage() {
   const [error, setError] = useState<string | null>(null)
   const [weaving, setWeaving] = useState(false)
   const [weaveError, setWeaveError] = useState<string | null>(null)
+  // 시간이 다 됐다는 시트는 이 화면에 들어올 때마다 한 번 보여주고, 닫으면 다시 띄우지 않는다
+  const [timeUpClosed, setTimeUpClosed] = useState(false)
 
   // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
   const token = session?.memberAccessToken
@@ -354,14 +425,7 @@ function RoomHomePage() {
   if (error) return <NotFoundPage message={error} />
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
 
-  // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
-  if (home.room.status === 'COLLECTING' && home.members.length < (home.room.capacity ?? ROOM_CAPACITY)) {
-    return <GatheringHome home={home} inviteToken={session.inviteToken} />
-  }
-
   const { room, me, members, todayFlowers, myTodo } = home
-  // 돌려보는 중에 모두가 할 일을 마치면 마감을 기다리지 않고 엮을 수 있다
-  const readyToWeave = room.status === 'CIRCULATING' && home.allCompleted
 
   const handleWeave = async () => {
     setWeaving(true)
@@ -369,11 +433,43 @@ function RoomHomePage() {
     try {
       const result = await closeRoom(room.id, session.memberAccessToken)
       navigate(paths.roomWeaving(room.id, result.job.id))
-    } catch {
+    } catch (e) {
+      // 마감 시각이 지나 서버가 이미 엮기 시작했으면(409) 엮는 화면으로 간다
+      if (e instanceof ApiError && e.status === 409) {
+        navigate(paths.roomWeaving(room.id))
+        return
+      }
       setWeaveError('엮기를 시작하지 못했어요. 다시 시도해 주세요')
       setWeaving(false)
     }
   }
+
+  const timeUpSheet =
+    isTimeUp(room) && !timeUpClosed ? (
+      <TimeUpSheet
+        isHost={me.role === 'HOST'}
+        weaving={weaving}
+        error={weaveError}
+        onWeave={handleWeave}
+        onClose={() => setTimeUpClosed(true)}
+      />
+    ) : null
+
+  // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
+  if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
+    return (
+      <>
+        <GatheringHome home={home} inviteToken={session.inviteToken} />
+        {timeUpSheet}
+      </>
+    )
+  }
+
+  // 돌려보는 중에 모두가 할 일을 마치면 마감을 기다리지 않고 엮을 수 있다
+  const readyToWeave = room.status === 'CIRCULATING' && home.allCompleted
+  // 두루마리가 완성된 방도 시안처럼 모두 다 본 모양(체크·꽉 찬 막대)으로 보여준다
+  const grown = room.status === 'GROWING'
+  const allDone = readyToWeave || grown
 
   return (
     // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
@@ -391,13 +487,13 @@ function RoomHomePage() {
             ))}
           </ul>
           <p className="mt-1 text-[11px] text-sub">
-            {readyToWeave
+            {allDone
               ? `이야기 ${todayFlowers.length}개가 모였어요`
               : `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`}
           </p>
         </section>
 
-        {!readyToWeave && myTodo.topAskback && (
+        {!allDone && myTodo.topAskback && (
           <section className="mt-4 rounded-xl bg-[#f6e3ea] px-3.5 pt-3.5 pb-4">
             <p className="flex items-center gap-1.5 text-[11px] text-point">
               <SparkleIcon />
@@ -417,20 +513,31 @@ function RoomHomePage() {
         <section className="mt-2">
           <div className="flex items-center justify-between px-0.5 text-[11px]">
             <h2 className="text-sub">참여현황</h2>
-            <p>{readyToWeave ? `${members.length}명 다 봤어요` : `${members.length}/${room.capacity ?? ROOM_CAPACITY}명`}</p>
+            <p>
+              {members.length}/{room.capacity ?? ROOM_CAPACITY}명{allDone && ' 다 봤어요'}
+            </p>
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
             {members.map((m) => (
-              <MemberProgress key={m.id} member={m} done={readyToWeave} />
+              <MemberProgress key={m.id} member={m} done={allDone} />
             ))}
           </ul>
         </section>
       </div>
 
       <footer className="mt-auto px-5 pb-5">
-        {room.status === 'WEAVING' || room.status === 'GROWING' ? (
+        {grown ? (
+          <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
+            <ScrollIcon />
+            <p className="mt-2 text-[15px] font-bold">첫 두루마리가 완성됐어요</p>
+            <p className="mt-2 text-[11px] text-sub">답가를 달면 두루마리가 계속 자라요</p>
+            <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="mt-3.5 w-full">
+              두루마리 보기
+            </Button>
+          </Card>
+        ) : room.status === 'WEAVING' ? (
           <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="w-full">
-            {room.status === 'GROWING' ? '두루마리 보기' : '엮는 중 확인하기'}
+            엮는 중 확인하기
           </Button>
         ) : readyToWeave ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
@@ -467,6 +574,7 @@ function RoomHomePage() {
           </button>
         </div>
       </footer>
+      {timeUpSheet}
     </main>
   )
 }
