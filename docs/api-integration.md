@@ -14,6 +14,9 @@
 | 두루마리·원문 | `GET /rooms/{roomId}/scroll`의 `paragraphs`와 `sources` |
 | 아 맞다·문단 평가 | `PUT` / `DELETE /paragraphs/{paragraphId}/reactions/ah-matda`, `PUT /paragraphs/{paragraphId}/fidelity-rating` |
 | 답가 | `POST /paragraphs/{paragraphId}/transcriptions` (음성), `POST /paragraphs/{paragraphId}/replies`, `GET /jobs/{jobId}` |
+| 설정: 모임 이름·날짜 변경 (방장) | `PATCH /rooms/{roomId}` |
+| 설정: 초대 링크 새로 만들기 (방장) | `POST /rooms/{roomId}/invite-token/rotate` |
+| 설정: 모임방 삭제 (방장) | `DELETE /rooms/{roomId}` |
 
 요청은 방 입장/생성 시 받은 `memberAccessToken`을 Bearer 토큰으로 보냅니다. 덧붙임·답가 저장 및 엮기 재시도에는 `Idempotency-Key`를 보냅니다. 쓰기 후에는 카드나 두루마리를 서버에서 다시 읽습니다.
 

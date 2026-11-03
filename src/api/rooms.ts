@@ -1,6 +1,7 @@
 import { request } from './client'
 import {
   MOCK_DONE_ROOM_ID,
+  MOCK_INVITE_TOKEN,
   MOCK_NEW_ROOM_ID,
   MOCK_READY_ROOM_ID,
   mockCloseRoom,
@@ -74,10 +75,7 @@ export function closeRoom(roomId: string, token: string) {
   })
 }
 
-/**
- * 방장이 모임방 이름이나 모임 날짜를 바꾼다
- * TODO: 백엔드 명세에 아직 없는 API라 주소·요청 모양은 가정한 값이다
- */
+/** 방장이 모임방 이름이나 모임 날짜를 바꾼다 */
 export function updateRoom(roomId: string, body: { name?: string; meetingDate?: string }, token: string) {
   if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}`, { method: 'PATCH', body, token })
@@ -85,9 +83,26 @@ export function updateRoom(roomId: string, body: { name?: string; meetingDate?: 
 
 /**
  * 이 방에서 쓰는 내 닉네임을 바꾼다
- * TODO: 백엔드 명세에 아직 없는 API라 주소·요청 모양은 가정한 값이다
+ * TODO(백엔드 미지원): 공개 API 0.1.0에 닉네임 변경이 없다. 주소·요청 모양은 가정한 값이라 실제 모드에서는 실패한다
  */
 export function updateMyNickname(roomId: string, nickname: string, token: string) {
   if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/members/me`, { method: 'PATCH', body: { nickname }, token })
+}
+
+/** 방장이 초대 링크를 새로 만든다. 이전 링크로는 더 들어올 수 없다 */
+export async function rotateInviteToken(roomId: string, token: string) {
+  if (USE_MOCK) return MOCK_INVITE_TOKEN
+  const { inviteToken } = await request<{ inviteToken: string }>(`/rooms/${roomId}/invite-token/rotate`, {
+    method: 'POST',
+    token,
+    idempotent: true,
+  })
+  return inviteToken
+}
+
+/** 방장이 방과 모든 사진·이야기를 지운다 */
+export function deleteRoom(roomId: string, token: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}`, { method: 'DELETE', token })
 }

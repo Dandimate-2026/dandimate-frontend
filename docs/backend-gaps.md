@@ -11,7 +11,6 @@
 | 문제 | 내용 | 위치 |
 |---|---|---|
 | 정원 | 백엔드는 정원을 8명 고정(`capacity: const 8`)으로 둠. 프론트도 인원 선택을 없애고 최대 8명으로 표시함. 선택 정원이 필요하면 API 계약 변경 필요 | `src/pages/RoomCreatePage.tsx`, `src/api/types.ts` |
-| 모임 이름 글자 수 | 백엔드는 20자까지 허용, 프론트는 10자로 막음 | `RoomCreatePage.tsx`, `RoomSettingsPage.tsx` |
 
 ## 1. 백엔드에 API가 없어 프론트에서 임시 처리 중
 
@@ -29,9 +28,7 @@
 
 | API | 용도 | 프론트 현재 상태 |
 |---|---|---|
-| `PATCH /rooms/{roomId}` | 방장이 이름·날짜·마감 시각 변경 | 이름·날짜 변경에 연결됨 (주소·요청 모양 일치). 마감 시각(`deadlineAt`) 변경 화면은 없음 |
-| `DELETE /rooms/{roomId}` | 방장이 방과 모든 내용 삭제 | 화면 없음 |
-| `POST /rooms/{roomId}/invite-token/rotate` | 방장이 초대 링크 재발급 | 화면 없음 |
+| `PATCH /rooms/{roomId}`의 `deadlineAt` | 방장이 마감 시각 변경 | 이름·날짜 변경만 연결됨. 마감 시각 변경 화면은 없음 |
 | `DELETE /replies/{replyId}` | 내 덧붙임 삭제 | 미연결 |
 | `GET /rooms/{roomId}/askbacks/me` | 나에게 온 질문 목록 | 미사용. 홈의 `topAskback` 하나만 씀 |
 | `POST /rooms/{roomId}/askbacks/run` | 데모용 질문 즉시 생성 (방장) | 미사용 |
@@ -66,9 +63,7 @@
 ## 다음 할 일
 
 **프론트**
-1. 모임 이름 글자 수 20자로 맞추기
-2. 설정에 초대 링크 재발급, 방 삭제 추가
-3. 유효한 테스트 방과 참여 토큰으로 돌려보기·엮기·답가 쓰기 흐름 검증
+1. 유효한 테스트 방과 참여 토큰으로 돌려보기·엮기·답가 쓰기 흐름 검증
 
 **백엔드에 요청**
 1. 로그인 정책 결정, 필요하면 로그인 기준 내 방 목록 API

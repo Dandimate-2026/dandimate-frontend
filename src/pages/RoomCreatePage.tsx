@@ -7,7 +7,7 @@ import { formatDateSpaced, todayIsoDate } from '../lib/date'
 import { saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 
-const MAX_ROOM_NAME_LENGTH = 10
+const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
 function CalendarIcon() {
   return (
