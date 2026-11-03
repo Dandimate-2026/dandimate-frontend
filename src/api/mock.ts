@@ -187,7 +187,8 @@ export const mockNewRoomHome: RoomHome = {
     deadlineAt: new Date(Date.now() + 47 * 60 * 60 * 1000).toISOString(),
   },
   me: mockHost,
-  members: [mockHost],
+  // 멤버로 데모할 때 볼 수 있게 친구 한 명이 먼저 들어와 있다
+  members: [mockHost, { id: 'mock-member-1', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA' }],
   todayFlowers: [],
   myTodo: { needsFirstEntry: true, pendingCirculationCount: 0, topAskback: null },
   unreadCount: 0,
@@ -265,3 +266,24 @@ export const mockNotifications: RoomNotification[] = [
   { id: 'n2', type: 'REPLY_APPLIED', resourceType: 'SCROLL', resourceId: 's1', readAt: null, createdAt: minutesAgo(180) },
   { id: 'n3', type: 'SCROLL_READY', resourceType: 'SCROLL', resourceId: 's1', readAt: minutesAgo(1440), createdAt: minutesAgo(1500) },
 ]
+
+// 데모 로그인에서 고른 역할 (방장으로 보기 / 멤버로 보기). lib/auth가 로그인할 때 저장한다
+export type MockRole = 'HOST' | 'MEMBER'
+export const MOCK_AUTH_KEY = 'duruduru:auth'
+
+export function getMockRole(): MockRole {
+  try {
+    const raw = localStorage.getItem(MOCK_AUTH_KEY)
+    return raw && (JSON.parse(raw) as { role?: MockRole }).role === 'MEMBER' ? 'MEMBER' : 'HOST'
+  } catch {
+    return 'HOST'
+  }
+}
+
+/** 데모에서 고른 역할에 맞춰 이 방의 '나'를 방장 또는 멤버로 바꿔 돌려준다 */
+export function asMockRole(home: RoomHome): RoomHome {
+  const role = getMockRole()
+  if (home.me.role === role) return home
+  const me = home.members.find((m) => m.role === role)
+  return me ? { ...home, me } : home
+}

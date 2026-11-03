@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
+import { getMockRole, USE_MOCK } from '../api/mock'
 import { getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomStatus } from '../api/types'
 import Button from '../components/Button'
@@ -144,7 +145,15 @@ function RoomListPage() {
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
         <div className="flex items-center justify-between px-[13px]">
-          <p className="text-[16px] font-bold">두루두루</p>
+          <p className="flex items-center gap-2 text-[16px] font-bold">
+            두루두루
+            {/* 데모에서 지금 어떤 입장으로 보고 있는지. 바꾸려면 로그아웃하고 다시 고른다 */}
+            {USE_MOCK && (
+              <span className="rounded-full bg-[#f6e3ea] px-2 py-0.5 text-[10px] font-semibold text-point">
+                데모 · {getMockRole() === 'HOST' ? '방장으로' : '멤버로'} 보는 중
+              </span>
+            )}
+          </p>
           <button
             type="button"
             onClick={handleLogout}
