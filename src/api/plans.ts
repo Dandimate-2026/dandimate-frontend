@@ -1,6 +1,6 @@
 import type { PlanId } from '../lib/plans'
 
-export type PaymentMethod = 'EASY_PAY_A' | 'EASY_PAY_B' | 'CARD'
+export type PaymentMethod = 'EASY_PAY_A' | 'EASY_PAY_B' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE'
 
 export interface PurchaseRequest {
   roomId: string
