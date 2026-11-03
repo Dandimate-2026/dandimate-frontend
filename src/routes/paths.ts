@@ -20,7 +20,7 @@ export const paths = {
   // 참여자 토큰이 방마다 있어서 방 id도 주소에 넣는다
   askback: (roomId: string, askbackId: string) => `/rooms/${roomId}/askbacks/${askbackId}`,
   roomCirculation: (roomId: string) => `/rooms/${roomId}/circulation`,
-  roomWeaving: (roomId: string) => `/rooms/${roomId}/weaving`,
+  roomWeaving: (roomId: string, jobId?: string) => `/rooms/${roomId}/weaving${jobId ? `?job=${encodeURIComponent(jobId)}` : ''}`,
   terms: () => '/terms',
   privacy: () => '/privacy',
 }

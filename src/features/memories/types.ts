@@ -4,6 +4,8 @@ export type PreviewScreen = 'screens' | 's6-1' | 's6-2' | 's6-3' | 's6-4' | 's6-
 export interface MemoryContribution {
   text: string
   audioUrl?: string
+  audioBlob?: Blob
+  transcriptionId?: string
   durationMs?: number
 }
 

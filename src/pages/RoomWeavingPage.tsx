@@ -1,68 +1,100 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { ApiError } from '../api/client'
+import { createReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
+import { getRoomHome } from '../api/rooms'
+import type { RoomHome, Scroll, ScrollParagraph } from '../api/types'
 import ContributionSheet from '../features/memories/ContributionSheet'
 import { WeavingPage } from '../features/memories/CompletionPages'
-import ScrollPage from '../features/memories/ScrollPage'
+import LiveScrollPage from '../features/memories/LiveScrollPage'
 import type { MemoryContribution } from '../features/memories/types'
 import '../features/memories/memories.css'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
-/**
- * 엮으러 가기 다음 화면: 엮는 중(memories s8) → 두루마리(memories s9)
- * TODO: memories 화면은 아직 시안 데이터로 그려진다. 엮기 작업 상태(GET /jobs/{jobId})와 두루마리 API를 연결해야 한다
- */
 function RoomWeavingPage() {
   const { roomId = '' } = useParams()
+  const [params] = useSearchParams()
   const navigate = useNavigate()
   const session = getRoomSession(roomId)
-  const [woven, setWoven] = useState(false)
-  const [replyTarget, setReplyTarget] = useState<{ chapter: string; quote: string } | null>(null)
-  const [replies, setReplies] = useState<Record<string, MemoryContribution[]>>({})
-  const audioUrls = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    const urls = audioUrls.current
-    return () => urls.forEach((url) => URL.revokeObjectURL(url))
-  }, [])
+  const token = session?.memberAccessToken ?? ''
+  const [jobId, setJobId] = useState(params.get('job'))
+  const [home, setHome] = useState<RoomHome | null>(null)
+  const [scroll, setScroll] = useState<Scroll | null>(null)
+  const [replyTarget, setReplyTarget] = useState<ScrollParagraph | null>(null)
+  const [error, setError] = useState('')
+  const [failedWeave, setFailedWeave] = useState(false)
+  const [replyNotice, setReplyNotice] = useState('')
 
-  const backToHome = () => navigate(paths.roomHome(roomId))
-  const showScroll = useCallback(() => {
-    setWoven(true)
-    window.scrollTo(0, 0)
-  }, [])
+  const refresh = useCallback(async () => {
+    const result = await getScroll(roomId, token)
+    setScroll(result)
+  }, [roomId, token])
+
+  useEffect(() => {
+    if (!token) return
+    let active = true
+    let checking = false
+    async function check() {
+      if (checking) return
+      checking = true
+      try {
+        const room = await getRoomHome(roomId, token)
+        if (active) setHome(room)
+        if (jobId) {
+          const job = await getJob(jobId, token)
+          if (job.status === 'FAILED') {
+            if (active) {
+              setFailedWeave(job.type === 'WEAVE_SCROLL')
+              setError(`${job.type === 'REPLY_REWEAVE' ? '답가 반영' : '엮기'} 작업에 실패했어요${job.errorCode ? ` (${job.errorCode})` : ''}.`)
+            }
+            return
+          }
+          if (job.status !== 'SUCCEEDED' && room.room.status !== 'GROWING') return
+        }
+        const result = await getScroll(roomId, token)
+        if (active) { setScroll(result); setError(''); setFailedWeave(false); setReplyNotice('') }
+      } catch (cause) {
+        if (active && !(cause instanceof ApiError && cause.status === 409)) setError(cause instanceof Error ? cause.message : '두루마리를 불러오지 못했어요.')
+      } finally { checking = false }
+    }
+    void check()
+    const interval = window.setInterval(() => void check(), 5000)
+    return () => { active = false; window.clearInterval(interval) }
+  }, [roomId, token, jobId])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
+  const backToHome = () => navigate(paths.roomHome(roomId))
 
-  return (
-    // 앱 레이아웃이 세로 flex라서, 폭을 꽉 채우지 않으면 내용 크기만큼 줄어든다
-    <div className="memory-app w-full">
-      {woven ? (
-        <ScrollPage
-          onBack={backToHome}
-          replies={replies}
-          onReply={(chapter, quote) => setReplyTarget({ chapter, quote })}
-        />
-      ) : (
-        <WeavingPage onBack={backToHome} onReady={showScroll} />
-      )}
-      {replyTarget && (
-        <ContributionSheet
-          kind="reply"
-          quote={replyTarget.quote}
-          onClose={() => setReplyTarget(null)}
-          onSave={(contribution) => {
-            if (contribution.audioUrl) audioUrls.current.add(contribution.audioUrl)
-            setReplies((current) => ({
-              ...current,
-              [replyTarget.chapter]: [...(current[replyTarget.chapter] ?? []), contribution],
-            }))
-            setReplyTarget(null)
-          }}
-        />
-      )}
-    </div>
-  )
+  async function retry() {
+    setError(''); setFailedWeave(false)
+    try { const result = await retryWeave(roomId, token); setJobId(result.job.id) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '다시 엮기를 시작하지 못했어요.') }
+  }
+
+  async function saveReply(value: MemoryContribution) {
+    if (!replyTarget) return
+    const body = value.audioBlob && value.transcriptionId
+      ? { inputMode: 'VOICE' as const, transcriptionId: value.transcriptionId, transcript: value.text }
+      : { inputMode: 'TEXT' as const, transcript: value.text }
+    const result = await createReply(replyTarget.id, token, body)
+    if (value.audioUrl) URL.revokeObjectURL(value.audioUrl)
+    setJobId(result.job.id)
+    setReplyNotice('답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.')
+    setReplyTarget(null)
+  }
+
+  return <div className="memory-app w-full">
+    {scroll && home ? <>
+      {replyNotice && <p className="memory-error" role="status">{replyNotice}</p>}
+      {error && <p className="memory-error" role="alert">{error}</p>}
+      <LiveScrollPage scroll={scroll} home={home} token={token} onBack={backToHome} onReply={setReplyTarget} onRefresh={refresh} />
+    </> : <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name ?? session.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
+    {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} maxLength={200}
+      onTranscribe={(audio) => transcribeReply(replyTarget.id, token, audio)}
+      onSave={saveReply} onClose={() => setReplyTarget(null)} />}
+  </div>
 }
 
 export default RoomWeavingPage

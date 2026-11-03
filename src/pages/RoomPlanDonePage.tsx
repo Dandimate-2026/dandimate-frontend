@@ -6,6 +6,7 @@ import { FREE_PLAN, findPlan, subjectParticle } from '../lib/plans'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
+import { USE_MOCK } from '../api/mock'
 
 /** 결제를 마친 뒤 바뀐 한도를 보여주고, 친구를 부르러 보낸다 */
 function RoomPlanDonePage() {
@@ -17,6 +18,7 @@ function RoomPlanDonePage() {
   const { share } = useInviteShare(session?.inviteToken ?? '')
 
   if (!session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
+  if (!USE_MOCK) return <NotFoundPage message="결제 완료 정보를 확인할 수 없어요" />
   if (!plan) return <NotFoundPage message="플랜을 찾을 수 없어요" />
 
   const changes = [

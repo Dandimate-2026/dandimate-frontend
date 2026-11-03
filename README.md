@@ -15,6 +15,8 @@ npm run build
 npm run preview
 ```
 
+개발 서버의 `/api`는 배포 백엔드로 프록시합니다. API 연결 화면과 실제 확인 순서는 [배포 API 연결 문서](docs/api-integration.md)를 참고하세요. `VITE_USE_MOCK=true`는 예시 데이터 확인용이고, 기본값은 실제 API입니다.
+
 전역 화면 레이아웃은 `src/layout/globallayout.jsx`에서 관리합니다. 작업 영역은 최대 430px의 흰색 화면이며, 바깥 배경은 `#f3f3f3`입니다. Pretendard 가변 폰트를 사용합니다.
 
 ## PWA

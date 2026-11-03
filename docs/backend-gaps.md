@@ -1,17 +1,16 @@
 # 백엔드 연동 현황
 
-백엔드 Swagger 명세(`Duruduru Public API` 0.1.0)와 프론트 `feature/develop`(PR #22 머지 시점) 코드를 비교해 정리한 문서입니다.
+백엔드 Swagger 명세(`Duruduru Public API` 0.1.0)와 현재 프론트 코드를 비교해 정리한 문서입니다.
 
 - API Base URL: https://43-201-73-60.sslip.io/api/v1
 - Swagger: https://43-201-73-60.sslip.io/swagger-ui.html
 - 명세 원본: `dandimate-backend` 저장소 `docs/swagger/openapi.yaml`
 
-## 0. 바로 고쳐야 하는 것
+## 0. 남은 계약 차이
 
 | 문제 | 내용 | 위치 |
 |---|---|---|
-| 방 만들기 `capacity` | 백엔드 `CreateRoomRequest`가 `additionalProperties: false`라 프론트가 보내는 `capacity`를 거절할 수 있음. 실제 서버에서는 방 만들기 실패 가능 | `src/pages/RoomCreatePage.tsx`, `src/api/types.ts` |
-| 정원 | 백엔드는 정원을 8명 고정(`capacity: const 8`)으로 둠. 프론트 인원 드롭다운(2~8명)은 백엔드에 저장되지 않음 | 같은 곳 |
+| 정원 | 백엔드는 정원을 8명 고정(`capacity: const 8`)으로 둠. 프론트도 인원 선택을 없애고 최대 8명으로 표시함. 선택 정원이 필요하면 API 계약 변경 필요 | `src/pages/RoomCreatePage.tsx`, `src/api/types.ts` |
 | 모임 이름 글자 수 | 백엔드는 20자까지 허용, 프론트는 10자로 막음 | `RoomCreatePage.tsx`, `RoomSettingsPage.tsx` |
 
 ## 1. 백엔드에 API가 없어 프론트에서 임시 처리 중
@@ -20,8 +19,8 @@
 |---|---|---|
 | 카카오 로그인 | 명세에 로그인·계정 API가 없음 (방마다 받는 `memberAccessToken`으로만 인증). 지금은 기기에 로그인 표시만 저장 | `src/lib/auth.ts` |
 | 내 모임방 목록 | 목록 API 없음. 이 기기에 저장된 방만 보여서 기기를 바꾸면 사라짐 | `src/lib/session.ts` |
-| 결제·플랜 | 결제·플랜 API 없음. 가격·한도는 프론트 하드코딩, 누르면 결제된 것으로 처리 (`purchasePlan` 모의 함수) | `src/api/plans.ts`, `src/lib/plans.ts` |
-| 결제 화면 세부 | 쿠폰, 결제 수단, 결제대행사 약관 안내는 시안 확인용 표시만 함. 실제 결제 연동, 주문 번호, 결제 확인 중·실패 상태는 서버 응답 없이 미리보기로만 확인 가능 | `src/pages/RoomCheckoutPage.tsx` |
+| 결제·플랜·쿠폰 | 결제·플랜·쿠폰 API 없음. 가격·한도는 프론트 예시 값이며 실제 모드에서는 결제·쿠폰 입력을 비활성화함 | `src/api/plans.ts`, `src/lib/plans.ts`, `src/pages/RoomCheckoutPage.tsx` |
+| 결제 화면 세부 | 결제 수단·약관·실패 사유·주문 번호는 서버 응답과 PG 계약이 없어 실제 결제 흐름으로 확인할 수 없음 | `src/pages/RoomCheckoutPage.tsx` |
 | 방 나가기 | 나가기 API 없음. 이 기기에 저장된 방 정보만 지움 (서버에는 멤버로 남음) | `src/pages/RoomSettingsPage.tsx` |
 | 내 이름 변경 | API 없음. 프론트는 `PATCH /rooms/{roomId}/members/me`로 가정해 둠 → 실제로는 실패 | `src/api/rooms.ts` |
 | 방장 위임 | API 없음 | - |
@@ -33,15 +32,7 @@
 | `PATCH /rooms/{roomId}` | 방장이 이름·날짜·마감 시각 변경 | 이름·날짜 변경에 연결됨 (주소·요청 모양 일치). 마감 시각(`deadlineAt`) 변경 화면은 없음 |
 | `DELETE /rooms/{roomId}` | 방장이 방과 모든 내용 삭제 | 화면 없음 |
 | `POST /rooms/{roomId}/invite-token/rotate` | 방장이 초대 링크 재발급 | 화면 없음 |
-| `GET /rooms/{roomId}/circulation` | 돌려보기 카드 | 미연결. 시안 사진 2장 표시 (`RoomCirculationPage.tsx`) |
-| `PUT·DELETE /photos/{photoId}/passes/me` | 돌려보기에서 사진 넘기기 | 미연결 |
-| `GET /rooms/{roomId}/scroll` | 두루마리와 문단 | 미연결. 시안 데이터 표시 (`features/memories/data.ts`) |
-| `GET /jobs/{jobId}` | 엮기 진행 상태 | 미연결 (`RoomWeavingPage.tsx`) |
-| `POST /rooms/{roomId}/weave-jobs` | 엮기 실패 시 다시 시도 | 미연결 |
-| `POST /paragraphs/{id}/replies`, `/transcriptions` | 덧붙임(답가)과 음성 받아쓰기 | 미연결. memories 화면 안에서만 동작 (`ContributionSheet.tsx`) |
 | `DELETE /replies/{replyId}` | 내 덧붙임 삭제 | 미연결 |
-| `PUT·DELETE /paragraphs/{id}/reactions/ah-matda` | "아 맞다!" 반응 | 미연결. 화면 안에서만 숫자 증가 (`ScrollPage.tsx`) |
-| `PUT /paragraphs/{id}/fidelity-rating` | 문단이 기억과 맞는지 평가 | 화면 없음 |
 | `GET /rooms/{roomId}/askbacks/me` | 나에게 온 질문 목록 | 미사용. 홈의 `topAskback` 하나만 씀 |
 | `POST /rooms/{roomId}/askbacks/run` | 데모용 질문 즉시 생성 (방장) | 미사용 |
 | `PATCH·DELETE /entries/{entryId}` | 내 이야기 수정·삭제 | 화면 없음 |
@@ -58,6 +49,8 @@
 | 초대한 사람 이름 | `InvitePreviewResponse`에 없음 | `src/pages/InviteJoinPage.tsx` |
 | 멤버에게 초대 링크 | 원본 초대 토큰은 방 만들 때(또는 재발급 때) 방장에게만 한 번 내려옴. 멤버는 링크를 공유할 수 없음 | `src/lib/session.ts` |
 | 약관 동의 버전 | 명세에 값이 정해져 있지 않아 `'2026-10'` 임시 값 | `src/api/rooms.ts` |
+| 두루마리 답가 본문 | 응답에 `replyCount`만 있어 답가 목록을 다시 표시할 수 없음 | `src/features/memories/LiveScrollPage.tsx` |
+| 내 반응·평가 | 현재 사용자의 반응·평가 값이 없어 새로고침 후 선택 상태를 복원할 수 없음 | `src/features/memories/LiveScrollPage.tsx` |
 
 ## 4. 기획·디자인 확인 필요
 
@@ -73,10 +66,9 @@
 ## 다음 할 일
 
 **프론트**
-1. 방 만들기 요청에서 `capacity` 빼기 (백엔드가 받기 전까지)
-2. 모임 이름 글자 수 20자로 맞추기
-3. 돌려보기·두루마리·엮기 진행·덧붙임·반응 API 연결
-4. 설정에 초대 링크 재발급, 방 삭제 추가
+1. 모임 이름 글자 수 20자로 맞추기
+2. 설정에 초대 링크 재발급, 방 삭제 추가
+3. 유효한 테스트 방과 참여 토큰으로 돌려보기·엮기·답가 쓰기 흐름 검증
 
 **백엔드에 요청**
 1. 로그인 정책 결정, 필요하면 로그인 기준 내 방 목록 API

@@ -8,6 +8,7 @@ import { findPlan, formatWon, PLANS, RECOMMENDED_PLAN_ID, type Plan, type PlanId
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
+import { USE_MOCK } from '../api/mock'
 
 // 1인당 금액 안내에 쓰는 예시 인원
 const EXAMPLE_FRIENDS = 3
@@ -109,6 +110,7 @@ function RoomPlanPage() {
       </div>
 
       <footer className="mt-auto pt-8">
+        {!USE_MOCK && plan.price > 0 && <p className="text-center text-[12px] text-point">유료 결제 API가 아직 없어 결제 화면은 확인만 할 수 있어요.</p>}
         {plan.price > 0 && (
           <p className="text-center text-[11px] text-sub">
             친구 {EXAMPLE_FRIENDS}명이면 1인당 약 {formatWon(Math.round(plan.price / EXAMPLE_FRIENDS / 10) * 10)} · 가격은
@@ -116,7 +118,7 @@ function RoomPlanPage() {
           </p>
         )}
         <Button onClick={handleNext} className="mt-3 w-full">
-          {plan.price === 0 ? `${plan.name}로 시작하기` : `${plan.name}로 결제하기 · ${formatWon(plan.price)}`}
+          {plan.price === 0 ? `${plan.name}로 시작하기` : USE_MOCK ? `${plan.name}로 결제하기 · ${formatWon(plan.price)}` : '결제 화면 확인하기'}
         </Button>
       </footer>
     </main>

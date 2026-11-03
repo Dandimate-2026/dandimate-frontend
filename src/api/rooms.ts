@@ -25,9 +25,6 @@ import type {
 
 /** 방 정원 (백엔드 명세상 고정값) */
 export const ROOM_CAPACITY = 8
-/** 방 만들 때 고를 수 있는 최소 인원 */
-export const MIN_ROOM_CAPACITY = 2
-
 // TODO: 백엔드와 약관 버전 값 확정 필요
 export const CONSENT: Consent = {
   version: '2026-10',
