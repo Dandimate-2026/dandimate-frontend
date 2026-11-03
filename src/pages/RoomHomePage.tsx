@@ -274,8 +274,10 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
 function MyTodoCard({ home }: { home: RoomHome }) {
   const navigate = useNavigate()
   const { room, me, members, myTodo } = home
-  const myPhotos = me.photoCount ?? 0
-  const canAddPhotos = myPhotos < MAX_PHOTOS
+  // 사진 한도는 플랜마다 다르다(1인 3/6/10장). 서버가 준 한도를 쓰고, 없으면 기본 3장으로 본다
+  const maxPhotos = room.quota?.photosPerMember ?? MAX_PHOTOS
+  const myPhotos = room.quota?.myPhotoCount ?? me.photoCount ?? 0
+  const canAddPhotos = myPhotos < maxPhotos
   // 친구 사진 수는 나를 뺀 참여자의 사진 수를 더하고, 본 수는 거기서 남은 수를 뺀다
   const friendPhotos = members.filter((m) => m.id !== me.id).reduce((sum, m) => sum + (m.photoCount ?? 0), 0)
   const pending = myTodo.pendingCirculationCount
@@ -287,13 +289,13 @@ function MyTodoCard({ home }: { home: RoomHome }) {
       <div className="mt-2 flex items-start justify-between gap-3 border-b border-line pb-2.5">
         <div>
           <p className="text-[15px] leading-5 font-bold">
-            내 사진 {myPhotos}/{MAX_PHOTOS}장
+            내 사진 {myPhotos}/{maxPhotos}장
           </p>
           <p className="text-[11px] leading-4 text-sub">
             {myTodo.needsFirstEntry
               ? '사진에 첫 한마디를 남겨 주세요'
               : canAddPhotos
-                ? `${MAX_PHOTOS - myPhotos}장 더 올릴 수 있어요`
+                ? `${maxPhotos - myPhotos}장 더 올릴 수 있어요`
                 : '사진을 모두 올렸어요'}
           </p>
         </div>
