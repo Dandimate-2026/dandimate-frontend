@@ -75,8 +75,12 @@ export function closeRoom(roomId: string, token: string) {
   })
 }
 
-/** 방장이 모임방 이름이나 모임 날짜를 바꾼다 */
-export function updateRoom(roomId: string, body: { name?: string; meetingDate?: string }, token: string) {
+/** 방장이 모임방 이름·모임 날짜·첫 두루마리 시각을 바꾼다 */
+export function updateRoom(
+  roomId: string,
+  body: { name?: string; meetingDate?: string; deadlineAt?: string },
+  token: string,
+) {
   if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}`, { method: 'PATCH', body, token })
 }

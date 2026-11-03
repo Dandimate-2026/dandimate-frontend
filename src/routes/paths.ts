@@ -14,6 +14,7 @@ export const paths = {
   roomPlanDone: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/done${plan ? `?plan=${plan}` : ''}`,
   roomShare: (roomId: string) => `/rooms/${roomId}/share`,
   roomSettings: (roomId: string) => `/rooms/${roomId}/settings`,
+  roomNotifications: (roomId: string) => `/rooms/${roomId}/notifications`,
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
   photoUpload: (roomId: string) => `/rooms/${roomId}/photos/new`,
   firstEntry: (roomId: string) => `/rooms/${roomId}/entries/new`,

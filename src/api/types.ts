@@ -203,3 +203,19 @@ export interface Job {
   createdAt: string
   updatedAt: string
 }
+
+export type NotificationType = 'ASKBACK_RECEIVED' | 'SCROLL_READY' | 'REPLY_APPLIED'
+
+export interface RoomNotification {
+  id: string
+  type: NotificationType
+  resourceType: string
+  resourceId: string
+  readAt?: string | null
+  createdAt: string
+}
+
+export interface EventToken {
+  eventsUrl: string
+  expiresAt: string
+}

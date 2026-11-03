@@ -6,7 +6,7 @@ import Card from '../components/Card'
 import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
-import { formatDateSpaced } from '../lib/date'
+import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
@@ -36,11 +36,12 @@ const PILL_BUTTON_CLASS = 'h-[52px] rounded-full text-[15px] font-semibold activ
 const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
 
-type EditTarget = 'roomName' | 'meetingDate' | 'nickname'
+type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname'
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
   roomName: { title: '모임 이름 바꾸기', maxLength: MAX_ROOM_NAME_LENGTH },
   meetingDate: { title: '모임 날짜 바꾸기' },
+  deadlineAt: { title: '첫 두루마리 시각 바꾸기' },
   nickname: { title: '내 이름 바꾸기', maxLength: MAX_NICKNAME_LENGTH },
 }
 
@@ -108,7 +109,8 @@ function EditDialog({
           ) : (
             <input
               aria-label={title}
-              type="date"
+              type={target === 'deadlineAt' ? 'datetime-local' : 'date'}
+              min={target === 'deadlineAt' ? toLocalDateTimeInput(new Date().toISOString()) : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="h-[52px] w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
@@ -230,6 +232,11 @@ function RoomSettingsPage() {
       await updateRoom(room.id, { name: value }, session.memberAccessToken)
       saveRoomSession(room.id, { ...session, roomName: value })
       setHome({ ...home, room: { ...room, name: value } })
+    } else if (editing === 'deadlineAt') {
+      // 입력칸은 기기 시간대 기준이라 서버에는 ISO 시각으로 바꿔 보낸다
+      const deadlineAt = new Date(value).toISOString()
+      await updateRoom(room.id, { deadlineAt }, session.memberAccessToken)
+      setHome({ ...home, room: { ...room, deadlineAt } })
     } else if (editing === 'meetingDate') {
       await updateRoom(room.id, { meetingDate: value }, session.memberAccessToken)
       setHome({ ...home, room: { ...room, meetingDate: value } })
@@ -264,6 +271,7 @@ function RoomSettingsPage() {
   }
 
   const isHost = me.role === 'HOST'
+  const canChangeDeadline = room.status === 'COLLECTING' || room.status === 'CIRCULATING'
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-5 pt-16 pb-8 text-ink">
@@ -298,6 +306,17 @@ function RoomSettingsPage() {
             </button>
           )}
         </div>
+        {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
+        {canChangeDeadline && (
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-[13px] text-sub">첫 두루마리 {formatDateTime(room.deadlineAt)}</p>
+            {isHost && (
+              <button type="button" onClick={() => setEditing('deadlineAt')} className={EDIT_BUTTON_CLASS}>
+                변경
+              </button>
+            )}
+          </div>
+        )}
       </Section>
 
       {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 초대 링크를 보여준다 */}
@@ -364,7 +383,13 @@ function RoomSettingsPage() {
         <EditDialog
           target={editing}
           initialValue={
-            editing === 'roomName' ? room.name : editing === 'meetingDate' ? (room.meetingDate ?? '') : me.nickname
+            editing === 'roomName'
+              ? room.name
+              : editing === 'meetingDate'
+                ? (room.meetingDate ?? '')
+                : editing === 'deadlineAt'
+                  ? toLocalDateTimeInput(room.deadlineAt)
+                  : me.nickname
           }
           onCancel={() => setEditing(null)}
           onSave={handleSave}

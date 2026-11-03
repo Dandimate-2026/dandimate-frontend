@@ -28,14 +28,11 @@
 
 | API | 용도 | 프론트 현재 상태 |
 |---|---|---|
-| `PATCH /rooms/{roomId}`의 `deadlineAt` | 방장이 마감 시각 변경 | 이름·날짜 변경만 연결됨. 마감 시각 변경 화면은 없음 |
-| `DELETE /replies/{replyId}` | 내 덧붙임 삭제 | 미연결 |
+| `DELETE /replies/{replyId}` | 내 답가 삭제 | 미연결. 두루마리 응답에 답가 목록(`replyId`)이 없어 지울 대상을 보여줄 수 없음 |
 | `GET /rooms/{roomId}/askbacks/me` | 나에게 온 질문 목록 | 미사용. 홈의 `topAskback` 하나만 씀 |
 | `POST /rooms/{roomId}/askbacks/run` | 데모용 질문 즉시 생성 (방장) | 미사용 |
-| `PATCH·DELETE /entries/{entryId}` | 내 이야기 수정·삭제 | 화면 없음 |
-| `DELETE /photos/{photoId}` | 내 사진 삭제 | 화면 없음 |
-| `GET /rooms/{roomId}/notifications`, `POST /notifications/{id}/read` | 알림 목록·읽음 | 화면 없음 |
-| `GET /rooms/{roomId}/events`, `POST /rooms/{roomId}/event-token` | 실시간 갱신 (SSE, 안 되면 5초 폴링) | 미사용. 홈은 들어올 때 한 번만 불러옴 |
+| `PATCH·DELETE /entries/{entryId}` | 내 이야기 수정·삭제 | 화면 없음. 내 이야기 목록을 주는 API가 없어 `entryId`를 알 수 없음 |
+| `DELETE /photos/{photoId}` | 내 사진 삭제 | 화면 없음. 내 사진 목록을 주는 API가 없어 `photoId`를 알 수 없음 |
 
 ## 3. 응답에 필드가 없어 비워두거나 대체 중
 
@@ -71,3 +68,4 @@
 3. 방 나가기, 내 이름 변경 API
 4. 정원 정책이 정해지면 방 만들기에 인원 필드
 5. 응답 필드 추가: 초대한 사람 이름, 방 대표 사진, 답가 수
+6. 내 사진·이야기 목록 API, 두루마리 응답에 답가 목록 (사진·이야기·답가 삭제 화면에 필요)
