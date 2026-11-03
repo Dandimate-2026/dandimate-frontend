@@ -6,10 +6,13 @@ import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import PolicyPage from '../pages/PolicyPage'
+import RoomCheckoutPage from '../pages/RoomCheckoutPage'
 import RoomCirculationPage from '../pages/RoomCirculationPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
 import RoomHomePage from '../pages/RoomHomePage'
 import RoomListPage from '../pages/RoomListPage'
+import RoomPlanDonePage from '../pages/RoomPlanDonePage'
+import RoomPlanPage from '../pages/RoomPlanPage'
 import RoomSharePage from '../pages/RoomSharePage'
 import RoomWeavingPage from '../pages/RoomWeavingPage'
 import { paths } from './paths'
@@ -31,7 +34,11 @@ function AppRoutes() {
         <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
         {/* 모임방 홈 */}
         <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
-        {/* 방 생성 직후: 초대 링크 공유 */}
+        {/* 방 생성 직후: 플랜 선택 → (유료면) 결제 → 결제 완료 */}
+        <Route path={paths.roomPlan(':roomId')} element={<RoomPlanPage />} />
+        <Route path={paths.roomCheckout(':roomId')} element={<RoomCheckoutPage />} />
+        <Route path={paths.roomPlanDone(':roomId')} element={<RoomPlanDonePage />} />
+        {/* 플랜을 고른 뒤: 초대 링크 공유 */}
         <Route path={paths.roomShare(':roomId')} element={<RoomSharePage />} />
         {/* 이야기를 남길 사진 고르기 */}
         <Route path={paths.photoUpload(':roomId')} element={<PhotoUploadPage />} />
