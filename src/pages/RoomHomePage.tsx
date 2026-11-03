@@ -330,8 +330,8 @@ function RoomHomePage() {
     setWeaving(true)
     setWeaveError(null)
     try {
-      await closeRoom(room.id, session.memberAccessToken)
-      navigate(paths.roomWeaving(room.id))
+      const result = await closeRoom(room.id, session.memberAccessToken)
+      navigate(paths.roomWeaving(room.id, result.job.id))
     } catch {
       setWeaveError('엮기를 시작하지 못했어요. 다시 시도해 주세요')
       setWeaving(false)
@@ -391,7 +391,11 @@ function RoomHomePage() {
       </div>
 
       <footer className="mt-auto px-5 pb-5">
-        {readyToWeave ? (
+        {room.status === 'WEAVING' || room.status === 'GROWING' ? (
+          <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="w-full">
+            {room.status === 'GROWING' ? '두루마리 보기' : '엮는 중 확인하기'}
+          </Button>
+        ) : readyToWeave ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon />
             <p className="mt-2 text-[15px] font-bold">모두 다 봤어요. 이제 엮을 수 있어요</p>

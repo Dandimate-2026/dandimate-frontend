@@ -5,19 +5,24 @@ import { formatDuration, useVoiceRecorder } from '../../hooks/useVoiceRecorder'
 import { BottomSheet } from './components'
 import type { MemoryContribution } from './types'
 
-export default function ContributionSheet({ kind, quote, initial, startWithText = false, onSave, onClose }: {
+export default function ContributionSheet({ kind, quote, initial, startWithText = false, onSave, onClose, onTranscribe, maxLength = 500 }: {
   kind: 'addition' | 'reply'
   quote: string
   initial?: MemoryContribution
   startWithText?: boolean
-  onSave: (value: MemoryContribution) => void
+  onSave: (value: MemoryContribution) => void | Promise<void>
   onClose: () => void
+  onTranscribe?: (audio: Blob) => Promise<{ transcript: string; transcriptionId: string }>
+  maxLength?: number
 }) {
   const [mode, setMode] = useState<'voice' | 'text'>(startWithText || initial ? 'text' : 'voice')
   const [text, setText] = useState(initial?.text ?? '')
-  const [audio, setAudio] = useState<{ url: string; durationMs: number } | null>(initial?.audioUrl ? { url: initial.audioUrl, durationMs: initial.durationMs ?? 0 } : null)
+  const [audio, setAudio] = useState<{ url: string; blob?: Blob; durationMs: number } | null>(initial?.audioUrl ? { url: initial.audioUrl, durationMs: initial.durationMs ?? 0 } : null)
+  const [transcriptionId, setTranscriptionId] = useState(initial?.transcriptionId)
   const [error, setError] = useState('')
   const [starting, setStarting] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const ownedUrls = useRef<string[]>([])
   const savedUrl = useRef<string | undefined>(undefined)
   const mounted = useRef(false)
@@ -26,7 +31,19 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     if (!mounted.current) return
     const url = URL.createObjectURL(recording.blob)
     ownedUrls.current.push(url)
-    setAudio({ url, durationMs: recording.durationMs })
+    setAudio({ url, blob: recording.blob, durationMs: recording.durationMs })
+    setTranscriptionId(undefined)
+    if (onTranscribe) {
+      setTranscribing(true)
+      void onTranscribe(recording.blob).then((draft) => {
+        if (!mounted.current) return
+        setText(draft.transcript)
+        setTranscriptionId(draft.transcriptionId)
+        setMode('text')
+      }).catch((cause: unknown) => {
+        if (mounted.current) setError(cause instanceof Error ? cause.message : '받아쓰기에 실패했어요. 다시 녹음하거나 글로 남겨 주세요.')
+      }).finally(() => { if (mounted.current) setTranscribing(false) })
+    }
   } })
 
   useEffect(() => {
@@ -56,10 +73,18 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     } finally { if (mounted.current) setStarting(false) }
   }
 
-  function save() {
-    if ((!text.trim() && !audio) || recorder.recording || starting) return
+  async function save() {
+    if ((!text.trim() && !audio) || recorder.recording || starting || transcribing || saving) return
+    if (onTranscribe && !text.trim()) { setError('받아쓴 글을 확인해 주세요.'); return }
     savedUrl.current = audio?.url
-    onSave({ text: text.trim(), audioUrl: audio?.url, durationMs: audio?.durationMs })
+    setSaving(true)
+    setError('')
+    try {
+      await onSave({ text: text.trim(), audioUrl: audio?.url, audioBlob: audio?.blob, transcriptionId, durationMs: audio?.durationMs })
+    } catch (cause) {
+      savedUrl.current = undefined
+      setError(cause instanceof Error ? cause.message : '저장하지 못했어요. 다시 시도해 주세요.')
+    } finally { if (mounted.current) setSaving(false) }
   }
 
   return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={onClose}>
@@ -73,12 +98,13 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
       </>}
     </div> : <div className="memory-write-field">
       <label htmlFor="memory-contribution">내 이야기</label>
-      <textarea id="memory-contribution" value={text} onChange={(event) => setText(event.target.value)} maxLength={500} rows={4} placeholder="내가 기억하는 장면을 적어 주세요" autoFocus />
-      <span>{text.length}/500</span>
+      <textarea id="memory-contribution" value={text} onChange={(event) => setText(event.target.value)} maxLength={maxLength} rows={4} placeholder="내가 기억하는 장면을 적어 주세요" autoFocus />
+      <span>{text.length}/{maxLength}</span>
       {audio && <audio controls src={audio.url} aria-label="함께 남길 녹음" />}
     </div>}
     {error && <p role="alert" className="memory-error">{error}</p>}
-    {(mode === 'text' || audio) && <Button className="memory-save" onClick={save} disabled={(!text.trim() && !audio) || recorder.recording || starting}>{kind === 'reply' ? '답가 남기기' : '기억 남기기'}</Button>}
-    <button type="button" className="memory-text-link memory-mode-link" disabled={starting} onClick={() => { recorder.cancel(); setMode(mode === 'voice' ? 'text' : 'voice') }}>{mode === 'voice' ? '지금 말하기 어려워요 → 글로 답하기' : '말로 답하기'}</button>
+    {transcribing && <p role="status" className="memory-sheet-hint">녹음을 글로 옮기고 있어요…</p>}
+    {(mode === 'text' || audio) && <Button className="memory-save" onClick={() => void save()} disabled={(!text.trim() && !audio) || recorder.recording || starting || transcribing || saving}>{saving ? '저장 중…' : kind === 'reply' ? '답가 남기기' : '기억 남기기'}</Button>}
+    <button type="button" className="memory-text-link memory-mode-link" disabled={starting || transcribing || saving} onClick={() => { recorder.cancel(); setMode(mode === 'voice' ? 'text' : 'voice') }}>{mode === 'voice' ? '지금 말하기 어려워요 → 글로 답하기' : '말로 답하기'}</button>
   </BottomSheet>
 }

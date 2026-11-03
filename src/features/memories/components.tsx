@@ -76,11 +76,11 @@ export function StoryCard({ story, mine = false, textOnly = false }: { story: Me
   </article>
 }
 
-export function TripHeading({ onBack }: { onBack: () => void }) {
+export function TripHeading({ onBack, title = '경주 1박2일', detail = '2026. 10. 17–18 · 참여 3/3 · 사진 6장', members }: { onBack: () => void; title?: string; detail?: string; members?: { name: string; color: FlowerColor }[] }) {
   return <header className="memory-trip-heading">
-    <button type="button" className="memory-back" onClick={onBack} aria-label="경주 1박2일 · 뒤로 가기"><ChevronLeftIcon /><h1>경주 1박2일</h1></button>
-    <p>2026. 10. 17–18 · 참여 3/3 · 사진 6장</p>
-    <ul className="memory-members">{([{ name: '서연', color: 'pink' }, { name: '지수', color: 'blue' }, { name: '민지', color: 'orange' }] as const).map(({ name, color }) => <li key={name}><MemoryFlower color={color} size={25} />{name}</li>)}</ul>
+    <button type="button" className="memory-back" onClick={onBack} aria-label={`${title} · 뒤로 가기`}><ChevronLeftIcon /><h1>{title}</h1></button>
+    <p>{detail}</p>
+    <ul className="memory-members">{(members ?? [{ name: '서연', color: 'pink' }, { name: '지수', color: 'blue' }, { name: '민지', color: 'orange' }]).map(({ name, color }) => <li key={name}><MemoryFlower color={color} size={25} />{name}</li>)}</ul>
   </header>
 }
 
@@ -102,12 +102,12 @@ export function BottomSheet({ title, children, onClose }: { title: string; child
   }}><div className="memory-sheet-body"><button type="button" className="memory-sheet-close" onClick={onClose} aria-label="닫기"><span /></button><h2 tabIndex={-1}>{title}</h2>{children}</div></dialog>
 }
 
-export function ShareMemoryButton({ label = '단톡방에 알리기' }: { label?: string }) {
+export function ShareMemoryButton({ label = '단톡방에 알리기', roomName = '경주 1박2일' }: { label?: string; roomName?: string }) {
   const [message, setMessage] = useState('')
   async function share() {
-    const text = '경주 1박2일, 함께 모은 기억이 두루마리가 되었어요.'
+    const text = `${roomName}, 함께 모은 기억을 확인해 주세요.`
     try {
-      if (navigator.share) await navigator.share({ title: '두루두루 · 경주 1박2일', text })
+      if (navigator.share) await navigator.share({ title: `두루두루 · ${roomName}`, text })
       else if (navigator.clipboard) { await navigator.clipboard.writeText(text); setMessage('공유 문구를 복사했어요.') }
       else setMessage(text)
     } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('공유하지 못했어요. 다시 시도해 주세요.') }

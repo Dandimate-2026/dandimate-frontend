@@ -4,19 +4,23 @@ import skip from '../../assets/memories/skip.svg'
 import { MemoryCard, MemoryFlower, MemoryHeader, PhotoSlot, StoryCard, TextModeToggle } from './components'
 import type { MemoryPhoto, MemoryResponse } from './types'
 
-export default function CirculationPage({ photo, position, total, response, textOnly, onTextMode, onBack, onAdd, onPass, onNext }: {
+export default function CirculationPage({ photo, position, total, response, locked, busy = false, error, textOnly, onTextMode, onBack, onAdd, onPass, onUndoPass, onNext }: {
   photo: MemoryPhoto
   position: number
   total: number
   response?: MemoryResponse
+  locked?: boolean
+  busy?: boolean
+  error?: string
   textOnly: boolean
   onTextMode: (value: boolean) => void
   onBack: () => void
   onAdd: () => void
   onPass: () => void
+  onUndoPass?: () => void
   onNext: () => void
 }) {
-  const unlocked = Boolean(response)
+  const unlocked = locked === undefined ? Boolean(response) : !locked
   return <main className="memory-page memory-circulation">
     <MemoryHeader progress={`${position} / ${total}`} onBack={onBack} />
     <TextModeToggle value={textOnly} onChange={onTextMode} />
@@ -27,14 +31,16 @@ export default function CirculationPage({ photo, position, total, response, text
         <StoryCard story={photo.firstStory} textOnly={textOnly} />
         {unlocked ? <>
           {photo.friends.map((story) => <StoryCard key={story.author} story={story} textOnly={textOnly} />)}
-          {response?.status === 'added' && response.contribution && <StoryCard mine textOnly={textOnly} story={{ ...response.contribution, author: '민지', flower: 'orange', kind: response.contribution.audioUrl ? '말로 남김' : '글로 남김' }} />}
+          {response?.status === 'added' && (response.contribution ? <StoryCard mine textOnly={textOnly} story={{ ...response.contribution, author: '나', flower: 'orange', kind: response.contribution.audioUrl ? '말로 남김' : '글로 남김' }} /> : <p className="memory-passed">내 덧붙임을 남겼어요</p>)}
           {response?.status === 'passed' && <p className="memory-passed"><img src={skip} width={14} height={14} alt="" />이 사진은 패스했어요</p>}
         </> : <div className="memory-locked"><img src={lock} width={21} height={21} alt="" /><p>내 기억부터 남기면 열려요</p><small>친구 이야기 {photo.friends.length}개가 기다리고 있어요</small></div>}
       </div>
     </MemoryCard>
+    {error && <p role="alert" className="memory-error">{error}</p>}
     <footer className="memory-actions">
-      <Button onClick={onAdd}>{response?.status === 'added' ? '덧붙임 수정' : response?.status === 'passed' ? '덧붙이기로 바꾸기' : '덧붙이기'}</Button>
-      <Button variant="outline" onClick={unlocked ? onNext : onPass}>{unlocked ? '다음 사진' : '패스'}</Button>
+      <Button onClick={onAdd} disabled={busy || (locked !== undefined && response?.status === 'added')}>{response?.status === 'added' ? '덧붙임 완료' : response?.status === 'passed' ? '덧붙이기로 바꾸기' : '덧붙이기'}</Button>
+      <Button variant="outline" disabled={busy} onClick={unlocked ? onNext : onPass}>{unlocked ? '다음 사진' : busy ? '처리 중…' : '패스'}</Button>
     </footer>
+    {response?.status === 'passed' && onUndoPass && <button type="button" className="memory-text-link" disabled={busy} onClick={onUndoPass}>패스 취소</button>}
   </main>
 }

@@ -18,6 +18,12 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-back { display: flex; align-items: center; gap: 9px; border: 0; background: none; padding: 0; min-height: 32px; text-align: left; font-size: 16px; font-weight: 650; color: var(--color-ink); }
 .memory-back svg { flex-shrink: 0; }
 .memory-progress { font-size: 16px; font-weight: 600; }
+.memory-empty-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 12px; }
+.memory-empty-flower { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 50%; background: #f6e3ea; }
+.memory-empty-main h1 { margin-top: 20px; font-size: 20px; font-weight: 650; line-height: 28px; }
+.memory-empty-main p { max-width: 280px; margin-top: 9px; color: var(--color-sub); font-size: 13px; line-height: 20px; }
+.memory-empty-actions { display: grid; gap: 10px; padding-top: 24px; }
+.memory-empty-actions button { width: 100%; min-height: 52px; }
 .memory-flower { display: block; flex-shrink: 0; object-fit: contain; }
 .memory-app .memory-card { border-radius: 20px; padding: 14px 13px; border-color: var(--color-line); background: var(--color-surface); }
 .memory-text-mode { display: flex; align-items: center; justify-content: flex-end; position: relative; margin: 12px 0 11px; min-height: 24px; gap: 9px; font-size: 10px; color: var(--color-sub); cursor: pointer; }
