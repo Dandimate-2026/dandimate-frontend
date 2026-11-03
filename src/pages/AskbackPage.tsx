@@ -7,6 +7,8 @@ import Button from '../components/Button'
 import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon, SparkleIcon } from '../components/entry/EntryIcons'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
+import { VoiceLimitSheet } from '../components/PlanLimitSheet'
+import { isLimitError, usePlanLimitAction, useRoomHomeForQuota } from '../hooks/useRoomQuota'
 import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -50,6 +52,11 @@ function AskbackPage() {
   const [draft, setDraft] = useState<VoiceDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // 방 전체 말하기 시간을 다 썼을 때 띄우는 시트
+  const [voiceLimitOpen, setVoiceLimitOpen] = useState(false)
+  const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
+  const quota = home?.room.quota
+  const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setError)
 
   useEffect(() => {
     getAskback(askbackId, token)
@@ -76,7 +83,12 @@ function AskbackPage() {
       setDraft({ transcriptionId: result.transcriptionId, durationMs, audioUrl: URL.createObjectURL(blob) })
       setTranscript(result.transcript)
       setStep('review')
-    } catch {
+    } catch (e) {
+      if (isLimitError(e)) {
+        setStep('idle')
+        setVoiceLimitOpen(true)
+        return
+      }
       // 받아 적기에 실패해도 글로 이어서 답할 수 있게 한다
       setError('받아 적지 못했어요. 글로 답해 주세요')
       setStep('text')
@@ -94,6 +106,11 @@ function AskbackPage() {
 
   const handleMicClick = async () => {
     setError(null)
+    // 방 전체 말하기 시간을 다 썼으면 녹음하지 않고 안내한다
+    if (quota?.voiceRemainingMs === 0) {
+      setVoiceLimitOpen(true)
+      return
+    }
     try {
       await recorder.start()
       setStep('recording')
@@ -275,6 +292,23 @@ function AskbackPage() {
             </section>
           )}
         </div>
+      )}
+      {voiceLimitOpen && (
+        <VoiceLimitSheet
+          quota={quota}
+          onWriteText={() => {
+            setVoiceLimitOpen(false)
+            setStep('text')
+          }}
+          planAction={{
+            ...voicePlan.action,
+            onClick: () => {
+              setVoiceLimitOpen(false)
+              voicePlan.action.onClick()
+            },
+          }}
+          onClose={() => setVoiceLimitOpen(false)}
+        />
       )}
     </main>
   )

@@ -132,6 +132,7 @@ function RoomCheckoutPage() {
     setStatus('processing')
     try {
       await purchasePlan({ roomId, plan: plan.id, method })
+      navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })
     } catch (cause) {
       setFailureReason(cause instanceof Error ? cause.message : '결제 요청에 실패했어요')
       setStatus('failed')

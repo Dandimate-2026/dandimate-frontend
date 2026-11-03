@@ -29,6 +29,7 @@
 | 방 나가기 | 나가기 API 없음. 이 기기에 저장된 방 정보만 지움 (서버에는 멤버로 남음) | `src/pages/RoomSettingsPage.tsx` |
 | 내 이름 변경 | API 없음. 프론트는 `PATCH /rooms/{roomId}/members/me`로 가정해 둠 → 실제로는 실패 | `src/api/rooms.ts` |
 | 방장 위임 | API 없음 | - |
+| 방장에게 플랜 변경 요청 | API 없음. 프론트는 `POST /rooms/{roomId}/plan-requests` `{ reason: PHOTO·VOICE·REWEAVE }`로 가정하고, 방장 알림 종류 `PLAN_UPGRADE_REQUESTED`(누르면 플랜 화면)를 처리해 둠. 실패하면 기기 공유창으로 직접 부탁 | `src/api/rooms.ts`, `src/pages/PhotoUploadPage.tsx` |
 
 ## 2. 백엔드에 API가 있는데 프론트가 아직 안 쓰는 것
 

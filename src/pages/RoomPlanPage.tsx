@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import { getRoomHome } from '../api/rooms'
 import Button from '../components/Button'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
@@ -51,6 +51,8 @@ function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean;
 function RoomPlanPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const fromLimit = (location.state as { fromLimit?: boolean } | null)?.fromLimit === true
   const session = getRoomSession(roomId)
   const [selectedId, setSelectedId] = useState<PlanId>(RECOMMENDED_PLAN_ID)
   const [memberCount, setMemberCount] = useState<number | null>(null)
@@ -79,10 +81,11 @@ function RoomPlanPage() {
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-5 pt-16 pb-8 text-ink">
       <header className="px-1">
-        {/* 방은 이미 만들어졌으니 뒤로 가면 방 만들기가 아니라 내 모임방 목록으로 간다 */}
+        {/* 한도 시트에서 왔으면 보던 화면(녹음·사진 등)으로 돌아가고,
+            방을 만든 직후라면 방은 이미 만들어졌으니 방 만들기가 아니라 내 모임방 목록으로 간다 */}
         <button
           type="button"
-          onClick={() => navigate(paths.roomList())}
+          onClick={() => (fromLimit ? navigate(-1) : navigate(paths.roomList()))}
           className="flex items-center gap-2 text-[16px] font-bold"
         >
           <ChevronLeftIcon />

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from
 import { useNavigate, useParams } from 'react-router'
 import { MAX_PHOTOS, uploadPhotos } from '../api/photos'
 import Button from '../components/Button'
+import PlanLimitSheet from '../components/PlanLimitSheet'
+import { isLimitError, usePlanLimitAction, useRoomHomeForQuota } from '../hooks/useRoomQuota'
 import { isAcceptedType, prepareImage } from '../lib/image'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -42,6 +44,15 @@ function PlusIcon() {
   )
 }
 
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7.5" rx="2" />
+      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /** 이야기를 남길 사진을 1~3장 고르고 올리는 화면 */
 function PhotoUploadPage() {
   const { roomId = '' } = useParams()
@@ -57,6 +68,15 @@ function PhotoUploadPage() {
   const listRef = useRef<HTMLUListElement>(null)
   const pressTimer = useRef<number | undefined>(undefined)
   const pressStart = useRef({ x: 0, y: 0 })
+  // 플랜 한도 시트. 3장만 올리려던 사람도 있으니 저절로 띄우지 않고, 한도보다 더 고르려 할 때나 안내 링크를 눌렀을 때만 띄운다
+  const [limitOpen, setLimitOpen] = useState(false)
+  const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
+  const photoPlan = usePlanLimitAction(roomId, home, 'PHOTO')
+  const quota = home?.room.quota
+  /** 1인당 사진 한도 (플랜별 3/6/10장) */
+  const perMember = quota?.photosPerMember ?? MAX_PHOTOS
+  /** 이번에 더 고를 수 있는 장수 */
+  const maxPhotos = Math.min(quota?.myPhotosRemaining ?? MAX_PHOTOS, MAX_PHOTOS)
 
   // 화면을 떠날 때 미리보기용 URL을 정리한다
   const photosRef = useRef(photos)
@@ -67,6 +87,11 @@ function PhotoUploadPage() {
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
 
+  const isHost = photoPlan.isHost
+  const closeLimit = () => setLimitOpen(false)
+  // 이번에 고를 수 있는 만큼 다 골랐거나, 이미 한도만큼 올린 방
+  const atLimit = quota !== undefined && photos.length >= maxPhotos
+
   const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []).map(withType)
     e.target.value = ''
@@ -75,8 +100,8 @@ function PhotoUploadPage() {
     const accepted = picked.filter((f) => isAcceptedType(f.type))
     if (accepted.length < picked.length) setError('JPEG, PNG, HEIC 사진만 올릴 수 있어요')
 
-    const room = MAX_PHOTOS - photos.length
-    if (accepted.length > room) setError(`사진은 최대 ${MAX_PHOTOS}장까지 고를 수 있어요`)
+    const room = maxPhotos - photos.length
+    if (accepted.length > room) setLimitOpen(true)
 
     const next = accepted.slice(0, room).map((file) => ({
       id: crypto.randomUUID(),
@@ -156,7 +181,8 @@ function PhotoUploadPage() {
       const state: FirstEntryState = { photos: photos.map((p, i) => ({ photoId: photoIds[i], file: p.file })) }
       navigate(paths.firstEntry(roomId), { state })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '사진을 올리지 못했어요. 다시 시도해 주세요')
+      if (isLimitError(err)) setLimitOpen(true)
+      else setError(err instanceof Error ? err.message : '사진을 올리지 못했어요. 다시 시도해 주세요')
       setUploading(false)
     }
   }
@@ -173,7 +199,7 @@ function PhotoUploadPage() {
         <br />
         골라주세요.
       </h1>
-      <p className="mt-3.5 px-[7px] text-[11px] text-sub">1장부터 괜찮아요 · 최대 {MAX_PHOTOS}장</p>
+      <p className="mt-3.5 px-[7px] text-[11px] text-sub">1장부터 괜찮아요 · 최대 {maxPhotos}장</p>
 
       <ul ref={listRef} className="mt-4 grid grid-cols-3 gap-[9px]">
         {photos.map((p) => (
@@ -207,7 +233,7 @@ function PhotoUploadPage() {
             </button>
           </li>
         ))}
-        {photos.length < MAX_PHOTOS && (
+        {photos.length < maxPhotos && (
           <li>
             <button
               type="button"
@@ -217,6 +243,20 @@ function PhotoUploadPage() {
             >
               <PlusIcon />
               추가
+            </button>
+          </li>
+        )}
+        {/* 플랜 한도에 닿으면 남는 칸을 잠금 칸으로 보여주고, 누르면 한도 시트를 띄운다 */}
+        {atLimit && photos.length < MAX_PHOTOS && (
+          <li>
+            <button
+              type="button"
+              onClick={() => setLimitOpen(true)}
+              aria-label="사진 한도 안내 보기"
+              className="flex aspect-[101/136] w-full flex-col items-center justify-center gap-2 rounded-xl bg-line/60 text-[11px] text-sub"
+            >
+              <LockIcon />
+              더 올리려면
             </button>
           </li>
         )}
@@ -231,17 +271,29 @@ function PhotoUploadPage() {
       />
 
       <div className="mt-[19px] flex items-center justify-between px-[3px]">
-        {error ? (
-          <p className="text-[11px] text-point">{error}</p>
+        {error || photoPlan.notice ? (
+          <p className="text-[11px] text-point">{error ?? photoPlan.notice}</p>
         ) : (
           <p className="text-[11px] text-sub">
             {dragId ? '원하는 자리에 놓아주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
           </p>
         )}
         <p className="text-[15px] font-semibold">
-          {photos.length} / {MAX_PHOTOS}
+          {photos.length} / {maxPhotos}
         </p>
       </div>
+
+      {/* 칸이 사진으로 꽉 차서 잠금 칸을 둘 자리가 없으면, 그 아래에 잠금 줄을 보여준다. 누르면 한도 시트를 띄운다 */}
+      {atLimit && photos.length >= MAX_PHOTOS && (
+        <button
+          type="button"
+          onClick={() => setLimitOpen(true)}
+          className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-line/60 text-[12px] text-sub active:opacity-80"
+        >
+          <LockIcon />
+          이 방은 1인당 {perMember}장까지예요 · 더 올리려면
+        </button>
+      )}
 
       {/* 화면이 낮아도 버튼 위에 빈 공간을 남긴다 */}
       <div className="mt-auto pt-[clamp(32px,10dvh,96px)]">
@@ -249,6 +301,40 @@ function PhotoUploadPage() {
           {uploading ? '사진 올리는 중…' : '다음 : 한마디 남기기'}
         </Button>
       </div>
+
+      {limitOpen && (
+        <PlanLimitSheet
+          kind="photo"
+          title={
+            <>
+              이 방에서는 1인당
+              <br />
+              사진 {perMember}장까지 올릴 수 있어요
+            </>
+          }
+          description={
+            isHost ? (
+              <>플랜을 바꾸면 바로 더 올릴 수 있어요.</>
+            ) : (
+              <>
+                더 올리고 싶으면 방장에게 알려 주세요.
+                <br />
+                방장이 플랜을 바꾸면 바로 더 올릴 수 있어요.
+              </>
+            )
+          }
+          currentPlan={home?.room.planType}
+          primary={{
+            ...photoPlan.action,
+            onClick: () => {
+              closeLimit()
+              photoPlan.action.onClick()
+            },
+          }}
+          secondary={{ label: maxPhotos === 0 ? '괜찮아요' : `괜찮아요, ${perMember}장만 고를게요`, onClick: closeLimit }}
+          onClose={closeLimit}
+        />
+      )}
     </main>
   )
 }

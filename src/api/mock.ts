@@ -24,7 +24,16 @@ export const MOCK_DONE_ROOM_ID = 'grown'
 export const MOCK_READY_ROOM_ID = 'done'
 /** 약속한 시간이 다 됐는데 아직 엮지 않은 방 */
 export const MOCK_TIMEUP_ROOM_ID = 'timeup'
-export const MOCK_ROOM_IDS = [MOCK_ROOM_ID, MOCK_READY_ROOM_ID, MOCK_TIMEUP_ROOM_ID, MOCK_NEW_ROOM_ID, MOCK_DONE_ROOM_ID]
+/** 플랜 한도를 모두 쓴 방 */
+export const MOCK_LIMIT_ROOM_ID = 'limit'
+export const MOCK_ROOM_IDS = [
+  MOCK_ROOM_ID,
+  MOCK_READY_ROOM_ID,
+  MOCK_TIMEUP_ROOM_ID,
+  MOCK_LIMIT_ROOM_ID,
+  MOCK_NEW_ROOM_ID,
+  MOCK_DONE_ROOM_ID,
+]
 export const MOCK_INVITE_TOKEN = 'demo'
 
 export const mockInvitePreview: InvitePreview = {
@@ -77,6 +86,19 @@ export const mockRoomHome: RoomHome = {
     meetingDate: mockInvitePreview.meetingDate,
     status: 'CIRCULATING',
     capacity: 5,
+    planType: 'FREE',
+    // Free 플랜. 사진·녹음을 평소처럼 해 볼 수 있게 한도가 남아 있는 상태로 둔다
+    quota: {
+      photosPerMember: 3,
+      myPhotoCount: 0,
+      myPhotosRemaining: 3,
+      voiceLimitMs: 15 * 60 * 1000,
+      voiceUsedMs: 3 * 60 * 1000,
+      voiceRemainingMs: 12 * 60 * 1000,
+      regenerationLimit: 3,
+      regenerationCount: 1,
+      regenerationsRemaining: 2,
+    },
     // 지금부터 31시간 뒤
     deadlineAt: new Date(Date.now() + 31 * 60 * 60 * 1000).toISOString(),
   },
@@ -127,6 +149,27 @@ export const mockTimeUpRoomHome: RoomHome = {
   me: mockMembers[0],
 }
 
+/** 사진·말하기·재엮기 한도를 모두 쓴 방 (멤버 시점). 한도 시트를 확인할 때 쓴다 */
+export const mockLimitRoomHome: RoomHome = {
+  ...mockRoomHome,
+  room: {
+    ...mockRoomHome.room,
+    id: MOCK_LIMIT_ROOM_ID,
+    name: '부산 당일치기',
+    quota: {
+      photosPerMember: 3,
+      myPhotoCount: 3,
+      myPhotosRemaining: 0,
+      voiceLimitMs: 15 * 60 * 1000,
+      voiceUsedMs: 15 * 60 * 1000,
+      voiceRemainingMs: 0,
+      regenerationLimit: 3,
+      regenerationCount: 3,
+      regenerationsRemaining: 0,
+    },
+  },
+}
+
 export function mockCloseRoom(): CloseRoomResult {
   return { roomStatus: 'WEAVING', job: { id: 'mock-job', type: 'WEAVE_SCROLL', status: 'QUEUED' } }
 }
@@ -144,7 +187,8 @@ export const mockNewRoomHome: RoomHome = {
     deadlineAt: new Date(Date.now() + 47 * 60 * 60 * 1000).toISOString(),
   },
   me: mockHost,
-  members: [mockHost],
+  // 멤버로 데모할 때 볼 수 있게 친구 한 명이 먼저 들어와 있다
+  members: [mockHost, { id: 'mock-member-1', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA' }],
   todayFlowers: [],
   myTodo: { needsFirstEntry: true, pendingCirculationCount: 0, topAskback: null },
   unreadCount: 0,
@@ -166,6 +210,16 @@ export const mockDoneRoomHome: RoomHome = {
     meetingDate: '2026-08-14',
     status: 'GROWING',
     deadlineAt: '2026-08-16T00:00:00+09:00',
+    planType: 'FREE',
+    // 재엮기를 모두 써서 답가를 달면 한도 시트가 뜨는 상태
+    quota: {
+      regenerationLimit: 3,
+      regenerationCount: 3,
+      regenerationsRemaining: 0,
+      voiceLimitMs: 15 * 60 * 1000,
+      voiceUsedMs: 15 * 60 * 1000,
+      voiceRemainingMs: 0,
+    },
   },
   me: mockDoneMembers[0],
   members: mockDoneMembers,
@@ -207,7 +261,29 @@ export function mockTranscribe(transcript: string) {
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60 * 1000).toISOString()
 
 export const mockNotifications: RoomNotification[] = [
+  { id: 'n0', type: 'PLAN_UPGRADE_REQUESTED', resourceType: 'PHOTO', resourceId: 'm2', readAt: null, createdAt: minutesAgo(2) },
   { id: 'n1', type: 'ASKBACK_RECEIVED', resourceType: 'ASKBACK', resourceId: 'a1', readAt: null, createdAt: minutesAgo(5) },
   { id: 'n2', type: 'REPLY_APPLIED', resourceType: 'SCROLL', resourceId: 's1', readAt: null, createdAt: minutesAgo(180) },
   { id: 'n3', type: 'SCROLL_READY', resourceType: 'SCROLL', resourceId: 's1', readAt: minutesAgo(1440), createdAt: minutesAgo(1500) },
 ]
+
+// 데모 로그인에서 고른 역할 (방장으로 보기 / 멤버로 보기). lib/auth가 로그인할 때 저장한다
+export type MockRole = 'HOST' | 'MEMBER'
+export const MOCK_AUTH_KEY = 'duruduru:auth'
+
+export function getMockRole(): MockRole {
+  try {
+    const raw = localStorage.getItem(MOCK_AUTH_KEY)
+    return raw && (JSON.parse(raw) as { role?: MockRole }).role === 'MEMBER' ? 'MEMBER' : 'HOST'
+  } catch {
+    return 'HOST'
+  }
+}
+
+/** 데모에서 고른 역할에 맞춰 이 방의 '나'를 방장 또는 멤버로 바꿔 돌려준다 */
+export function asMockRole(home: RoomHome): RoomHome {
+  const role = getMockRole()
+  if (home.me.role === role) return home
+  const me = home.members.find((m) => m.role === role)
+  return me ? { ...home, me } : home
+}

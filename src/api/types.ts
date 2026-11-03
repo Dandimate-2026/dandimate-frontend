@@ -39,6 +39,22 @@ export interface RoomSummary {
   /** 방장을 포함한 정원 (1~8) */
   capacity?: number
   planType?: RoomPlanType
+  /** 플랜별 한도와 사용량. 모임방 홈 조회에만 들어 있다 */
+  quota?: RoomQuota
+}
+
+/** 플랜별 한도와 지금까지 쓴 양 */
+export interface RoomQuota {
+  photosPerMember?: number
+  myPhotoCount?: number
+  myPhotosRemaining?: number
+  photosRemaining?: number
+  voiceLimitMs?: number
+  voiceUsedMs?: number
+  voiceRemainingMs?: number
+  regenerationLimit?: number
+  regenerationCount?: number
+  regenerationsRemaining?: number
 }
 
 export interface InvitePreview {
@@ -221,7 +237,11 @@ export interface Job {
   updatedAt: string
 }
 
-export type NotificationType = 'ASKBACK_RECEIVED' | 'SCROLL_READY' | 'REPLY_APPLIED'
+// PLAN_UPGRADE_REQUESTED: 멤버가 방장에게 플랜을 바꿔 달라고 요청함 (TODO: 백엔드 미지원, 가정한 값)
+export type NotificationType = 'ASKBACK_RECEIVED' | 'SCROLL_READY' | 'REPLY_APPLIED' | 'PLAN_UPGRADE_REQUESTED'
+
+/** 어떤 한도 때문에 플랜 변경을 요청했는지 */
+export type PlanRequestReason = 'PHOTO' | 'VOICE' | 'REWEAVE'
 
 export interface RoomNotification {
   id: string
