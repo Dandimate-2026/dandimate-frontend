@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { purchasePlan, type PaymentMethod } from '../api/plans'
+import { USE_MOCK } from '../api/mock'
 import { getRoomHome } from '../api/rooms'
 import type { RoomHome } from '../api/types'
 import Button from '../components/Button'
@@ -14,7 +15,7 @@ import NotFoundPage from './NotFoundPage'
 const COUPON_DISCOUNT = 1000
 const COUPON_CODE = 'DANDI1000'
 const PAYMENT_METHODS: { id: PaymentMethod; label: string; badge: string; recent?: boolean }[] = [
-  { id: 'EASY_PAY_A', label: '간편결제 A', badge: 'PAY', recent: true },
+  { id: 'EASY_PAY_A', label: '간편결제 A', badge: 'PAY' },
   { id: 'EASY_PAY_B', label: '간편결제 B', badge: 'PAY' },
   { id: 'CARD', label: '신용·체크카드', badge: 'CARD' },
   { id: 'BANK_TRANSFER', label: '계좌이체', badge: 'BANK' },
@@ -97,14 +98,14 @@ function RoomCheckoutPage() {
   const [method, setMethod] = useState<PaymentMethod>('EASY_PAY_A')
   const [cardMode, setCardMode] = useState<'saved' | 'single'>('saved')
   const [couponCode, setCouponCode] = useState('')
-  const [couponApplied, setCouponApplied] = useState(true)
+  const [couponApplied, setCouponApplied] = useState(false)
   const [couponMessage, setCouponMessage] = useState('')
   const [agreements, setAgreements] = useState<boolean[]>(AGREEMENTS.map(() => true))
   const [activeAgreement, setActiveAgreement] = useState<number | null>(null)
   const [status, setStatus] = useState<'idle' | 'processing' | 'failed'>(
-    import.meta.env.DEV && searchParams.get('preview') === 'processing'
+    USE_MOCK && searchParams.get('preview') === 'processing'
       ? 'processing'
-      : import.meta.env.DEV && searchParams.get('preview') === 'failure'
+      : USE_MOCK && searchParams.get('preview') === 'failure'
         ? 'failed'
         : 'idle',
   )
@@ -130,14 +131,9 @@ function RoomCheckoutPage() {
     if (!allAgreed || status !== 'idle') return
     setStatus('processing')
     try {
-      await Promise.all([
-        purchasePlan({ roomId, plan: plan.id, method }),
-        new Promise((resolve) => window.setTimeout(resolve, 1600)),
-      ])
-      if (import.meta.env.DEV && searchParams.get('preview') === 'failure') throw new Error('preview failure')
-      navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })
-    } catch {
-      setFailureReason('결제 수단을 확인해 주세요')
+      await purchasePlan({ roomId, plan: plan.id, method })
+    } catch (cause) {
+      setFailureReason(cause instanceof Error ? cause.message : '결제 요청에 실패했어요')
       setStatus('failed')
     }
   }
@@ -169,9 +165,10 @@ function RoomCheckoutPage() {
 
     <Section title="쿠폰">
       <div className="rounded-[18px] border border-line bg-surface p-[15px]">
-        <div className="flex gap-2"><input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="쿠폰 코드 입력" aria-label="쿠폰 코드" className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 text-[14px] outline-point placeholder:text-muted" />
-          <button type="button" onClick={() => {
-            if (couponCode.trim().toUpperCase() === COUPON_CODE) { setCouponApplied(true); setCouponMessage('쿠폰이 적용되었어요') }
+        <div className="flex gap-2"><input value={couponCode} disabled={!USE_MOCK} onChange={(event) => setCouponCode(event.target.value)} placeholder="쿠폰 코드 입력" aria-label="쿠폰 코드" className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 text-[14px] outline-point placeholder:text-muted" />
+          <button type="button" disabled={!USE_MOCK} onClick={() => {
+            if (!USE_MOCK) { setCouponMessage('서버에 쿠폰 API가 준비되지 않았어요'); return }
+            if (couponCode.trim().toUpperCase() === COUPON_CODE) { setCouponApplied(true); setCouponMessage('미리보기 쿠폰이 적용되었어요') }
             else { setCouponApplied(false); setCouponMessage('사용할 수 없는 쿠폰 코드예요') }
           }} className="h-12 rounded-xl bg-ink px-6 text-[14px] font-semibold text-surface">적용</button></div>
         <div className="mt-2 flex justify-between text-[12px] text-point"><span>{couponApplied ? '✓ 단디톤 체험 쿠폰 적용됨' : couponMessage}</span>{couponApplied && <span>−{formatWon(discount)}</span>}</div>
@@ -182,11 +179,11 @@ function RoomCheckoutPage() {
     <Section title="결제 수단">
       <div role="radiogroup" aria-label="결제 수단" className="rounded-[18px] border border-line bg-surface px-[15px] py-1">
         {PAYMENT_METHODS.map((item) => <div key={item.id} className="border-b border-[#eee8de] last:border-0">
-          <button type="button" role="radio" aria-checked={method === item.id} onClick={() => setMethod(item.id)} className="flex min-h-[51px] w-full items-center gap-2 text-left text-[14px] font-semibold">
+          <button type="button" role="radio" aria-checked={method === item.id} disabled={!USE_MOCK} onClick={() => setMethod(item.id)} className="flex min-h-[51px] w-full items-center gap-2 text-left text-[14px] font-semibold">
             <span className={`size-[19px] rounded-full ${method === item.id ? 'border-[5px] border-ink' : 'border border-muted'}`} aria-hidden="true" />
             <span className="rounded-md bg-[#eee8de] px-2 py-1 text-[9px] font-bold text-[#9a9085]">{item.badge}</span><span>{item.label}</span>{item.recent && <span className="ml-auto text-[11px] font-normal text-point">최근 사용</span>}
           </button>
-          {item.id === 'CARD' && <div className="mb-2 flex gap-1.5 pl-[29px]"><button type="button" onClick={() => { setMethod('CARD'); setCardMode('saved') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'saved' ? 'border-ink' : 'border-line text-sub'}`}>카드사 선택</button><button type="button" onClick={() => { setMethod('CARD'); setCardMode('single') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'single' ? 'border-ink' : 'border-line text-sub'}`}>일시불</button></div>}
+          {item.id === 'CARD' && <div className="mb-2 flex gap-1.5 pl-[29px]"><button type="button" disabled={!USE_MOCK} onClick={() => { setMethod('CARD'); setCardMode('saved') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'saved' ? 'border-ink' : 'border-line text-sub'}`}>카드사 선택</button><button type="button" disabled={!USE_MOCK} onClick={() => { setMethod('CARD'); setCardMode('single') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'single' ? 'border-ink' : 'border-line text-sub'}`}>일시불</button></div>}
         </div>)}
       </div>
     </Section>
@@ -200,7 +197,7 @@ function RoomCheckoutPage() {
       </div>
     </Section>
 
-    <Section title="약관 동의">
+    {USE_MOCK ? <Section title="약관 동의">
       <div className="rounded-[18px] border border-line bg-surface px-[15px] py-2">
         <label className="flex min-h-[38px] cursor-pointer items-center gap-2 border-b border-line font-bold"><input type="checkbox" checked={allAgreed} onChange={(event) => setAgreements(AGREEMENTS.map(() => event.target.checked))} className="accent-ink" />아래 내용을 모두 확인했고 동의해요</label>
         {AGREEMENTS.map((item, index) => <div key={item.label} className="flex min-h-[40px] items-center gap-1 text-[13px]">
@@ -210,11 +207,12 @@ function RoomCheckoutPage() {
         {activeAgreement !== null && 'note' in AGREEMENTS[activeAgreement] && <p className="border-t border-line py-2 text-[11px] leading-[18px] text-sub">{AGREEMENTS[activeAgreement].note}</p>}
       </div>
       <p className="mt-3 text-[11px] leading-[20px] text-[#9a9085]">· 결제 후 7일 이내, 늘어난 한도를 쓰지 않았다면 전액 환불돼요<br />· 늘어난 사진·말하기·재엮기를 한 번이라도 쓰면 환불이 제한돼요<br />· 방장이 방을 삭제해도 결제 금액은 자동 환불되지 않아요<br />· 영수증은 결제 완료 후 [내 정보 › 결제 내역]에서 볼 수 있어요<br />· 문의: help@example.com</p>
-    </Section>
+    </Section> : <Section title="결제 안내"><p className="rounded-[18px] border border-line bg-surface p-4 text-[13px] text-sub">결제대행사, 약관, 환불 정책은 서버 결제 API가 확정되면 안내됩니다.</p></Section>}
 
     <footer className="sticky bottom-0 -mx-5 mt-5 border-t border-line bg-bg px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 text-center">
       <p className="mb-2 text-[11px] text-[#9a9085]">방장 {host ?? '회원'} 님이 결제해요</p>
-      <Button onClick={() => void handlePay()} disabled={!allAgreed} className="w-full">{formatWon(total)} 결제하기</Button>
+      {!USE_MOCK && <p className="mb-2 text-[12px] text-point" role="status">배포된 Swagger에 결제·쿠폰 API가 없어 실제 결제를 시작할 수 없어요.</p>}
+      <Button onClick={() => void handlePay()} disabled={!allAgreed || !USE_MOCK} className="w-full">{USE_MOCK ? `${formatWon(total)} 결제하기` : '결제 API 준비 중'}</Button>
     </footer>
   </main>
 }

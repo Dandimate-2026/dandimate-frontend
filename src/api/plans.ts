@@ -8,12 +8,8 @@ export interface PurchaseRequest {
   method: PaymentMethod
 }
 
-/**
- * 방 플랜 결제
- * TODO: 백엔드 명세에 결제 API가 아직 없어서(실결제는 1차 범위 밖), 지금은 누르면 결제된 것으로 친다.
- * API가 생기면 참여자 토큰을 받아 요청하도록 바꾼다
- */
-export async function purchasePlan(request: PurchaseRequest) {
-  await new Promise((resolve) => setTimeout(resolve, 600))
-  return { ...request, paid: true }
+/** 공개 Swagger 0.1.0에는 결제 계약이 없다. 성공을 임의로 만들어 내지 않는다. */
+export async function purchasePlan(request: PurchaseRequest): Promise<never> {
+  void request
+  throw new Error('현재 서버에 결제 API가 준비되지 않았어요.')
 }
