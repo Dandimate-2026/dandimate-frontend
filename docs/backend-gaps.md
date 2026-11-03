@@ -1,6 +1,6 @@
 # 백엔드 연동 현황
 
-백엔드 Swagger 명세(`Duruduru Public API` 0.1.0)와 프론트 `feature/room-settings`(PR #21) 코드를 비교해 정리한 문서입니다.
+백엔드 Swagger 명세(`Duruduru Public API` 0.1.0)와 프론트 `feature/develop`(PR #22 머지 시점) 코드를 비교해 정리한 문서입니다.
 
 - API Base URL: https://43-201-73-60.sslip.io/api/v1
 - Swagger: https://43-201-73-60.sslip.io/swagger-ui.html
@@ -20,7 +20,8 @@
 |---|---|---|
 | 카카오 로그인 | 명세에 로그인·계정 API가 없음 (방마다 받는 `memberAccessToken`으로만 인증). 지금은 기기에 로그인 표시만 저장 | `src/lib/auth.ts` |
 | 내 모임방 목록 | 목록 API 없음. 이 기기에 저장된 방만 보여서 기기를 바꾸면 사라짐 | `src/lib/session.ts` |
-| 결제·플랜 | 결제·플랜 API 없음. 가격·한도는 프론트 하드코딩, 누르면 결제된 것으로 처리 | `src/api/plans.ts`, `src/lib/plans.ts` |
+| 결제·플랜 | 결제·플랜 API 없음. 가격·한도는 프론트 하드코딩, 누르면 결제된 것으로 처리 (`purchasePlan` 모의 함수) | `src/api/plans.ts`, `src/lib/plans.ts` |
+| 결제 화면 세부 | 쿠폰, 결제 수단, 결제대행사 약관 안내는 시안 확인용 표시만 함. 실제 결제 연동, 주문 번호, 결제 확인 중·실패 상태는 서버 응답 없이 미리보기로만 확인 가능 | `src/pages/RoomCheckoutPage.tsx` |
 | 방 나가기 | 나가기 API 없음. 이 기기에 저장된 방 정보만 지움 (서버에는 멤버로 남음) | `src/pages/RoomSettingsPage.tsx` |
 | 내 이름 변경 | API 없음. 프론트는 `PATCH /rooms/{roomId}/members/me`로 가정해 둠 → 실제로는 실패 | `src/api/rooms.ts` |
 | 방장 위임 | API 없음 | - |
@@ -79,6 +80,7 @@
 
 **백엔드에 요청**
 1. 로그인 정책 결정, 필요하면 로그인 기준 내 방 목록 API
-2. 방 나가기, 내 이름 변경 API
-3. 정원 정책이 정해지면 방 만들기에 인원 필드
-4. 응답 필드 추가: 초대한 사람 이름, 방 대표 사진, 답가 수
+2. 결제 범위 결정 (1차 범위 밖이면 결제 화면을 데모용으로 둘지), 필요하면 플랜·결제·쿠폰 API
+3. 방 나가기, 내 이름 변경 API
+4. 정원 정책이 정해지면 방 만들기에 인원 필드
+5. 응답 필드 추가: 초대한 사람 이름, 방 대표 사진, 답가 수
