@@ -7,6 +7,11 @@ export const paths = {
   roomList: () => '/',
   roomCreate: () => '/rooms/new',
   roomHome: (roomId: string) => `/rooms/${roomId}`,
+  // 방 만들기 → 플랜 선택 → (유료면) 결제 → 결제 완료 → 초대 링크 공유
+  roomPlan: (roomId: string) => `/rooms/${roomId}/plan`,
+  // 고른 플랜은 ?plan= 으로 넘긴다. 라우트를 정의할 때는 plan 없이 부른다
+  roomCheckout: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/checkout${plan ? `?plan=${plan}` : ''}`,
+  roomPlanDone: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/done${plan ? `?plan=${plan}` : ''}`,
   roomShare: (roomId: string) => `/rooms/${roomId}/share`,
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
   photoUpload: (roomId: string) => `/rooms/${roomId}/photos/new`,

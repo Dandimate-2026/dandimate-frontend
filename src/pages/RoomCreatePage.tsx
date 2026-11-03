@@ -94,7 +94,7 @@ function RoomCreatePage() {
         hostNickname: nickname.trim(),
       })
       saveRoomSession(room.id, { memberAccessToken, inviteToken, roomName: room.name })
-      navigate(paths.roomShare(room.id), { replace: true })
+      navigate(paths.roomPlan(room.id), { replace: true })
     } catch {
       setError('모임방을 만들지 못했어요. 다시 시도해 주세요')
       setSubmitting(false)
