@@ -58,6 +58,8 @@ export interface CreateRoomRequest {
   name: string
   meetingDate: string
   hostNickname: string
+  /** 방장을 포함한 함께할 인원 (TODO: 백엔드 반영 여부 확인 필요) */
+  capacity: number
   consent: Consent
 }
 
