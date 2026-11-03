@@ -34,6 +34,14 @@ export function getRoomSession(roomId: string): RoomSession | null {
   return null
 }
 
+export function removeRoomSession(roomId: string) {
+  try {
+    localStorage.removeItem(key(roomId))
+  } catch {
+    // 저장소를 쓸 수 없는 환경(시크릿 모드 등)은 무시
+  }
+}
+
 /** 이 기기에 토큰이 저장된 방 id 목록 */
 export function listSavedRoomIds(): string[] {
   // mock 모드에서는 방을 만들지 않아도 예시 방 목록을 볼 수 있게 한다

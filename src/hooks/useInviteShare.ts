@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { shareToKakao } from '../lib/kakao'
 import { inviteUrl } from '../lib/session'
 
 export const DEFAULT_SHARE_MESSAGE = '두루두루 열었어! 사진 올리고 한마디 남겨줘'
@@ -16,7 +17,8 @@ ${link}`)
   }
 
   const share = async (text = DEFAULT_SHARE_MESSAGE) => {
-    // TODO: Kakao JS SDK(Kakao.Share) 연동. 우선 기기 공유 시트로 대체
+    // 카카오톡 공유창을 먼저 열고, 앱 키가 없거나 SDK를 못 불러오면 기기 공유 시트로 대체한다
+    if (await shareToKakao(text, link)) return
     if (navigator.share) {
       await navigator.share({ text, url: link }).catch(() => {})
     } else {

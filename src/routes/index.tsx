@@ -13,6 +13,7 @@ import RoomHomePage from '../pages/RoomHomePage'
 import RoomListPage from '../pages/RoomListPage'
 import RoomPlanDonePage from '../pages/RoomPlanDonePage'
 import RoomPlanPage from '../pages/RoomPlanPage'
+import RoomSettingsPage from '../pages/RoomSettingsPage'
 import RoomSharePage from '../pages/RoomSharePage'
 import RoomWeavingPage from '../pages/RoomWeavingPage'
 import { paths } from './paths'
@@ -34,6 +35,8 @@ function AppRoutes() {
         <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
         {/* 모임방 홈 */}
         <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
+        {/* 모임방 설정: 초대 링크, 함께하는 사람, 나가기 */}
+        <Route path={paths.roomSettings(':roomId')} element={<RoomSettingsPage />} />
         {/* 방 생성 직후: 플랜 선택 → (유료면) 결제 → 결제 완료 */}
         <Route path={paths.roomPlan(':roomId')} element={<RoomPlanPage />} />
         <Route path={paths.roomCheckout(':roomId')} element={<RoomCheckoutPage />} />

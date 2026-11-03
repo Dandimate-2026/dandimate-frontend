@@ -76,3 +76,21 @@ export function closeRoom(roomId: string, token: string) {
     idempotent: true,
   })
 }
+
+/**
+ * 방장이 모임방 이름이나 모임 날짜를 바꾼다
+ * TODO: 백엔드 명세에 아직 없는 API라 주소·요청 모양은 가정한 값이다
+ */
+export function updateRoom(roomId: string, body: { name?: string; meetingDate?: string }, token: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}`, { method: 'PATCH', body, token })
+}
+
+/**
+ * 이 방에서 쓰는 내 닉네임을 바꾼다
+ * TODO: 백엔드 명세에 아직 없는 API라 주소·요청 모양은 가정한 값이다
+ */
+export function updateMyNickname(roomId: string, nickname: string, token: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}/members/me`, { method: 'PATCH', body: { nickname }, token })
+}

@@ -41,6 +41,19 @@ function ChevronLeftIcon() {
   )
 }
 
+function GearIcon() {
+  return (
+    // 꽃잎처럼 둥근 톱니 6개를 겹친 톱니바퀴
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      {[0, 60, 120, 180, 240, 300].map((deg) => (
+        <circle key={deg} cx="12" cy="4.6" r="3" transform={`rotate(${deg} 12 12)`} />
+      ))}
+      <circle cx="12" cy="12" r="7" />
+      <circle cx="12" cy="12" r="2.6" fill="var(--color-bg)" />
+    </svg>
+  )
+}
+
 function CheckIcon() {
   return (
     <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
@@ -96,15 +109,25 @@ function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean
   const navigate = useNavigate()
   return (
     <header className="px-1">
-      {/* 어디서 들어왔든(방 만들기·초대 링크·카톡 링크) 뒤로 가면 내 모임방 목록으로 간다 */}
-      <button
-        type="button"
-        onClick={() => navigate(paths.roomList())}
-        className="flex items-center gap-2.5 text-[16px] font-bold"
-      >
-        <ChevronLeftIcon />
-        {room.name}
-      </button>
+      <div className="flex items-center justify-between">
+        {/* 어디서 들어왔든(방 만들기·초대 링크·카톡 링크) 뒤로 가면 내 모임방 목록으로 간다 */}
+        <button
+          type="button"
+          onClick={() => navigate(paths.roomList())}
+          className="flex items-center gap-2.5 text-[16px] font-bold"
+        >
+          <ChevronLeftIcon />
+          {room.name}
+        </button>
+        <button
+          type="button"
+          aria-label="모임방 설정"
+          onClick={() => navigate(paths.roomSettings(room.id))}
+          className="-m-2 p-2 text-sub active:opacity-80"
+        >
+          <GearIcon />
+        </button>
+      </div>
       <div className="mt-2 flex items-center gap-2.5">
         <span
           className={`rounded-full px-3 py-0.5 text-[9px] ${gathering ? 'bg-[#efe9df] text-[#6b6b6b]' : 'bg-[#f6e3ea] text-point'}`}

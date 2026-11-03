@@ -13,6 +13,7 @@ export const paths = {
   roomCheckout: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/checkout${plan ? `?plan=${plan}` : ''}`,
   roomPlanDone: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/done${plan ? `?plan=${plan}` : ''}`,
   roomShare: (roomId: string) => `/rooms/${roomId}/share`,
+  roomSettings: (roomId: string) => `/rooms/${roomId}/settings`,
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
   photoUpload: (roomId: string) => `/rooms/${roomId}/photos/new`,
   firstEntry: (roomId: string) => `/rooms/${roomId}/entries/new`,
