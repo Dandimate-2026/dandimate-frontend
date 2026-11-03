@@ -1,5 +1,5 @@
 import { request } from './client'
-import { mockTranscribe, USE_MOCK } from './mock'
+import { mockTranscribe, recordMockEntry, USE_MOCK } from './mock'
 import type { CreateEntryRequest, EntryKind, TranscriptionDraft } from './types'
 
 /** 녹음 파일을 보내고, AI가 받아 적은 글 초안을 받는다 */
@@ -13,7 +13,10 @@ export function transcribe(photoId: string, token: string, audio: Blob, kind: En
 
 /** 받아 적은 글(또는 직접 쓴 글)을 확정한다 */
 export function createEntry(photoId: string, token: string, entry: CreateEntryRequest) {
-  if (USE_MOCK) return Promise.resolve()
+  if (USE_MOCK) {
+    if (entry.kind === 'FIRST') recordMockEntry(photoId)
+    return Promise.resolve()
+  }
   return request(`/photos/${photoId}/entries`, { method: 'POST', body: entry, token, idempotent: true })
 }
 

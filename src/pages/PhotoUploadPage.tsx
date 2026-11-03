@@ -94,7 +94,8 @@ function PhotoUploadPage() {
   const isHost = photoPlan.isHost
   const closeLimit = () => setLimitOpen(false)
   // 이번에 고를 수 있는 만큼 다 골랐거나, 이미 한도만큼 올린 방
-  const atLimit = quota !== undefined && photos.length >= maxPhotos
+  // 서버 한도를 아직 못 받았어도 기본(Free 3장) 기준으로 잠금 표시를 한다
+  const atLimit = photos.length >= maxPhotos
 
   const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []).map(withType)
