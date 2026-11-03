@@ -12,8 +12,8 @@
 
 | | 내용 | 실제 서버에서 생기는 일 | 위치 |
 |---|---|---|---|
-| 🔴 | 받아쓰기 3곳(`POST /photos/{id}/transcriptions`, `/askbacks/{id}/transcriptions`, `/paragraphs/{id}/transcriptions`)은 `Idempotency-Key`가 필수인데 프론트가 보내지 않음 | 녹음할 때마다 400 "요청 키 누락" → 첫 한마디·되묻기·답가 음성이 전부 실패 | `src/api/entries.ts`, `askbacks.ts`, `memories.ts` |
-| 🔴 | 녹음 최대 길이가 플랜별(첫 한마디 30/60/120초, 그 밖 20/30/60초)인데 프론트는 고정값(첫 한마디 60초, 되묻기·덧붙임 30초, 답가 60초) | Free 방에서 31초 이상 첫 한마디, 21초 이상 되묻기·덧붙임·답가는 서버가 422로 거절. 프론트는 422를 "말하기 시간을 모두 썼어요" 시트로 보여줘서 **잘못된 안내**가 뜸 | `FirstEntryPage.tsx`, `AskbackPage.tsx`, `ContributionSheet.tsx` |
+| ✅ | 받아쓰기 3곳(`POST /photos/{id}/transcriptions`, `/askbacks/{id}/transcriptions`, `/paragraphs/{id}/transcriptions`)에 필수 `Idempotency-Key`를 붙임 | - | `src/api/entries.ts`, `askbacks.ts`, `memories.ts` |
+| ✅ | 녹음 최대 길이를 방 `quota.firstMaxSeconds`·`otherMaxSeconds`(플랜별 30/60/120초, 20/30/60초)로 맞춤. 값이 없으면 가장 짧은 Free 기준으로 막고, 안내 문구("최대 ○초")도 같이 바뀜 | - | `FirstEntryPage.tsx`, `AskbackPage.tsx`, `ContributionSheet.tsx` |
 | ✅ | 덧붙임 글 길이를 서버와 같은 200자로 맞춤 | - | `RoomCirculationPage.tsx` |
 | ✅ | 홈 "내 사진 ○/○장"과 사진 고르기 장수를 플랜 한도(`quota.photosPerMember`, `myPhotosRemaining`)로 맞춤. 사진이 3장 넘게 되면 칸이 여러 줄이 되고, 길게 눌러 순서 바꾸기도 여러 줄에서 동작 | - | `RoomHomePage.tsx`, `PhotoUploadPage.tsx` |
 | ⚪ | `capacity`는 서버가 1~8명을 받는데 프론트 드롭다운은 2~8명 | 문제 없음 (혼자 쓰는 방은 막아 둠) | `RoomCreatePage.tsx` |
@@ -22,9 +22,9 @@
 
 | 기능 | 지금 동작 | 필요한 API | 위치 |
 |---|---|---|---|
-| 결제·플랜 변경 | mock에서만 결제 성공 처리. 실제 모드는 결제 버튼 비활성. 방 만들기는 `planType: FREE` 고정 (LITE·PRO는 서버가 503) | 결제·결제 검증, **이미 만든 방의 플랜 변경** | `src/api/plans.ts`, `RoomCheckoutPage.tsx` |
+| 결제 | mock에서만 결제 성공 처리 후 고른 플랜으로 방 생성. 실제 모드는 유료 플랜이 "결제 준비 중" (서버가 LITE·PRO 생성 시 503) | 결제·결제 검증, (필요하면) 이미 만든 방의 플랜 변경 | `src/api/plans.ts`, `RoomCheckoutPage.tsx` |
 | 쿠폰 | mock에서만 입력 가능 | 쿠폰 검증 | `RoomCheckoutPage.tsx` |
-| 플랜 가격·설명 | 프론트 하드코딩 (Free 0원 / Lite 2,900원 / Pro 5,900원) | 플랜 조회 (선택) | `src/lib/plans.ts` |
+| 플랜 가격·한도 | `GET /plans`로 받아 플랜 화면·결제 화면에 씀. 꾸미기 설명만 프론트에 있음. 서버가 `roomCreationAvailable=false`로 주는 유료 플랜은 "결제 준비 중"으로 표시하고 넘어가지 않음 | - (꾸미기 설명은 선택) | `src/hooks/usePlans.ts`, `src/lib/plans.ts` |
 | 방장에게 플랜 변경 요청 | `POST /rooms/{id}/plan-requests` `{ reason: PHOTO·VOICE·REWEAVE }`로 가정. 실패하면 기기 공유창으로 직접 부탁 | 요청 API + 알림 종류 `PLAN_UPGRADE_REQUESTED` (명세 알림 종류는 `ASKBACK_RECEIVED`·`SCROLL_READY`·`REPLY_APPLIED` 3개뿐) | `src/api/rooms.ts`, `RoomNotificationsPage.tsx` |
 | 내 이름(닉네임) 변경 | `PATCH /rooms/{id}/members/me`로 가정 → 실제 서버에서 실패 ("아직 바꿀 수 없어요") | 닉네임 변경 | `src/api/rooms.ts` |
 | 멤버 방 나가기 | 이 기기 저장 정보만 지움. 내 방 목록은 서버(`/users/me/rooms`)에서 오므로 **새로고침하면 방이 다시 나타남** | 방 나가기 | `RoomSettingsPage.tsx` |
@@ -56,7 +56,7 @@
 ## 5. 프론트 흐름에서 이상한 것
 
 1. ~~로그인이 필요한데 "가입 없이"라고 안내함~~ → 고침. 방 만들기 "링크 하나로 친구들과 함께 써요", 초대 입장 "이름만 정하면 바로 들어갈 수 있어요"
-2. **플랜을 방 만든 뒤에 고름.** 서버는 방을 만들 때만 플랜(`planType`)을 받고, 방 수정(`PATCH /rooms/{id}`)은 이름·모임 날짜·마감 시각만 바꿀 수 있음. 프론트는 FREE로 먼저 만들고(LITE·PRO는 서버가 503) 플랜 화면을 보여주므로, 여기서 Lite를 골라도 적용할 방법이 없음 → 백엔드에 "이미 만든 방의 플랜 변경" 또는 "플랜 선택 → 결제 → 방 만들기" 순서 중 하나를 정해야 함
+2. ~~플랜을 방 만든 뒤에 고름~~ → 고침. 새로 생긴 `GET /plans` 설명("선택한 planType은 POST /rooms에 전달")에 맞춰 **방 정보 입력 → 플랜 선택(`/rooms/new/plan`) → (유료면) 결제(`/rooms/new/checkout`) → 고른 플랜으로 방 생성 → 초대 링크** 순서로 바꿈. 입력한 내용은 플랜·결제 화면을 지나는 동안 이 기기에 잠깐 들고 있음(`src/lib/roomDraft.ts`). 기존 `/rooms/{id}/plan`은 한도 시트의 [플랜 보기]로 들어오는 "이미 있는 방" 용도로 남김 (이미 있는 방의 플랜 변경 API는 아직 없음)
 3. **나가기 후 방이 되살아남.** 서버 목록 기준이라 새로고침하면 다시 보임 → 백엔드 나가기 API 필요
 4. **멤버가 모임방 홈 아래 "단톡방에 알리기"를 누를 때.** 방장은 초대 링크를 보내지만, 멤버는 원본 초대 토큰이 없어서 초대 링크 대신 모임방 홈 주소를 보냄. 이미 들어온 친구는 바로 열 수 있지만, 아직 안 들어온 친구는 들어갈 수 없음
 5. **시간 종료 시트.** 마감 시각이 지나면 서버가 자동으로 엮는지 명세에 없음. 자동이라면 시트 문구를 바꿔야 함
@@ -83,14 +83,13 @@
 | 사진 올리기 | 한도에 닿으면 **회색 잠금 칸**(🔒 더 올리려면) 또는 사진 아래 **회색 잠금 줄** | `PhotoUploadPage.tsx` |
 | 사진·녹음 화면 | 방장에게 알린 뒤 "방장에게 알렸어요. 플랜이 바뀌면 바로 쓸 수 있어요" 안내 문구 | `useRoomQuota.ts` |
 | 모임방 만들기·초대 입장 | "설치·가입 없이" 문구 삭제 | `RoomCreatePage.tsx`, `InviteJoinPage.tsx` |
+| 플랜 선택 | 결제가 안 되는 유료 플랜에 "결제 준비 중" 배지와 안내, 새 방은 "최대 ○명" 표시, 이미 있는 방에서 Free는 "지금 플랜 그대로 쓰기" | `RoomPlanPage.tsx` |
 
 ## 다음 할 일
 
 **프론트 (바로 할 수 있음)**
-1. 🔴 받아쓰기 요청 3곳에 `Idempotency-Key` 추가
-2. 🔴 녹음 최대 길이를 방 `quota.firstMaxSeconds`·`otherMaxSeconds`로 맞추고, 길이 초과(422)와 총량 소진을 구분
-3. 로그아웃 위치 정하기
-4. 6번 표의 새 화면·요소 디자인 확인
+1. 로그아웃 위치 정하기
+2. 6번 표의 새 화면·요소 디자인 확인
 
 **백엔드에 요청**
 1. 로컬 개발용 로그인 설정 (돌아갈 주소, CORS, 쿠키) 또는 프론트를 같은 서버에 배포

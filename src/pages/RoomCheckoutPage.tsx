@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { purchasePlan, type PaymentMethod } from '../api/plans'
 import { USE_MOCK } from '../api/mock'
-import { getRoomHome } from '../api/rooms'
-import type { RoomHome } from '../api/types'
+import { createRoom, getRoomHome } from '../api/rooms'
+import type { RoomHome, RoomPlanType } from '../api/types'
 import Button from '../components/Button'
 import Flower from '../components/Flower'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
-import { FREE_PLAN, findPlan, formatWon, type Plan } from '../lib/plans'
-import { getRoomSession } from '../lib/session'
+import { usePlans } from '../hooks/usePlans'
+import { FREE_PLAN, formatWon, type Plan } from '../lib/plans'
+import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
+import { getRoomSession, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
@@ -52,10 +54,8 @@ function PlanComparison({ plan }: { plan: Plan }) {
     <dl className="mt-3">
       <BenefitRow label="1인당 사진" before={`${FREE_PLAN.photosPerMember}장`} after={`${plan.photosPerMember}장`} />
       <BenefitRow label="방 전체 말하기" before={`${FREE_PLAN.voiceMinutes}분`} after={`${plan.voiceMinutes}분`} />
-      {plan.id === 'lite' && <>
-        <BenefitRow label="첫 한마디 길이" before="30초" after="60초" />
-        <BenefitRow label="덧붙임·답가 길이" before="20초" after="30초" />
-      </>}
+      <BenefitRow label="첫 한마디 길이" before={`${FREE_PLAN.firstMaxSeconds}초`} after={`${plan.firstMaxSeconds}초`} />
+      <BenefitRow label="덧붙임·답가 길이" before={`${FREE_PLAN.otherMaxSeconds}초`} after={`${plan.otherMaxSeconds}초`} />
       <BenefitRow label="재엮기" before={`${FREE_PLAN.reweaves}회`} after={`${plan.reweaves}회`} />
       <BenefitRow label="꾸미기" before="기본" after={plan.decor} />
     </dl>
@@ -89,11 +89,14 @@ function CenteredPaymentState({ kind, reason, onRetry, onShare }: { kind: 'proce
 
 /** 플랜 선택 다음 단계의 결제와 결제 상태 화면 */
 function RoomCheckoutPage() {
-  const { roomId = '' } = useParams()
+  const { roomId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const session = getRoomSession(roomId)
-  const plan = findPlan(searchParams.get('plan'))
+  // 새 방(`/rooms/new/checkout`)이면 방 만들기에서 입력한 내용으로 결제 뒤 방을 만든다
+  const isNewRoom = roomId === undefined
+  const [draft] = useState(getRoomDraft)
+  const session = roomId ? getRoomSession(roomId) : null
+  const plan = usePlans().find((p) => p.id === searchParams.get('plan'))
   const [home, setHome] = useState<RoomHome | null>(null)
   const [method, setMethod] = useState<PaymentMethod>('EASY_PAY_A')
   const [cardMode, setCardMode] = useState<'saved' | 'single'>('saved')
@@ -112,39 +115,50 @@ function RoomCheckoutPage() {
   const [failureReason, setFailureReason] = useState('카드 한도 초과')
 
   useEffect(() => {
-    if (!session) return
+    if (!roomId || !session) return
     getRoomHome(roomId, session.memberAccessToken).then(setHome).catch(() => {})
     // session은 매 렌더에서 읽히므로 roomId만 기준으로 다시 조회한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId])
 
-  if (!session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
+  if (isNewRoom && !draft) return <Navigate to={paths.roomCreate()} replace />
+  if (!isNewRoom && !session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
   if (!plan || plan.price === 0) return <NotFoundPage message="결제할 플랜을 찾을 수 없어요" />
+  const planPath = isNewRoom ? paths.roomCreatePlan() : paths.roomPlan(roomId)
+  const roomName = isNewRoom ? draft?.name : session?.roomName
 
   const discount = couponApplied ? Math.min(COUPON_DISCOUNT, plan.price) : 0
   const total = plan.price - discount
   const allAgreed = agreements.every(Boolean)
-  const host = home?.members.find((member) => member.role === 'HOST')?.nickname
-  const meetingDate = home?.room.meetingDate?.replaceAll('-', '.')
+  const host = isNewRoom ? draft?.hostNickname : home?.members.find((member) => member.role === 'HOST')?.nickname
+  const meetingDate = (isNewRoom ? draft?.meetingDate : home?.room.meetingDate)?.replaceAll('-', '.')
 
   const handlePay = async () => {
     if (!allAgreed || status !== 'idle') return
     setStatus('processing')
     try {
-      await purchasePlan({ roomId, plan: plan.id, method })
-      navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })
+      await purchasePlan({ roomId: roomId ?? '', plan: plan.id, method })
+      if (isNewRoom && draft) {
+        // TODO: 결제가 붙으면 결제 결과를 방 생성 요청에 함께 넘겨야 한다 (지금 서버는 LITE·PRO 생성 시 503)
+        const { room, inviteToken } = await createRoom({ ...draft, planType: plan.id.toUpperCase() as RoomPlanType })
+        saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
+        clearRoomDraft()
+        navigate(paths.roomPlanDone(room.id, plan.id), { replace: true })
+      } else if (roomId) {
+        navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })
+      }
     } catch (cause) {
       setFailureReason(cause instanceof Error ? cause.message : '결제 요청에 실패했어요')
       setStatus('failed')
     }
   }
 
-  if (status !== 'idle') return <CenteredPaymentState kind={status} reason={failureReason} onRetry={() => setStatus('idle')} onShare={() => navigate(paths.roomShare(roomId), { replace: true })} />
+  if (status !== 'idle') return <CenteredPaymentState kind={status} reason={failureReason} onRetry={() => setStatus('idle')} onShare={() => navigate(isNewRoom || !roomId ? planPath : paths.roomShare(roomId), { replace: true })} />
 
   return <main className="flex min-h-dvh flex-col bg-bg px-5 pt-14 text-ink">
     <header>
       <div className="flex items-center justify-between">
-        <button type="button" onClick={() => navigate(paths.roomPlan(roomId))} className="flex items-center gap-1 text-[16px] font-bold"><ChevronLeftIcon />결제하기</button>
+        <button type="button" onClick={() => navigate(planPath)} className="flex items-center gap-1 text-[16px] font-bold"><ChevronLeftIcon />결제하기</button>
         <span className="text-[13px] text-sub">2 / 3</span>
       </div>
       <div className="mt-3.5 grid grid-cols-3 gap-1" aria-label="결제 진행 2 / 3">
@@ -154,15 +168,15 @@ function RoomCheckoutPage() {
 
     <Section title="결제할 방">
       <div className="flex items-center gap-3 rounded-[18px] border border-line bg-surface p-[15px]">
-        <div className="flex size-[55px] shrink-0 items-center justify-center rounded-xl bg-[#eee8de] text-[11px] text-sub">{(session.roomName ?? '방').slice(0, 2)}</div>
-        <div className="min-w-0"><strong className="block truncate text-[15px]">{session.roomName}</strong>
+        <div className="flex size-[55px] shrink-0 items-center justify-center rounded-xl bg-[#eee8de] text-[11px] text-sub">{(roomName ?? '방').slice(0, 2)}</div>
+        <div className="min-w-0"><strong className="block truncate text-[15px]">{roomName}</strong>
           <p className="mt-0.5 text-[12px] text-[#9a9085]">{meetingDate ?? '모임 날짜 미정'} · 방장 {host ?? '—'} · 둘러보는 중</p>
           {home && <div className="mt-1 flex items-center gap-1"><span className="flex -space-x-1" aria-hidden="true">{home.members.slice(0, 3).map((member) => <Flower key={member.id} code={member.flowerCode} size={16} />)}</span><span className="text-[11px] text-[#9a9085]">{home.members.length}명이 함께 써요</span></div>}
         </div>
       </div>
     </Section>
 
-    <Section title="바뀌는 플랜" action={<Link to={paths.roomPlan(roomId)} className="text-[12px] text-sub underline-offset-2 hover:underline">플랜 변경 ›</Link>}><PlanComparison plan={plan} /></Section>
+    <Section title="바뀌는 플랜" action={<Link to={planPath} className="text-[12px] text-sub underline-offset-2 hover:underline">플랜 변경 ›</Link>}><PlanComparison plan={plan} /></Section>
 
     <Section title="쿠폰">
       <div className="rounded-[18px] border border-line bg-surface p-[15px]">
@@ -191,7 +205,7 @@ function RoomCheckoutPage() {
 
     <Section title="결제 금액">
       <div className="rounded-[18px] border border-line bg-surface px-[15px] py-4 text-[13px]">
-        <div className="flex justify-between"><span className="text-sub">{plan.name} 플랜 ({session.roomName})</span><strong>{formatWon(plan.price)}</strong></div>
+        <div className="flex justify-between"><span className="text-sub">{plan.name} 플랜 ({roomName})</span><strong>{formatWon(plan.price)}</strong></div>
         <div className="mt-2 flex justify-between"><span className="text-sub">쿠폰 할인</span><strong className="text-point">−{formatWon(discount)}</strong></div>
         <div className="mt-3 flex items-center justify-between border-t border-dashed border-line pt-3"><strong>최종 결제 금액</strong><strong className="text-[24px]">{formatWon(total)}</strong></div>
         {home && home.members.length > 0 && <p className="mt-1 text-right text-[11px] text-[#9a9085]">친구 {home.members.length}명이면 1인당 약 {formatWon(Math.round(total / home.members.length))}</p>}
