@@ -52,7 +52,6 @@ function AskbackPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (!token) return
     getAskback(askbackId, token)
       .then(setAskback)
       .catch((e: unknown) =>

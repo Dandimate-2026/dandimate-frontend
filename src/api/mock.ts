@@ -9,6 +9,7 @@ import type {
   JoinRoomResult,
   Member,
   RoomHome,
+  RoomNotification,
   TranscriptionDraft,
 } from './types'
 
@@ -45,7 +46,6 @@ export function mockCreateRoom({ name, meetingDate, hostNickname }: CreateRoomRe
     },
     member: { id: 'mock-host', nickname: hostNickname, role: 'HOST', flowerCode: 'AZALEA' },
     inviteToken: MOCK_INVITE_TOKEN,
-    memberAccessToken: 'mock-token',
   }
 }
 
@@ -59,7 +59,6 @@ export function mockJoinRoom(nickname: string): JoinRoomResult {
       deadlineAt: '2026-10-19T00:00:00+09:00',
     },
     member: { id: 'mock-member', nickname, role: 'MEMBER', flowerCode: 'LILAC' },
-    memberAccessToken: 'mock-token',
   }
 }
 
@@ -188,3 +187,11 @@ export function mockTranscribe(transcript: string) {
     ),
   )
 }
+
+const minutesAgo = (m: number) => new Date(Date.now() - m * 60 * 1000).toISOString()
+
+export const mockNotifications: RoomNotification[] = [
+  { id: 'n1', type: 'ASKBACK_RECEIVED', resourceType: 'ASKBACK', resourceId: 'a1', readAt: null, createdAt: minutesAgo(5) },
+  { id: 'n2', type: 'REPLY_APPLIED', resourceType: 'SCROLL', resourceId: 's1', readAt: null, createdAt: minutesAgo(180) },
+  { id: 'n3', type: 'SCROLL_READY', resourceType: 'SCROLL', resourceId: 's1', readAt: minutesAgo(1440), createdAt: minutesAgo(1500) },
+]

@@ -10,6 +10,7 @@ import { SparkleIcon } from '../components/entry/EntryIcons'
 import Flower, { EmptySlot } from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
@@ -50,6 +51,21 @@ function GearIcon() {
       ))}
       <circle cx="12" cy="12" r="7" />
       <circle cx="12" cy="12" r="2.6" fill="var(--color-bg)" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 3a6 6 0 0 0-6 6v3.6l-1.5 2.6A1.2 1.2 0 0 0 5.5 17h13a1.2 1.2 0 0 0 1-1.8L18 12.6V9a6 6 0 0 0-6-6Z" />
+      <circle cx="12" cy="19.5" r="2" />
     </svg>
   )
 }
@@ -105,7 +121,7 @@ function MemberProgress({ member, done }: { member: Member; done: boolean }) {
 }
 
 /** 방 이름(뒤로 가기), 상태, 마감까지 남은 시간 */
-function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean }) {
+function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathering: boolean; unreadCount: number }) {
   const navigate = useNavigate()
   return (
     <header className="px-1">
@@ -119,14 +135,29 @@ function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean
           <ChevronLeftIcon />
           {room.name}
         </button>
-        <button
-          type="button"
-          aria-label="모임방 설정"
-          onClick={() => navigate(paths.roomSettings(room.id))}
-          className="-m-2 p-2 text-sub active:opacity-80"
-        >
-          <GearIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 안 읽음` : '알림'}
+            onClick={() => navigate(paths.roomNotifications(room.id))}
+            className="relative p-2 text-sub active:opacity-80"
+          >
+            <BellIcon />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-point px-1 text-[9px] font-semibold text-surface">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            aria-label="모임방 설정"
+            onClick={() => navigate(paths.roomSettings(room.id))}
+            className="-mr-2 p-2 text-sub active:opacity-80"
+          >
+            <GearIcon />
+          </button>
+        </div>
       </div>
       <div className="mt-2 flex items-center gap-2.5">
         <span
@@ -152,13 +183,13 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
   const navigate = useNavigate()
   const { room, members, todayFlowers, myTodo } = home
   const { copied, copy, share } = useInviteShare(inviteToken ?? '')
-  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, ROOM_CAPACITY - members.length)
+  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
-        <RoomHeader room={room} gathering />
+        <RoomHeader room={room} gathering unreadCount={home.unreadCount} />
 
         <section className="mt-3.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
@@ -186,7 +217,7 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
           <div className="flex items-center justify-between px-[3px] text-[11px]">
             <p className="text-sub">친구를 기다리고 있어요</p>
             <p>
-              {members.length}/{ROOM_CAPACITY}명
+              {members.length}/{room.capacity ?? ROOM_CAPACITY}명
             </p>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-[5px] gap-y-2 px-[3px]">
@@ -300,25 +331,31 @@ function RoomHomePage() {
   const [weaving, setWeaving] = useState(false)
   const [weaveError, setWeaveError] = useState<string | null>(null)
 
+  // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
+  const token = session?.memberAccessToken
+
   useEffect(() => {
-    if (!session) return
-    getRoomHome(roomId, session.memberAccessToken)
+    if (token === undefined) return
+    getRoomHome(roomId, token)
       .then(setHome)
       .catch((e: unknown) =>
         setError(
           e instanceof ApiError && e.status === 403 ? '이 방에 들어갈 수 없어요' : '방 정보를 불러오지 못했어요',
         ),
       )
-    // session은 매 렌더마다 새로 읽으므로 roomId 기준으로만 다시 불러온다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId])
+  }, [roomId, token])
+
+  // 친구가 들어오거나 이야기를 남기면 홈을 다시 불러온다. 다시 불러오다 실패하면 지금 화면을 그대로 둔다
+  useRoomLiveUpdates(roomId, token, () => {
+    if (token !== undefined) getRoomHome(roomId, token).then(setHome).catch(() => {})
+  })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (error) return <NotFoundPage message={error} />
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
 
   // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
-  if (home.room.status === 'COLLECTING' && home.members.length < ROOM_CAPACITY) {
+  if (home.room.status === 'COLLECTING' && home.members.length < (home.room.capacity ?? ROOM_CAPACITY)) {
     return <GatheringHome home={home} inviteToken={session.inviteToken} />
   }
 
@@ -342,7 +379,7 @@ function RoomHomePage() {
     // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-16 pb-5">
-        <RoomHeader room={room} gathering={false} />
+        <RoomHeader room={room} gathering={false} unreadCount={home.unreadCount} />
 
         <section className="mt-2.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
@@ -380,7 +417,7 @@ function RoomHomePage() {
         <section className="mt-2">
           <div className="flex items-center justify-between px-0.5 text-[11px]">
             <h2 className="text-sub">참여현황</h2>
-            <p>{readyToWeave ? `${members.length}명 다 봤어요` : `${members.length}/${ROOM_CAPACITY}명`}</p>
+            <p>{readyToWeave ? `${members.length}명 다 봤어요` : `${members.length}/${room.capacity ?? ROOM_CAPACITY}명`}</p>
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
             {members.map((m) => (

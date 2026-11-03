@@ -14,13 +14,19 @@
 | 두루마리·원문 | `GET /rooms/{roomId}/scroll`의 `paragraphs`와 `sources` |
 | 아 맞다·문단 평가 | `PUT` / `DELETE /paragraphs/{paragraphId}/reactions/ah-matda`, `PUT /paragraphs/{paragraphId}/fidelity-rating` |
 | 답가 | `POST /paragraphs/{paragraphId}/transcriptions` (음성), `POST /paragraphs/{paragraphId}/replies`, `GET /jobs/{jobId}` |
+| 설정: 모임 이름·날짜 변경 (방장) | `PATCH /rooms/{roomId}` |
+| 설정: 초대 링크 새로 만들기 (방장) | `POST /rooms/{roomId}/invite-token/rotate` |
+| 설정: 모임방 삭제 (방장) | `DELETE /rooms/{roomId}` |
+| 설정: 첫 두루마리 시각 변경 (방장) | `PATCH /rooms/{roomId}`의 `deadlineAt` |
+| 알림 목록·읽음 | `GET /rooms/{roomId}/notifications`, `POST /notifications/{notificationId}/read` |
+| 모임방 홈 실시간 갱신 | `POST /rooms/{roomId}/event-token` → `GET /rooms/{roomId}/events` (SSE). 실패하면 `GET /rooms/{roomId}` 5초 간격 조회 |
 
-요청은 방 입장/생성 시 받은 `memberAccessToken`을 Bearer 토큰으로 보냅니다. 덧붙임·답가 저장 및 엮기 재시도에는 `Idempotency-Key`를 보냅니다. 쓰기 후에는 카드나 두루마리를 서버에서 다시 읽습니다.
+요청은 카카오 로그인 세션 쿠키로 인증합니다(`credentials: 'include'`). 쓰기 요청에는 `GET /auth/csrf`로 받은 `X-CSRF-TOKEN`을 넣습니다. 덧붙임·답가 저장 및 엮기 재시도에는 `Idempotency-Key`를 보냅니다. 쓰기 후에는 카드나 두루마리를 서버에서 다시 읽습니다.
 
 ## 로컬에서 확인
 
 1. `npm ci` 후 `npm run dev`를 실행합니다. `.env.local`이 없다면 Vite가 `/api` 요청을 `https://43-201-73-60.sslip.io`로 프록시합니다. `.env.local`의 `VITE_USE_MOCK`은 비우거나 `false`로 둡니다.
-2. 앱에서 방을 만들거나 초대 링크로 입장합니다. 방 정원은 공개 API 계약상 8명 고정입니다. 현재 로그인 버튼은 프론트 로컬 상태이고, 방 API 인증은 방별 참여 토큰으로 동작합니다.
+2. 앱에서 방을 만들거나 초대 링크로 입장합니다. 방 만들기에서 함께할 인원(2~8명)을 고르고, 플랜은 FREE로 만듭니다. 로그인은 카카오 로그인 세션 쿠키로 동작합니다(로컬 개발 제약은 `backend-gaps.md` 0번 참고).
 3. 두 사용자(다른 브라우저 프로필/기기)를 방에 입장시키고 친구 사진과 첫 이야기를 올립니다. 방 홈 → **이야기 붙이기**에서 카드가 실제 사진과 이야기로 채워지는지 확인합니다.
 4. **패스**와 **패스 취소**, 글 또는 음성 **덧붙이기**를 실행합니다. 개발자 도구 Network에서 위 경로의 2xx 응답과 뒤따르는 `GET /circulation`을 확인합니다. 새로고침 후에도 응답 상태가 유지되어야 합니다.
 5. 방장이 엮기를 시작하면 `GET /jobs/{jobId}`의 `status`가 `SUCCEEDED`가 될 때 두루마리가 열립니다. 홈의 **두루마리 보기**로 다시 들어가도 서버 문단이 보여야 합니다. 문단별 **원문보기**, **아 맞다**, **평가**, **답가**를 확인합니다. 답가는 202 작업 완료 후 문단이 갱신됩니다.

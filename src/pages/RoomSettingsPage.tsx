@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { getRoomHome, updateMyNickname, updateRoom } from '../api/rooms'
+import { deleteRoom, getRoomHome, rotateInviteToken, updateMyNickname, updateRoom } from '../api/rooms'
 import type { RoomHome } from '../api/types'
 import Card from '../components/Card'
 import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
-import { formatDateSpaced } from '../lib/date'
+import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
@@ -33,14 +33,15 @@ const SHARE_BUTTON_CLASS =
 
 const PILL_BUTTON_CLASS = 'h-[52px] rounded-full text-[15px] font-semibold active:opacity-80'
 
-const MAX_ROOM_NAME_LENGTH = 10
+const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
 
-type EditTarget = 'roomName' | 'meetingDate' | 'nickname'
+type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname'
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
   roomName: { title: '모임 이름 바꾸기', maxLength: MAX_ROOM_NAME_LENGTH },
   meetingDate: { title: '모임 날짜 바꾸기' },
+  deadlineAt: { title: '첫 두루마리 시각 바꾸기' },
   nickname: { title: '내 이름 바꾸기', maxLength: MAX_NICKNAME_LENGTH },
 }
 
@@ -108,7 +109,8 @@ function EditDialog({
           ) : (
             <input
               aria-label={title}
-              type="date"
+              type={target === 'deadlineAt' ? 'datetime-local' : 'date'}
+              min={target === 'deadlineAt' ? toLocalDateTimeInput(new Date().toISOString()) : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="h-[52px] w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
@@ -135,37 +137,67 @@ function EditDialog({
 
 const EDIT_BUTTON_CLASS = 'shrink-0 rounded-full border border-line px-3 py-1 text-[11px] text-sub active:opacity-80'
 
-/** 나가기 전에 한 번 더 묻는 창 */
-function LeaveDialog({ roomName, onCancel, onConfirm }: { roomName: string; onCancel: () => void; onConfirm: () => void }) {
+/** 나가기·링크 재발급·방 삭제 전에 한 번 더 묻는 창 */
+function ConfirmDialog({
+  title,
+  description,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  title: string
+  description: ReactNode
+  confirmLabel: string
+  onCancel: () => void
+  onConfirm: () => Promise<void> | void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      await onConfirm()
+    } catch {
+      setError('잠시 후 다시 시도해 주세요')
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-ink/40 px-8" onClick={onCancel}>
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="leave-title"
+        aria-labelledby="confirm-title"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[320px] rounded-[20px] bg-surface px-6 pt-6 pb-5 text-center text-ink"
       >
-        <h2 id="leave-title" className="text-[16px] font-bold">
-          {roomName}에서 나갈까요?
+        <h2 id="confirm-title" className="text-[16px] font-bold">
+          {title}
         </h2>
-        <p className="mt-2 text-[13px] leading-5 text-sub">
-          나가면 이 기기의 모임방 목록에서 사라져요.
-          <br />
-          다시 들어오려면 초대 링크가 필요해요.
-        </p>
+        <p className="mt-2 text-[13px] leading-5 text-sub">{description}</p>
+        {error && <p className="mt-2 text-[12px] text-point">{error}</p>}
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button type="button" onClick={onCancel} className={`${PILL_BUTTON_CLASS} border border-line bg-surface`}>
             취소
           </button>
-          <button type="button" onClick={onConfirm} className={`${PILL_BUTTON_CLASS} bg-point text-surface`}>
-            나가기
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={busy}
+            className={`${PILL_BUTTON_CLASS} bg-point text-surface disabled:opacity-60`}
+          >
+            {confirmLabel}
           </button>
         </div>
       </div>
     </div>
   )
 }
+
+type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom'
 
 /** 모임방 설정: 모임 정보, 초대 링크, 함께하는 사람, 약관, 나가기 */
 function RoomSettingsPage() {
@@ -174,9 +206,11 @@ function RoomSettingsPage() {
   const session = getRoomSession(roomId)
   const [home, setHome] = useState<RoomHome | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [leaving, setLeaving] = useState(false)
+  const [confirming, setConfirming] = useState<ConfirmTarget | null>(null)
   const [editing, setEditing] = useState<EditTarget | null>(null)
-  const { link, copied, copy, share } = useInviteShare(session?.inviteToken ?? '')
+  // 링크를 새로 만들면 화면의 링크도 바로 바꾼다
+  const [inviteToken, setInviteToken] = useState(session?.inviteToken)
+  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
 
   useEffect(() => {
     if (!session) return
@@ -198,6 +232,11 @@ function RoomSettingsPage() {
       await updateRoom(room.id, { name: value }, session.memberAccessToken)
       saveRoomSession(room.id, { ...session, roomName: value })
       setHome({ ...home, room: { ...room, name: value } })
+    } else if (editing === 'deadlineAt') {
+      // 입력칸은 기기 시간대 기준이라 서버에는 ISO 시각으로 바꿔 보낸다
+      const deadlineAt = new Date(value).toISOString()
+      await updateRoom(room.id, { deadlineAt }, session.memberAccessToken)
+      setHome({ ...home, room: { ...room, deadlineAt } })
     } else if (editing === 'meetingDate') {
       await updateRoom(room.id, { meetingDate: value }, session.memberAccessToken)
       setHome({ ...home, room: { ...room, meetingDate: value } })
@@ -213,10 +252,26 @@ function RoomSettingsPage() {
   }
 
   const handleLeave = () => {
-    // TODO: 백엔드에 방 나가기 API가 없어서, 지금은 이 기기에 저장된 방 정보만 지운다
+    // TODO(백엔드 미지원): 방 나가기 API가 없어서, 지금은 이 기기에 저장된 방 정보만 지운다
     removeRoomSession(room.id)
     navigate(paths.roomList(), { replace: true })
   }
+
+  const handleRotateInvite = async () => {
+    const next = await rotateInviteToken(room.id, session.memberAccessToken)
+    saveRoomSession(room.id, { ...session, inviteToken: next })
+    setInviteToken(next)
+    setConfirming(null)
+  }
+
+  const handleDeleteRoom = async () => {
+    await deleteRoom(room.id, session.memberAccessToken)
+    removeRoomSession(room.id)
+    navigate(paths.roomList(), { replace: true })
+  }
+
+  const isHost = me.role === 'HOST'
+  const canChangeDeadline = room.status === 'COLLECTING' || room.status === 'CIRCULATING'
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-5 pt-16 pb-8 text-ink">
@@ -235,7 +290,7 @@ function RoomSettingsPage() {
         {/* 모임 이름과 날짜는 방장만 바꿀 수 있다 */}
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-[15px] font-bold">{room.name}</p>
-          {me.role === 'HOST' && (
+          {isHost && (
             <button type="button" onClick={() => setEditing('roomName')} className={EDIT_BUTTON_CLASS}>
               변경
             </button>
@@ -245,16 +300,27 @@ function RoomSettingsPage() {
           <p className="text-[13px] text-sub">
             {room.meetingDate ? formatDateSpaced(room.meetingDate) : '날짜를 정하지 않았어요'}
           </p>
-          {me.role === 'HOST' && (
+          {isHost && (
             <button type="button" onClick={() => setEditing('meetingDate')} className={EDIT_BUTTON_CLASS}>
               변경
             </button>
           )}
         </div>
+        {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
+        {canChangeDeadline && (
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-[13px] text-sub">첫 두루마리 {formatDateTime(room.deadlineAt)}</p>
+            {isHost && (
+              <button type="button" onClick={() => setEditing('deadlineAt')} className={EDIT_BUTTON_CLASS}>
+                변경
+              </button>
+            )}
+          </div>
+        )}
       </Section>
 
       {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 초대 링크를 보여준다 */}
-      {me.role === 'HOST' && session.inviteToken && (
+      {isHost && inviteToken && (
         <Section title="초대 링크">
           <p className="flex h-[52px] items-center truncate rounded-2xl bg-line px-3.5 text-[13px] text-sub">{link}</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -267,6 +333,13 @@ function RoomSettingsPage() {
               단톡방에 보내기
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setConfirming('rotateInvite')}
+            className="mt-3 w-full text-center text-[11px] text-sub underline underline-offset-2 active:opacity-80"
+          >
+            링크 새로 만들기
+          </button>
         </Section>
       )}
 
@@ -297,25 +370,76 @@ function RoomSettingsPage() {
         </div>
       </Section>
 
+      {/* 방장이 나가면 방을 이어받을 사람이 없어서, 방장에게는 나가기 대신 방 삭제를 보여준다 */}
       <button
         type="button"
-        onClick={() => setLeaving(true)}
+        onClick={() => setConfirming(isHost ? 'deleteRoom' : 'leave')}
         className={`${PILL_BUTTON_CLASS} mt-6 w-full border border-line bg-surface text-point`}
       >
-        모임방 나가기
+        {isHost ? '모임방 삭제하기' : '모임방 나가기'}
       </button>
 
       {editing && (
         <EditDialog
           target={editing}
           initialValue={
-            editing === 'roomName' ? room.name : editing === 'meetingDate' ? (room.meetingDate ?? '') : me.nickname
+            editing === 'roomName'
+              ? room.name
+              : editing === 'meetingDate'
+                ? (room.meetingDate ?? '')
+                : editing === 'deadlineAt'
+                  ? toLocalDateTimeInput(room.deadlineAt)
+                  : me.nickname
           }
           onCancel={() => setEditing(null)}
           onSave={handleSave}
         />
       )}
-      {leaving && <LeaveDialog roomName={room.name} onCancel={() => setLeaving(false)} onConfirm={handleLeave} />}
+      {confirming === 'leave' && (
+        <ConfirmDialog
+          title={`${room.name}에서 나갈까요?`}
+          description={
+            <>
+              나가면 이 기기의 모임방 목록에서 사라져요.
+              <br />
+              다시 들어오려면 초대 링크가 필요해요.
+            </>
+          }
+          confirmLabel="나가기"
+          onCancel={() => setConfirming(null)}
+          onConfirm={handleLeave}
+        />
+      )}
+      {confirming === 'rotateInvite' && (
+        <ConfirmDialog
+          title="초대 링크를 새로 만들까요?"
+          description={
+            <>
+              지금 링크로는 더 이상 들어올 수 없어요.
+              <br />
+              이미 들어온 친구는 그대로 남아 있어요.
+            </>
+          }
+          confirmLabel="새로 만들기"
+          onCancel={() => setConfirming(null)}
+          onConfirm={handleRotateInvite}
+        />
+      )}
+      {confirming === 'deleteRoom' && (
+        <ConfirmDialog
+          title={`${room.name}을 삭제할까요?`}
+          description={
+            <>
+              모두의 사진과 이야기, 두루마리가 지워져요.
+              <br />
+              삭제하면 되돌릴 수 없어요.
+            </>
+          }
+          confirmLabel="삭제하기"
+          onCancel={() => setConfirming(null)}
+          onConfirm={handleDeleteRoom}
+        />
+      )}
     </main>
   )
 }
