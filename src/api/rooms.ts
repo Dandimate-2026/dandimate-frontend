@@ -21,11 +21,14 @@ import type {
   CreateRoomResult,
   InvitePreview,
   JoinRoomResult,
+  MyRoom,
   RoomHome,
 } from './types'
 
-/** 방 정원 (백엔드 명세상 고정값) */
+/** 방 정원 최댓값 (방장 포함). 방마다 1~8명 중 고를 수 있다 */
 export const ROOM_CAPACITY = 8
+/** 방 만들 때 고를 수 있는 최소 인원 */
+export const MIN_ROOM_CAPACITY = 2
 // TODO: 백엔드와 약관 버전 값 확정 필요
 export const CONSENT: Consent = {
   version: '2026-10',
@@ -34,6 +37,13 @@ export const CONSENT: Consent = {
   externalAiProcessing: true,
 }
 
+/** 로그인한 계정이 참여 중인 방 목록 */
+export function getMyRooms() {
+  if (USE_MOCK) return Promise.resolve<MyRoom[] | null>(null)
+  return request<MyRoom[]>('/users/me/rooms')
+}
+
+/** 로그인한 사용자가 방을 만들고 방장이 된다 */
 export function createRoom(body: Omit<CreateRoomRequest, 'consent'>) {
   const payload: CreateRoomRequest = { ...body, consent: CONSENT }
   if (USE_MOCK) return Promise.resolve(mockCreateRoom(payload))

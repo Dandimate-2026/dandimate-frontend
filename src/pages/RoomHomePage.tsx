@@ -183,7 +183,7 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
   const navigate = useNavigate()
   const { room, members, todayFlowers, myTodo } = home
   const { copied, copy, share } = useInviteShare(inviteToken ?? '')
-  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, ROOM_CAPACITY - members.length)
+  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
 
   return (
@@ -217,7 +217,7 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
           <div className="flex items-center justify-between px-[3px] text-[11px]">
             <p className="text-sub">친구를 기다리고 있어요</p>
             <p>
-              {members.length}/{ROOM_CAPACITY}명
+              {members.length}/{room.capacity ?? ROOM_CAPACITY}명
             </p>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-[5px] gap-y-2 px-[3px]">
@@ -331,10 +331,11 @@ function RoomHomePage() {
   const [weaving, setWeaving] = useState(false)
   const [weaveError, setWeaveError] = useState<string | null>(null)
 
+  // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
   const token = session?.memberAccessToken
 
   useEffect(() => {
-    if (!token) return
+    if (token === undefined) return
     getRoomHome(roomId, token)
       .then(setHome)
       .catch((e: unknown) =>
@@ -346,7 +347,7 @@ function RoomHomePage() {
 
   // 친구가 들어오거나 이야기를 남기면 홈을 다시 불러온다. 다시 불러오다 실패하면 지금 화면을 그대로 둔다
   useRoomLiveUpdates(roomId, token, () => {
-    if (token) getRoomHome(roomId, token).then(setHome).catch(() => {})
+    if (token !== undefined) getRoomHome(roomId, token).then(setHome).catch(() => {})
   })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
@@ -354,7 +355,7 @@ function RoomHomePage() {
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
 
   // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
-  if (home.room.status === 'COLLECTING' && home.members.length < ROOM_CAPACITY) {
+  if (home.room.status === 'COLLECTING' && home.members.length < (home.room.capacity ?? ROOM_CAPACITY)) {
     return <GatheringHome home={home} inviteToken={session.inviteToken} />
   }
 
@@ -416,7 +417,7 @@ function RoomHomePage() {
         <section className="mt-2">
           <div className="flex items-center justify-between px-0.5 text-[11px]">
             <h2 className="text-sub">참여현황</h2>
-            <p>{readyToWeave ? `${members.length}명 다 봤어요` : `${members.length}/${ROOM_CAPACITY}명`}</p>
+            <p>{readyToWeave ? `${members.length}명 다 봤어요` : `${members.length}/${room.capacity ?? ROOM_CAPACITY}명`}</p>
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
             {members.map((m) => (

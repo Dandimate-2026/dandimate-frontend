@@ -36,6 +36,9 @@ export interface RoomSummary {
   meetingDate?: string
   status: RoomStatus
   deadlineAt: string
+  /** 방장을 포함한 정원 (1~8) */
+  capacity?: number
+  planType?: RoomPlanType
 }
 
 export interface InvitePreview {
@@ -51,13 +54,18 @@ export interface InvitePreview {
 export interface JoinRoomResult {
   room: RoomSummary
   member: Member
-  memberAccessToken: string
 }
+
+export type RoomPlanType = 'FREE' | 'LITE' | 'PRO'
 
 export interface CreateRoomRequest {
   name: string
   meetingDate: string
   hostNickname: string
+  /** 방별 플랜. LITE·PRO는 서버 결제 검증이 붙기 전까지 503 PAYMENT_NOT_CONFIGURED */
+  planType: RoomPlanType
+  /** 방장을 포함한 정원 (1~8, 생략하면 8) */
+  capacity?: number
   consent: Consent
 }
 
@@ -66,7 +74,16 @@ export interface CreateRoomResult {
   member: Member
   /** 원본 초대 토큰. 이 응답에서 한 번만 받는다 */
   inviteToken: string
-  memberAccessToken: string
+}
+
+/** GET /users/me/rooms: 로그인한 계정이 참여 중인 방 */
+export interface MyRoom {
+  roomId: string
+  name: string
+  status: RoomStatus
+  memberId: string
+  nickname: string
+  role: 'HOST' | 'MEMBER'
 }
 
 export interface RoomHome {

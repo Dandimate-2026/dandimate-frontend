@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useSearchParams } from 'react-router'
 import type { FlowerCode } from '../api/types'
 import Flower from '../components/Flower'
-import { isLoggedIn, loginWithKakao } from '../lib/auth'
+import { getMe, loginWithKakao, takeLoginRedirect } from '../lib/auth'
 import { paths } from '../routes/paths'
 
 const FLOWER_ROW: FlowerCode[] = ['AZALEA', 'CANOLA', 'FORGET_ME_NOT', 'FORSYTHIA', 'LILAC']
@@ -22,17 +22,26 @@ function safeRedirect(redirect: string | null) {
 
 /** 첫 화면: 카카오로 시작하기 */
 function LoginPage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirect = safeRedirect(searchParams.get('redirect'))
+  const [loggedIn, setLoggedIn] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
 
-  if (isLoggedIn() && !loggingIn) return <Navigate to={redirect} replace />
+  // 카카오 로그인을 마치고 돌아왔거나 이미 로그인했으면 가려던 곳으로 보낸다
+  useEffect(() => {
+    getMe()
+      .then((me) => setLoggedIn(me !== null))
+      .catch(() => {})
+  }, [])
 
-  const handleLogin = async () => {
+  if (loggedIn) {
+    const stored = takeLoginRedirect()
+    return <Navigate to={stored ? safeRedirect(stored) : redirect} replace />
+  }
+
+  const handleLogin = () => {
     setLoggingIn(true)
-    await loginWithKakao()
-    navigate(redirect, { replace: true })
+    loginWithKakao(redirect)
   }
 
   return (

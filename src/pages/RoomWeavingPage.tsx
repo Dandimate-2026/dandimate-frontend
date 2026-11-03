@@ -33,7 +33,6 @@ function RoomWeavingPage() {
   }, [roomId, token])
 
   useEffect(() => {
-    if (!token) return
     let active = true
     let checking = false
     async function check() {

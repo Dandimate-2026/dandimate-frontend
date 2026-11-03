@@ -65,7 +65,6 @@ function RoomCirculationPage() {
   }, [])
 
   useEffect(() => {
-    if (!token) return
     let active = true
     getCirculation(roomId, token).then((result) => { if (active) setCards(result.filter((card) => card.myResponse.status !== 'OWN_PHOTO')) })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '사진을 불러오지 못했어요.') })

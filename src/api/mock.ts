@@ -46,7 +46,6 @@ export function mockCreateRoom({ name, meetingDate, hostNickname }: CreateRoomRe
     },
     member: { id: 'mock-host', nickname: hostNickname, role: 'HOST', flowerCode: 'AZALEA' },
     inviteToken: MOCK_INVITE_TOKEN,
-    memberAccessToken: 'mock-token',
   }
 }
 
@@ -60,7 +59,6 @@ export function mockJoinRoom(nickname: string): JoinRoomResult {
       deadlineAt: '2026-10-19T00:00:00+09:00',
     },
     member: { id: 'mock-member', nickname, role: 'MEMBER', flowerCode: 'LILAC' },
-    memberAccessToken: 'mock-token',
   }
 }
 

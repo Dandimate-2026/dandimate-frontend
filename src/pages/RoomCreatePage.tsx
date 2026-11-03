@@ -1,6 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { createRoom, ROOM_CAPACITY } from '../api/rooms'
+import { createRoom, MIN_ROOM_CAPACITY, ROOM_CAPACITY } from '../api/rooms'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { formatDateSpaced, todayIsoDate } from '../lib/date'
@@ -9,6 +9,122 @@ import { paths } from '../routes/paths'
 
 const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
+const DEFAULT_CAPACITY = 4
+const CAPACITY_OPTIONS = Array.from(
+  { length: ROOM_CAPACITY - MIN_ROOM_CAPACITY + 1 },
+  (_, i) => MIN_ROOM_CAPACITY + i,
+)
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={open ? 'rotate-180' : ''}
+    >
+      <path d="M4 6l4 4 4-4" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 8.5l3 3 6-6.5" />
+    </svg>
+  )
+}
+
+/** 함께할 인원을 고르는 드롭다운. 목록은 버튼 위로 펼쳐진다 */
+function CapacitySelect({ id, value, onChange }: { id: string; value: number; onChange: (value: number) => void }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        id={id}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className={`flex h-[52px] w-full items-center justify-between rounded-full border bg-surface pr-4 pl-[18px] ${
+          open ? 'border-ink' : 'border-line'
+        }`}
+      >
+        <span>{value}명</span>
+        <ChevronIcon open={open} />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-labelledby={id}
+          className="absolute right-0 bottom-full left-0 z-10 mb-2 rounded-[20px] border border-line bg-surface p-1.5 shadow-[0_8px_24px_rgba(42,38,35,0.12)]"
+        >
+          {CAPACITY_OPTIONS.map((option) => {
+            const selected = option === value
+            return (
+              <li key={option} role="option" aria-selected={selected}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(option)
+                    setOpen(false)
+                  }}
+                  className={`flex h-10 w-full items-center justify-between rounded-[14px] px-3 text-left ${
+                    selected ? 'bg-point/15 font-semibold text-point' : ''
+                  }`}
+                >
+                  <span>{option}명</span>
+                  {selected ? (
+                    <CheckIcon />
+                  ) : (
+                    option === ROOM_CAPACITY && <span className="text-[11px] text-sub">최대</span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function CalendarIcon() {
   return (
     <svg
@@ -76,6 +192,7 @@ function RoomCreatePage() {
   const [roomName, setRoomName] = useState('')
   const [meetingDate, setMeetingDate] = useState(todayIsoDate)
   const [nickname, setNickname] = useState('')
+  const [capacity, setCapacity] = useState(DEFAULT_CAPACITY)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,12 +204,15 @@ function RoomCreatePage() {
     setSubmitting(true)
     setError(null)
     try {
-      const { room, inviteToken, memberAccessToken } = await createRoom({
+      // TODO: 유료 플랜은 서버 결제 검증이 붙기 전까지 만들 수 없어(503), 우선 FREE로 만들고 플랜 화면에서 고르게 둔다
+      const { room, inviteToken } = await createRoom({
         name: roomName.trim(),
         meetingDate,
         hostNickname: nickname.trim(),
+        planType: 'FREE',
+        capacity,
       })
-      saveRoomSession(room.id, { memberAccessToken, inviteToken, roomName: room.name })
+      saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
       navigate(paths.roomPlan(room.id), { replace: true })
     } catch {
       setError('모임방을 만들지 못했어요. 다시 시도해 주세요')
@@ -159,10 +279,9 @@ function RoomCreatePage() {
           </div>
 
           <div className="mt-3">
-            <div aria-labelledby="capacity-label">
-              <span id="capacity-label" className="pl-[18px] text-[11px] font-semibold">함께할 인원</span>
-              <p className="mt-2 flex h-[52px] items-center rounded-full border border-line bg-surface px-[18px]">최대 {ROOM_CAPACITY}명</p>
-            </div>
+            <Field htmlFor="capacity" label="함께할 인원">
+              <CapacitySelect id="capacity" value={capacity} onChange={setCapacity} />
+            </Field>
             <p className="mt-2 pl-[18px] text-[11px] text-sub">나를 포함해 최대 {ROOM_CAPACITY}명까지 들어올 수 있어요</p>
           </div>
 
