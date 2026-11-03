@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import { getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomStatus } from '../api/types'
 import Button from '../components/Button'
+import Flower from '../components/Flower'
 import { formatDateSpaced } from '../lib/date'
 import { getRoomSession, listSavedRoomIds } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -71,11 +72,19 @@ function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
         {/* TODO: 대표 사진이 홈 응답에 없어서 빈 칸으로 둔다 */}
         <div className="size-14 shrink-0 rounded-2xl bg-bg" aria-hidden="true" />
         <div className="min-w-0">
-          <span
-            className={`inline-block h-[14px] min-w-[55px] rounded-full px-2 text-center text-[8px] leading-[14px] ${STATUS_CLASS[room.status]}`}
-          >
-            {STATUS_LABEL[room.status]}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`inline-block h-[14px] min-w-[55px] rounded-full px-2 text-center text-[8px] leading-[14px] ${STATUS_CLASS[room.status]}`}
+            >
+              {STATUS_LABEL[room.status]}
+            </span>
+            {/* 이 방에서 내가 누구인지: 내 꽃 · 닉네임 · 방장 여부 */}
+            <span className="flex items-center gap-1 text-[10px] text-sub">
+              <Flower code={home.me.flowerCode} size={14} />
+              {home.me.nickname}
+              {home.me.role === 'HOST' && <span className="font-semibold text-point">· 방장</span>}
+            </span>
+          </div>
           <p className="mt-[5px] truncate text-[16px] leading-5 font-semibold">{room.name}</p>
           <p className="mt-0.5 text-[11px] leading-4 text-sub">{meta}</p>
           {line && <p className={`mt-[3px] text-[11px] leading-4 ${line.todo ? 'text-point' : 'text-sub'}`}>{line.text}</p>}
