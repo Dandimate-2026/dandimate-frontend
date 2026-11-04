@@ -99,3 +99,6 @@
 5. 한도 초과 오류 코드 구분 (예: `PHOTO_LIMIT_EXCEEDED`, `VOICE_TOTAL_EXCEEDED`, `VOICE_TOO_LONG`, `REWEAVE_LIMIT_EXCEEDED`)
 6. 응답 필드: 방 목록 대표 사진·답가 수, 초대한 사람 이름, 두루마리 답가 목록·내 반응·평가
 7. 마감 시각이 지난 방을 서버가 자동으로 엮는지 확인
+8. 실시간 이벤트(SSE)에 **친구 입장 이벤트**(예: `member.joined`)와 방 정보 변경 이벤트(예: `room.updated`) 추가. 지금은 이벤트가 없어 프론트가 10초마다 다시 조회해서 입장이 최대 10초 늦게 보임
+9. SSE 이벤트 이름 목록을 명세에 적어 주기 (지금은 백엔드 코드에만 있음: `photo.published`, `photo.uploaded`, `entry.created`, `askback.created`, `job.updated`, `scroll.ready`, `paragraph.updated`, `notification.created`, `connected`)
+10. `POST /rooms/{roomId}/event-token`이 백엔드 코드(main)에서는 아직 예전 방식(`Authorization` 참가자 토큰)으로 참여자를 찾음. 로그인 쿠키 방식이면 403이 나서 프론트는 5초 조회로 대신하고 있음. 쿠키 기준으로 바꿔야 실시간 연결이 됨
