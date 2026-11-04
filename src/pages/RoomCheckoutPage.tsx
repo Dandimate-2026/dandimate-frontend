@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
-import { purchasePlan, type PaymentMethod } from '../api/plans'
+import { PAYMENT_DEMO, purchasePlan, type PaymentMethod } from '../api/plans'
 import { USE_MOCK } from '../api/mock'
 import { createRoom, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomPlanType } from '../api/types'
@@ -113,6 +113,8 @@ function RoomCheckoutPage() {
         : 'idle',
   )
   const [failureReason, setFailureReason] = useState('카드 한도 초과')
+  // 결제 수단·쿠폰·약관·결제 버튼을 쓸 수 있는지 (mock 또는 결제 화면 시연 중)
+  const paymentOpen = USE_MOCK || PAYMENT_DEMO
 
   useEffect(() => {
     if (!roomId || !session) return
@@ -140,7 +142,9 @@ function RoomCheckoutPage() {
       await purchasePlan({ roomId: roomId ?? '', plan: plan.id, method })
       if (isNewRoom && draft) {
         // TODO: 결제가 붙으면 결제 결과를 방 생성 요청에 함께 넘겨야 한다 (지금 서버는 LITE·PRO 생성 시 503)
-        const { room, inviteToken } = await createRoom({ ...draft, planType: plan.id.toUpperCase() as RoomPlanType })
+        // 서버는 결제 검증 전까지 LITE·PRO 방을 만들지 않아서(503), 시연 중 실제 서버에는 Free로 만든다
+        const planType: RoomPlanType = USE_MOCK ? (plan.id.toUpperCase() as RoomPlanType) : 'FREE'
+        const { room, inviteToken } = await createRoom({ ...draft, planType })
         saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
         clearRoomDraft()
         navigate(paths.roomPlanDone(room.id, plan.id), { replace: true })
@@ -180,9 +184,9 @@ function RoomCheckoutPage() {
 
     <Section title="쿠폰">
       <div className="rounded-[18px] border border-line bg-surface p-[15px]">
-        <div className="flex gap-2"><input value={couponCode} disabled={!USE_MOCK} onChange={(event) => setCouponCode(event.target.value)} placeholder="쿠폰 코드 입력" aria-label="쿠폰 코드" className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 text-[14px] outline-point placeholder:text-muted" />
-          <button type="button" disabled={!USE_MOCK} onClick={() => {
-            if (!USE_MOCK) { setCouponMessage('서버에 쿠폰 API가 준비되지 않았어요'); return }
+        <div className="flex gap-2"><input value={couponCode} disabled={!paymentOpen} onChange={(event) => setCouponCode(event.target.value)} placeholder="쿠폰 코드 입력" aria-label="쿠폰 코드" className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 text-[14px] outline-point placeholder:text-muted" />
+          <button type="button" disabled={!paymentOpen} onClick={() => {
+            if (!paymentOpen) { setCouponMessage('서버에 쿠폰 API가 준비되지 않았어요'); return }
             if (couponCode.trim().toUpperCase() === COUPON_CODE) { setCouponApplied(true); setCouponMessage('미리보기 쿠폰이 적용되었어요') }
             else { setCouponApplied(false); setCouponMessage('사용할 수 없는 쿠폰 코드예요') }
           }} className="h-12 rounded-xl bg-ink px-6 text-[14px] font-semibold text-surface">적용</button></div>
@@ -194,11 +198,11 @@ function RoomCheckoutPage() {
     <Section title="결제 수단">
       <div role="radiogroup" aria-label="결제 수단" className="rounded-[18px] border border-line bg-surface px-[15px] py-1">
         {PAYMENT_METHODS.map((item) => <div key={item.id} className="border-b border-[#eee8de] last:border-0">
-          <button type="button" role="radio" aria-checked={method === item.id} disabled={!USE_MOCK} onClick={() => setMethod(item.id)} className="flex min-h-[51px] w-full items-center gap-2 text-left text-[14px] font-semibold">
+          <button type="button" role="radio" aria-checked={method === item.id} disabled={!paymentOpen} onClick={() => setMethod(item.id)} className="flex min-h-[51px] w-full items-center gap-2 text-left text-[14px] font-semibold">
             <span className={`size-[19px] rounded-full ${method === item.id ? 'border-[5px] border-ink' : 'border border-muted'}`} aria-hidden="true" />
             <span className="rounded-md bg-[#eee8de] px-2 py-1 text-[9px] font-bold text-[#9a9085]">{item.badge}</span><span>{item.label}</span>{item.recent && <span className="ml-auto text-[11px] font-normal text-point">최근 사용</span>}
           </button>
-          {item.id === 'CARD' && <div className="mb-2 flex gap-1.5 pl-[29px]"><button type="button" disabled={!USE_MOCK} onClick={() => { setMethod('CARD'); setCardMode('saved') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'saved' ? 'border-ink' : 'border-line text-sub'}`}>카드사 선택</button><button type="button" disabled={!USE_MOCK} onClick={() => { setMethod('CARD'); setCardMode('single') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'single' ? 'border-ink' : 'border-line text-sub'}`}>일시불</button></div>}
+          {item.id === 'CARD' && <div className="mb-2 flex gap-1.5 pl-[29px]"><button type="button" disabled={!paymentOpen} onClick={() => { setMethod('CARD'); setCardMode('saved') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'saved' ? 'border-ink' : 'border-line text-sub'}`}>카드사 선택</button><button type="button" disabled={!paymentOpen} onClick={() => { setMethod('CARD'); setCardMode('single') }} className={`rounded-full border px-3 py-1 text-[11px] ${cardMode === 'single' ? 'border-ink' : 'border-line text-sub'}`}>일시불</button></div>}
         </div>)}
       </div>
     </Section>
@@ -212,7 +216,7 @@ function RoomCheckoutPage() {
       </div>
     </Section>
 
-    {USE_MOCK ? <Section title="약관 동의">
+    {paymentOpen ? <Section title="약관 동의">
       <div className="rounded-[18px] border border-line bg-surface px-[15px] py-2">
         <label className="flex min-h-[38px] cursor-pointer items-center gap-2 border-b border-line font-bold"><input type="checkbox" checked={allAgreed} onChange={(event) => setAgreements(AGREEMENTS.map(() => event.target.checked))} className="accent-ink" />아래 내용을 모두 확인했고 동의해요</label>
         {AGREEMENTS.map((item, index) => <div key={item.label} className="flex min-h-[40px] items-center gap-1 text-[13px]">
@@ -226,8 +230,8 @@ function RoomCheckoutPage() {
 
     <footer className="sticky bottom-0 -mx-5 mt-5 border-t border-line bg-bg px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 text-center">
       <p className="mb-2 text-[11px] text-[#9a9085]">방장 {host ?? '회원'} 님이 결제해요</p>
-      {!USE_MOCK && <p className="mb-2 text-[12px] text-point" role="status">배포된 Swagger에 결제·쿠폰 API가 없어 실제 결제를 시작할 수 없어요.</p>}
-      <Button onClick={() => void handlePay()} disabled={!allAgreed || !USE_MOCK} className="w-full">{USE_MOCK ? `${formatWon(total)} 결제하기` : '결제 API 준비 중'}</Button>
+      {PAYMENT_DEMO && <p className="mb-2 text-[11px] text-sub" role="status">시연용 결제 화면이에요. 실제로 결제되지 않아요.</p>}
+      <Button onClick={() => void handlePay()} disabled={!allAgreed || !paymentOpen} className="w-full">{paymentOpen ? `${formatWon(total)} 결제하기` : '결제 API 준비 중'}</Button>
     </footer>
   </main>
 }

@@ -7,6 +7,7 @@ import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 import { USE_MOCK } from '../api/mock'
+import { PAYMENT_DEMO } from '../api/plans'
 
 /** 결제를 마친 뒤 바뀐 한도를 보여주고, 친구를 부르러 보낸다 */
 function RoomPlanDonePage() {
@@ -18,7 +19,7 @@ function RoomPlanDonePage() {
   const { share } = useInviteShare(session?.inviteToken ?? '')
 
   if (!session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
-  if (!USE_MOCK) return <NotFoundPage message="결제 완료 정보를 확인할 수 없어요" />
+  if (!USE_MOCK && !PAYMENT_DEMO) return <NotFoundPage message="결제 완료 정보를 확인할 수 없어요" />
   if (!plan) return <NotFoundPage message="플랜을 찾을 수 없어요" />
 
   const changes = [
@@ -43,6 +44,10 @@ function RoomPlanDonePage() {
         {plan.name} 플랜이 됐어요
       </h1>
       <p className="mt-2.5 text-center text-[13px] text-sub">친구들도 지금 바로 더 많이 올릴 수 있어요</p>
+      {/* 결제 API가 없어 실제 서버의 방은 Free 그대로라서, 시연 중임을 알려 둔다 */}
+      {!USE_MOCK && PAYMENT_DEMO && (
+        <p className="mt-1 text-center text-[11px] text-[#9a9085]">시연용 화면이에요. 실제 한도는 아직 Free예요.</p>
+      )}
 
       <dl className="mt-6 flex flex-col gap-2.5 rounded-[20px] border border-line bg-surface px-[15px] py-4">
         {changes.map((c) => (
