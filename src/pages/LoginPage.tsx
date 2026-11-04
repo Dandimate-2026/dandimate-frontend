@@ -3,8 +3,10 @@ import { Link, Navigate, useSearchParams } from 'react-router'
 import type { FlowerCode } from '../api/types'
 import Flower from '../components/Flower'
 import { type MockRole, USE_MOCK } from '../api/mock'
+import { getInvitePreview } from '../api/rooms'
 import { getMe, loginWithKakao, takeLoginRedirect } from '../lib/auth'
 import { paths } from '../routes/paths'
+import InviteLoginView from './InviteLoginView'
 
 const FLOWER_ROW: FlowerCode[] = ['AZALEA', 'CANOLA', 'FORGET_ME_NOT', 'FORSYTHIA', 'LILAC']
 
@@ -27,6 +29,17 @@ function LoginPage() {
   const redirect = safeRedirect(searchParams.get('redirect'))
   const [loggedIn, setLoggedIn] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
+  // 초대 링크(/invite/{코드})에서 넘어왔으면 초대받은 사람 전용 로그인 화면을 보여준다
+  const inviteToken = redirect.match(/^\/invite\/([^/?#]+)/)?.[1]
+  const [inviteRoomName, setInviteRoomName] = useState<string>()
+
+  // 초대 정보는 로그인 없이 볼 수 있어서 로그인 전에 방 이름을 보여준다. 못 불러오면 방 이름 없이 보여준다
+  useEffect(() => {
+    if (!inviteToken) return
+    getInvitePreview(inviteToken)
+      .then((preview) => setInviteRoomName(preview.roomName))
+      .catch(() => {})
+  }, [inviteToken])
 
   // 카카오 로그인을 마치고 돌아왔거나 이미 로그인했으면 가려던 곳으로 보낸다
   useEffect(() => {
@@ -43,6 +56,11 @@ function LoginPage() {
   const handleLogin = (mockRole?: MockRole) => {
     setLoggingIn(true)
     loginWithKakao(redirect, mockRole)
+  }
+
+  // 초대받은 사람은 멤버로 들어온다 (데모에서도 멤버로 로그인)
+  if (inviteToken) {
+    return <InviteLoginView roomName={inviteRoomName} loggingIn={loggingIn} onLogin={() => handleLogin('MEMBER')} />
   }
 
   return (
