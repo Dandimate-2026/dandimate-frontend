@@ -198,8 +198,7 @@ function ConfirmDialog({
   )
 }
 
-// 방 삭제는 되돌릴 수 없어서 두 번 묻는다 (deleteRoom → deleteRoomFinal)
-type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom' | 'deleteRoomFinal'
+type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom'
 
 /** 모임방 설정: 모임 정보, 초대 링크, 함께하는 사람, 약관, 나가기 */
 function RoomSettingsPage() {
@@ -455,23 +454,6 @@ function RoomSettingsPage() {
             </>
           }
           confirmLabel="삭제하기"
-          onCancel={() => setConfirming(null)}
-          // 한 번 더 확인한 뒤에 지운다
-          onConfirm={() => setConfirming('deleteRoomFinal')}
-        />
-      )}
-      {confirming === 'deleteRoomFinal' && (
-        <ConfirmDialog
-          title="정말 삭제할까요?"
-          description={
-            <>
-              ‘{room.name}’의 사진·이야기·두루마리가 모두 사라지고,
-              <br />
-              친구들도 더 이상 이 방에 들어올 수 없어요.
-              <br />이 작업은 되돌릴 수 없어요.
-            </>
-          }
-          confirmLabel="영구 삭제"
           onCancel={() => setConfirming(null)}
           onConfirm={handleDeleteRoom}
         />
