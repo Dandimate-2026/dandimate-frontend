@@ -11,13 +11,17 @@ export interface PurchaseRequest {
 }
 
 /**
- * 플랜 결제.
- * TODO(백엔드 미지원): 공개 Swagger에 결제 계약이 없다. 실제 모드에서는 성공을 만들어 내지 않고,
- * mock 모드에서만 잠깐 기다린 뒤 결제된 것으로 친다 (시연용)
+ * 결제 화면 시연 스위치.
+ * TODO(백엔드 미지원): 결제 API가 없어서, 결제 화면(플랜 선택 → 결제 → 결제 완료)을 끝까지 보여줄 수 있게
+ * 결제를 하드코딩으로 통과시킨다. 실제로 돈이 나가지 않고, 서버에 만들어지는 방은 Free다.
+ * 결제 API가 붙으면 false로 바꾸고 아래 purchasePlan을 실제 요청으로 바꾼다
  */
+export const PAYMENT_DEMO = true
+
+/** 플랜 결제. 지금은 시연용으로 잠깐 기다린 뒤 결제된 것으로 친다 */
 export async function purchasePlan(request: PurchaseRequest): Promise<void> {
   void request
-  if (USE_MOCK) {
+  if (USE_MOCK || PAYMENT_DEMO) {
     await new Promise((resolve) => setTimeout(resolve, 1200))
     return
   }
