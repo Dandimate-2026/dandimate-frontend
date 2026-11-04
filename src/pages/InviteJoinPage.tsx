@@ -7,7 +7,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import Flower, { EmptySlot } from '../components/Flower'
 import { formatDate } from '../lib/date'
-import { saveRoomSession } from '../lib/session'
+import { getRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
 
@@ -46,7 +46,8 @@ function InviteJoinPage() {
     setSubmitError(null)
     try {
       const { room } = await joinRoom(inviteToken, name.trim())
-      saveRoomSession(room.id, { memberAccessToken: '', roomName: room.name })
+      // 이미 이 방 방장이었으면(같은 계정으로 자기 초대 링크를 연 경우) 저장된 초대 코드를 지우지 않도록 합친다
+      saveRoomSession(room.id, { ...getRoomSession(room.id), memberAccessToken: '', roomName: room.name })
       // 입장한 뒤 뒤로 가도 이름 입력 화면이 다시 나오지 않게 기록을 바꿔치기한다
       navigate(paths.roomHome(room.id), { replace: true })
     } catch (err) {

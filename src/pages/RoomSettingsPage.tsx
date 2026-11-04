@@ -7,6 +7,7 @@ import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
+import { objectParticle } from '../lib/plans'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
@@ -319,7 +320,24 @@ function RoomSettingsPage() {
         )}
       </Section>
 
-      {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 초대 링크를 보여준다 */}
+      {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 초대 링크를 보여준다.
+          서버는 원본 토큰을 방을 만들 때·새로 만들 때만 주므로, 다른 기기에서 들어온 방장은 새로 만들어야 링크가 생긴다 */}
+      {isHost && !inviteToken && (
+        <Section title="초대 링크">
+          <p className="text-[13px] leading-5 text-sub">
+            이 기기에는 초대 링크가 저장돼 있지 않아요.
+            <br />
+            새로 만들면 이전 링크로는 더 들어올 수 없어요.
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfirming('rotateInvite')}
+            className={`${SHARE_BUTTON_CLASS} mt-3 w-full`}
+          >
+            초대 링크 새로 만들기
+          </button>
+        </Section>
+      )}
       {isHost && inviteToken && (
         <Section title="초대 링크">
           <p className="flex h-[52px] items-center truncate rounded-2xl bg-line px-3.5 text-[13px] text-sub">{link}</p>
@@ -427,7 +445,7 @@ function RoomSettingsPage() {
       )}
       {confirming === 'deleteRoom' && (
         <ConfirmDialog
-          title={`${room.name}을 삭제할까요?`}
+          title={`${room.name}${objectParticle(room.name)} 삭제할까요?`}
           description={
             <>
               모두의 사진과 이야기, 두루마리가 지워져요.

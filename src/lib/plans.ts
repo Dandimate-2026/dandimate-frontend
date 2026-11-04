@@ -76,12 +76,22 @@ export function findPlan(id: string | null): Plan | undefined {
 // 영문·숫자를 읽었을 때 받침으로 끝나는 글자 (엘·엠·엔·알 / 영·일·삼·육·칠·팔)
 const BATCHIM_SOUNDS = new Set(['l', 'm', 'n', 'r', '0', '1', '3', '6', '7', '8'])
 
-/** 이름 뒤에 붙일 주격 조사. '경주 1박2일' → '이', '가을 MT' → '가' */
-export function subjectParticle(name: string) {
+/** 이름 마지막 글자에 받침이 있는지 (한글은 받침, 영문·숫자는 읽는 소리 기준) */
+function endsWithBatchim(name: string) {
   const last = name.trim().slice(-1)
   const code = last.charCodeAt(0) - 0xac00
-  if (code >= 0 && code <= 11171) return code % 28 === 0 ? '가' : '이'
-  return BATCHIM_SOUNDS.has(last.toLowerCase()) ? '이' : '가'
+  if (code >= 0 && code <= 11171) return code % 28 !== 0
+  return BATCHIM_SOUNDS.has(last.toLowerCase())
+}
+
+/** 이름 뒤에 붙일 주격 조사. '경주 1박2일' → '이', '가을 MT' → '가' */
+export function subjectParticle(name: string) {
+  return endsWithBatchim(name) ? '이' : '가'
+}
+
+/** 이름 뒤에 붙일 목적격 조사. '경주 1박2일' → '을', '리센느' → '를' */
+export function objectParticle(name: string) {
+  return endsWithBatchim(name) ? '을' : '를'
 }
 
 /** 2900 → '₩2,900' */
