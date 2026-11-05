@@ -1,4 +1,4 @@
-import { ApiError, request } from './client'
+import { ApiError, devProxyUrl, request } from './client'
 import { recordMockPhotos, USE_MOCK } from './mock'
 import type { UploadFileRequest, UploadTicket } from './types'
 
@@ -33,7 +33,7 @@ export async function uploadPhotos(
       const file = files.find((f) => f.request.clientFileId === ticket.clientFileId)
       if (!file) return
       // uploadUrl에 권한이 담겨 있어 Authorization 헤더는 보내지 않는다
-      const res = await fetch(ticket.uploadUrl, {
+      const res = await fetch(devProxyUrl(ticket.uploadUrl), {
         method: 'PUT',
         headers: ticket.requiredHeaders ?? { 'Content-Type': file.request.contentType },
         body: file.blob,

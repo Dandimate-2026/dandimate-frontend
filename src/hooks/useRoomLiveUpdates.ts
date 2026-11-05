@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { devProxyUrl } from '../api/client'
 import { USE_MOCK } from '../api/mock'
 import { issueEventToken } from '../api/notifications'
 
@@ -61,7 +62,7 @@ export function useRoomLiveUpdates(roomId: string, token: string | undefined, on
     issueEventToken(roomId, token)
       .then(({ eventsUrl }) => {
         if (stopped) return
-        source = new EventSource(eventsUrl, { withCredentials: true })
+        source = new EventSource(devProxyUrl(eventsUrl), { withCredentials: true })
         ROOM_EVENT_NAMES.forEach((name) => source?.addEventListener(name, refresh))
         // 이름 없이 오는 이벤트가 생겨도 다시 불러온다
         source.onmessage = refresh
