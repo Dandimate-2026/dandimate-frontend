@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { MIN_ROOM_CAPACITY, ROOM_CAPACITY } from '../api/rooms'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import { formatDateSpaced, todayIsoDate } from '../lib/date'
 import { getRoomDraft, saveRoomDraft } from '../lib/roomDraft'
 import { paths } from '../routes/paths'
@@ -206,9 +207,21 @@ function RoomCreatePage() {
     navigate(paths.roomCreatePlan())
   }
 
+  // 앱 안에서 넘어왔으면 그 화면으로, 주소로 바로 열었으면 방 목록으로 돌아간다
+  const goBack = () => {
+    const historyIndex = (window.history.state as { idx?: number } | null)?.idx ?? 0
+    if (historyIndex > 0) navigate(-1)
+    else navigate(paths.roomList(), { replace: true })
+  }
+
   return (
-    <main className="flex flex-1 flex-col bg-bg px-5 pt-[clamp(32px,16dvh,124px)] pb-[clamp(24px,6dvh,48px)] text-ink">
-      <section className="mb-12 px-1.5">
+    <main className="flex flex-1 flex-col bg-bg px-5 pt-12 pb-[clamp(24px,6dvh,48px)] text-ink">
+      <header className="px-1">
+        <button type="button" onClick={goBack} aria-label="뒤로 가기" className="flex h-6 w-6 items-center">
+          <ChevronLeftIcon />
+        </button>
+      </header>
+      <section className="mt-[clamp(8px,calc(16dvh_-_48px),76px)] mb-12 px-1.5">
         <h1 className="text-[20px] leading-[24px] font-bold">
           사진에 한마디씩 남기면
           <br />
