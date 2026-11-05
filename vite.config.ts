@@ -80,7 +80,30 @@ export default defineConfig({
     open: true,
     // 로컬 개발 시 /api 요청을 백엔드로 넘겨 CORS 문제를 피한다
     proxy: {
-      '/api': { target: 'https://43-201-73-60.sslip.io', changeOrigin: true },
+      '/api': {
+        target: 'https://43-201-73-60.sslip.io',
+        changeOrigin: true,
+        // 백엔드가 localhost 출처(Origin) 요청을 403으로 막아서, 배포 주소에서 온 요청처럼 바꿔 보낸다
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            if (proxyReq.getHeader('origin')) proxyReq.setHeader('origin', 'https://43-201-73-60.sslip.io')
+            const referer = proxyReq.getHeader('referer')
+            if (typeof referer === 'string') proxyReq.setHeader('referer', referer.replace(/^http:\/\/localhost:\d+/, 'https://43-201-73-60.sslip.io'))
+          })
+        },
+      },
+      // 사진 업로드 주소(S3)도 localhost 출처를 막아서 프록시로 넘긴다. 서명에 host가 들어가 있어 changeOrigin이 필요하다
+      '/__s3': {
+        target: 'https://durooduroo-prod-hyukjin.s3.ap-northeast-2.amazonaws.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/__s3/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin')
+            proxyReq.removeHeader('referer')
+          })
+        },
+      },
     },
   },
 })

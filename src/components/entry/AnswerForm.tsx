@@ -1,6 +1,7 @@
 import { formatDuration } from '../../hooks/useVoiceRecorder'
 import Button from '../Button'
-import { PencilIcon, PlayIcon, RetryIcon } from './EntryIcons'
+import { useEffect, useRef, useState } from 'react'
+import { PencilIcon, PlayIcon, RetryIcon, StopIcon } from './EntryIcons'
 
 export interface VoiceDraft {
   transcriptionId: string
@@ -34,6 +35,49 @@ function AnswerForm({
   onRetry: () => void
   onConfirm: () => void
 }) {
+  // 다시 듣기 중인 오디오. 같은 버튼으로 정지하고, 다시 누르면 멈춘 곳부터 이어 듣는다
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  // 중간에 멈춰 둔 상태 (버튼 글자를 '이어 듣기'로 보여준다)
+  const [paused, setPaused] = useState(false)
+
+  /** 재생을 끝내고 처음으로 되돌린다 (다시 녹음·화면 이동) */
+  const resetPlayback = () => {
+    const audio = audioRef.current
+    if (audio) {
+      audio.pause()
+      audio.currentTime = 0
+    }
+    setPlaying(false)
+    setPaused(false)
+  }
+
+  const togglePlayback = () => {
+    if (!voice) return
+    if (playing) {
+      audioRef.current?.pause()
+      setPlaying(false)
+      setPaused(true)
+      return
+    }
+    if (!audioRef.current || audioRef.current.src !== voice.audioUrl) {
+      audioRef.current?.pause()
+      audioRef.current = new Audio(voice.audioUrl)
+    }
+    const audio = audioRef.current
+    audio.onended = () => {
+      audio.currentTime = 0
+      setPlaying(false)
+      setPaused(false)
+    }
+    setPlaying(true)
+    setPaused(false)
+    audio.play().catch(() => setPlaying(false))
+  }
+
+  // 화면을 떠나면 재생을 멈춘다
+  useEffect(() => () => audioRef.current?.pause(), [])
+
   return (
     <>
       <div className="mt-3.5 rounded-[20px] border border-line bg-surface px-[19px] pt-3.5 pb-4">
@@ -67,16 +111,20 @@ function AnswerForm({
           {voice && (
             <Button
               variant="outline"
-              onClick={() => void new Audio(voice.audioUrl).play()}
+              onClick={togglePlayback}
+              aria-pressed={playing}
               className="flex h-[51px] items-center justify-center gap-2 rounded-full"
             >
-              <PlayIcon />
-              다시 듣기
+              {playing ? <StopIcon /> : <PlayIcon />}
+              {playing ? '정지' : paused ? '이어 듣기' : '다시 듣기'}
             </Button>
           )}
           <Button
             variant="outline"
-            onClick={onRetry}
+            onClick={() => {
+              resetPlayback()
+              onRetry()
+            }}
             className="flex h-[51px] items-center justify-center gap-2 rounded-full"
           >
             <RetryIcon />

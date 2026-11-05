@@ -8,6 +8,26 @@ export const SERVER_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'https://43-2
   .replace(/\/$/, '')
   .replace(/\/api\/v1$/, '')
 
+/** 로컬 개발 서버의 프록시가 사진을 넘겨 주는 S3 버킷 (vite.config.ts와 같은 값) */
+const DEV_S3_HOST = 'durooduroo-prod-hyukjin.s3.ap-northeast-2.amazonaws.com'
+
+/**
+ * 서버가 준 절대 주소를 로컬 개발 중에는 프록시를 거치는 주소로 바꾼다.
+ * 백엔드·S3가 localhost 출처를 CORS로 막아서다. 배포 빌드에서는 그대로 돌려준다
+ */
+export function devProxyUrl(url: string): string {
+  if (!import.meta.env.DEV || import.meta.env.VITE_API_BASE_URL) return url
+  try {
+    const parsed = new URL(url)
+    const path = `${parsed.pathname}${parsed.search}`
+    if (parsed.origin === SERVER_ORIGIN) return path
+    if (parsed.host === DEV_S3_HOST) return `/__s3${path}`
+  } catch {
+    // 상대 주소면 그대로 쓴다
+  }
+  return url
+}
+
 export class ApiError extends Error {
   status: number
   code: string

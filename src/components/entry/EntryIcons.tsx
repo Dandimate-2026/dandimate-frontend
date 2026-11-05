@@ -43,6 +43,14 @@ export function PlayIcon() {
   )
 }
 
+export function StopIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="12" height="12" rx="2.5" stroke="currentColor" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export function RetryIcon() {
   return (
     <svg width="15" height="15" viewBox="223 651 15 15" fill="currentColor" aria-hidden="true">
