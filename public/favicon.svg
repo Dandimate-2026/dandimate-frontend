@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <title>단디메이트</title>
-  <rect width="512" height="512" fill="#0f172a" />
-  <path fill="#fff" fill-rule="evenodd" d="M144 112h80c96 0 144 56 144 144s-48 144-144 144h-80V112Zm64 60v168h16c54 0 80-30 80-84s-26-84-80-84h-16Z" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#F7F3EC"/><g fill="#E0568F"><circle cx="16.8" cy="8.7" r="6.8"/><circle cx="23.7" cy="14.9" r="6.8"/><circle cx="19.9" cy="23.3" r="6.8"/><circle cx="10.8" cy="22.3" r="6.8"/><circle cx="8.8" cy="13.3" r="6.8"/></g><ellipse cx="16.3" cy="13.8" rx="0.9" ry="1.8" transform="rotate(6.0 16.3 13.8)" fill="#FDF3E3"/><ellipse cx="13.8" cy="14.9" rx="0.9" ry="1.8" transform="rotate(-54.0 13.8 14.9)" fill="#FDF3E3"/><ellipse cx="18.5" cy="15.4" rx="0.9" ry="1.8" transform="rotate(66.0 18.5 15.4)" fill="#FDF3E3"/></svg>
