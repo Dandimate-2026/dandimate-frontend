@@ -74,7 +74,6 @@ function PlacePhotoCard({
       label: '이 문단에 답가 남기기',
       path: paths.roomScrollReply(place.roomId, place.photoId),
     }
-  else if (own) note = '내가 올린 사진이에요'
   else
     action = {
       label: '이 사진에 덧붙이기',
@@ -128,7 +127,9 @@ function PlacePhotoCard({
   )
 }
 
-function CitySheet({ pin, onClose }: { pin: CityPin; onClose: () => void }) {
+function CitySheet({ pin, placeName, onClose }: { pin: CityPin; placeName?: string; onClose: () => void }) {
+  // 세부 장소를 눌러 열었으면 그 장소에서 찍은 사진만 (AI 요약은 도시 단위라 보여주지 않는다)
+  const places = placeName ? pin.places.filter((p) => p.placeName === placeName) : pin.places
   const navigate = useNavigate()
   const sheetDrag = useSheetDrag(onClose)
   // 내 사진에는 덧붙이기 대신 안내를 보여주려고 내 계정 id를 알아 둔다
@@ -152,12 +153,16 @@ function CitySheet({ pin, onClose }: { pin: CityPin; onClose: () => void }) {
           <span className="h-1 w-9 rounded-full bg-line" />
         </div>
         <h2 id="city-sheet-title" className="mt-5 flex items-baseline gap-2">
-          <span className="text-[24px] font-bold">📍 {pin.city}</span>
+          <span className="text-[24px] font-bold">📍 {placeName ?? pin.city}</span>
           <span className="text-[13px] text-sub">
-            기록 {pin.recordCount}개 · 모임방 {pin.rooms.length}개
+            {placeName
+              ? `${pin.city} · 사진 ${places.length}장`
+              : `기록 ${pin.recordCount}개 · 모임방 ${pin.rooms.length}개`}
           </span>
         </h2>
 
+        {!placeName && (
+          <>
         {/* AI 한 줄 요약은 서버가 두루마리를 엮은 뒤에 만든다. 아직이면 언제 생기는지 알려 준다 */}
         <section className="mt-4 rounded-[20px] bg-[#fbe9f0] px-4 py-4">
           <p className="text-[12px] font-semibold text-point">✦ AI가 기억하는 {pin.city}</p>
@@ -171,13 +176,17 @@ function CitySheet({ pin, onClose }: { pin: CityPin; onClose: () => void }) {
             </p>
           )}
         </section>
+          </>
+        )}
 
         {/* 이 도시에서 찍은 사진마다: 장소·방·사진, 그리고 덧붙이기(진행 중) 또는 답가(완성)로 바로 간다 */}
-        {pin.places.length > 0 && (
+        {places.length > 0 && (
           <section className="mt-6">
-            <h3 className="text-[13px] font-semibold text-sub">{pin.city}에서 찍은 사진</h3>
+            <h3 className="text-[13px] font-semibold text-sub">
+              {placeName ? `${placeName}에서 찍은 사진` : `${pin.city}에서 찍은 사진`}
+            </h3>
             <ul className="mt-3 flex flex-col gap-2.5">
-              {pin.places.map((place) => {
+              {places.map((place) => {
                 const room = pin.rooms.find((r) => r.roomId === place.roomId)
                 return (
                   <li key={place.photoId}>
@@ -216,7 +225,8 @@ function ZoomableMap({
 }: {
   pins: CityPin[]
   activeCity?: string
-  onOpenCity: (pin: CityPin) => void
+  /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
+  onOpenCity: (pin: CityPin, placeName?: string) => void
   children?: ReactNode
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -380,7 +390,7 @@ function ZoomableMap({
             <button
               key={place.photoId}
               type="button"
-              onClick={() => onOpenCity(pin)}
+              onClick={() => onOpenCity(pin, place.placeName)}
               aria-label={`${place.placeName} (${pin.city})`}
               style={pos}
               className="absolute flex -translate-x-1/2 -translate-y-full flex-col items-center"
@@ -529,6 +539,12 @@ function RecordMapPage() {
   const [allPins, setPins] = useState<CityPin[] | null>(null)
   const [error, setError] = useState(false)
   const [openCity, setOpenCity] = useState<CityPin | null>(null)
+  // 확대해서 세부 장소 핀을 눌렀으면 그 장소 이름 (그 장소 사진만 보여준다)
+  const [openPlace, setOpenPlace] = useState<string | undefined>()
+  const openSheet = (pin: CityPin, placeName?: string) => {
+    setOpenCity(pin)
+    setOpenPlace(placeName)
+  }
   const [roomId, setRoomId] = useState(ALL_ROOMS)
   // 카카오 지도를 못 불러오면(키·콘솔 설정 문제) 시안 그림 지도로 보여준다
   const [kakaoFailed, setKakaoFailed] = useState(false)
@@ -570,7 +586,7 @@ function RecordMapPage() {
           pins={pins ?? []}
           activeCity={openCity?.city}
           cityFlower={cityFlower}
-          onOpenCity={setOpenCity}
+          onOpenCity={openSheet}
           onFail={() => setKakaoFailed(true)}
         >
         {pins?.length === 0 && (
@@ -587,7 +603,7 @@ function RecordMapPage() {
         )}
         </KakaoRecordMap>
       ) : (
-        <ZoomableMap pins={pins ?? []} activeCity={openCity?.city} onOpenCity={setOpenCity}>
+        <ZoomableMap pins={pins ?? []} activeCity={openCity?.city} onOpenCity={openSheet}>
         {pins?.length === 0 && (
           <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
             아직 지도에 핀 꽃이 없어요.
@@ -607,7 +623,7 @@ function RecordMapPage() {
         도시를 누르면 AI가 그곳의 추억을 한 줄로 들려줘요
       </p>
 
-      {openCity && <CitySheet pin={openCity} onClose={() => setOpenCity(null)} />}
+      {openCity && <CitySheet pin={openCity} placeName={openPlace} onClose={() => setOpenCity(null)} />}
       <BottomTabs />
     </main>
   )

@@ -7,6 +7,7 @@ import {
   getRoomHome,
   leaveRoom,
   ROOM_CAPACITY,
+  kickMember,
   rotateInviteToken,
   transferHost,
   updateMyNickname,
@@ -275,7 +276,11 @@ function ConfirmDialog({
       setError(
         err instanceof ApiError && err.status === 409
           ? '결제가 처리 중이에요. 잠시 후 다시 시도해 주세요'
-          : '잠시 후 다시 시도해 주세요',
+          : err instanceof ApiError && (err.status === 404 || err.status === 405)
+            ? '아직 이 기능을 쓸 수 없어요. 서버 준비가 끝나면 다시 시도해 주세요'
+            : err instanceof ApiError && err.status < 500 && err.message
+              ? err.message
+              : '잠시 후 다시 시도해 주세요',
       )
       setBusy(false)
     }
@@ -313,7 +318,7 @@ function ConfirmDialog({
   )
 }
 
-type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom' | { transferTo: Member }
+type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom' | { transferTo: Member } | { kick: Member }
 
 /** 모임방 설정: 모임 정보, 초대 링크, 함께하는 사람, 약관, 나가기 */
 function RoomSettingsPage() {
@@ -430,6 +435,13 @@ function RoomSettingsPage() {
         m.id === target.id ? { ...m, role: 'HOST' } : m.id === me.id ? { ...m, role: 'MEMBER' } : m,
       ),
     })
+    setConfirming(null)
+  }
+
+  // 강퇴: 서버에서 내보내고 목록에서 뺀다 (내보낸 사람 화면은 member.left 이벤트로 방에서 나가게 된다)
+  const handleKick = async (target: Member) => {
+    await kickMember(room.id, target.id)
+    setHome({ ...home, members: members.filter((m) => m.id !== target.id) })
     setConfirming(null)
   }
 
@@ -581,6 +593,16 @@ function RoomSettingsPage() {
                     방장 넘기기
                   </button>
                 )}
+                {/* 방장만 다른 멤버를 내보낼 수 있다 */}
+                {isHost && m.id !== me.id && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirming({ kick: m })}
+                    className={`${EDIT_BUTTON_CLASS} text-point`}
+                  >
+                    내보내기
+                  </button>
+                )}
               </span>
             </li>
           ))}
@@ -623,7 +645,22 @@ function RoomSettingsPage() {
           onSave={handleSave}
         />
       )}
-      {typeof confirming === 'object' && confirming !== null && (
+      {typeof confirming === 'object' && confirming !== null && 'kick' in confirming && (
+        <ConfirmDialog
+          title={`${confirming.kick.nickname}님을 내보낼까요?`}
+          description={
+            <>
+              내보내면 이 방에 다시 들어올 수 없어요.
+              <br />
+              지금까지 남긴 사진과 이야기는 방에 그대로 남아요.
+            </>
+          }
+          confirmLabel="내보내기"
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => handleKick(confirming.kick)}
+        />
+      )}
+      {typeof confirming === 'object' && confirming !== null && 'transferTo' in confirming && (
         <ConfirmDialog
           title={`${confirming.transferTo.nickname}님에게 방장을 넘길까요?`}
           description={

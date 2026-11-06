@@ -454,7 +454,13 @@ function RoomHomePage() {
 
   // 친구가 들어오거나 이야기를 남기면 홈을 다시 불러온다. 다시 불러오다 실패하면 지금 화면을 그대로 둔다
   useRoomLiveUpdates(roomId, token, () => {
-    if (token !== undefined) getRoomHome(roomId, token).then(setHome).catch(() => {})
+    if (token === undefined) return
+    getRoomHome(roomId, token)
+      .then(setHome)
+      .catch((e: unknown) => {
+        // 방장이 나를 내보냈거나 방이 지워졌으면 더 볼 수 없어서 안내한다
+        if (e instanceof ApiError && (e.status === 403 || e.status === 404)) setError('이 방에 더 들어갈 수 없어요')
+      })
   })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />

@@ -193,10 +193,12 @@ function RecentPhotosCarousel({
                   </p>
                 </div>
                 {/* 친구 사진은 그 사진부터 덧붙이기 화면을 연다. 내 사진은 덧붙일 수 없어 버튼이 없다 */}
-                {!own && (
+                {/* 내 사진도 덧붙일 수 있어서 모든 사진에 보러 가기 버튼을 둔다 */}
+                {(
+
                   <button
                     type="button"
-                    aria-label={`${uploader.nickname}님 사진 보러 가기`}
+                    aria-label={own ? '내 사진 보러 가기' : `${uploader.nickname}님 사진 보러 가기`}
                     onClick={() => {
                       markSeen(card)
                       navigate(paths.roomCirculation(roomId, card.photo.id))

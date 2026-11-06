@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import type { ChatCitation, ChatSource } from '../api/recordMap'
 import { getRoomHome } from '../api/rooms'
 import type { RoomStatus } from '../api/types'
-import { getMe } from '../lib/auth'
 import { canAsk } from '../api/chatQuota'
 import { refreshChatQuota, resetChat, sendChat, useChat, type ChatLine } from '../lib/chatStore'
 import { FLOWER_COLOR } from '../lib/flower'
@@ -89,7 +88,7 @@ function ChevronDown({ open }: { open: boolean }) {
  * 답의 근거가 된 사진 카드. 접혀 있을 땐 썸네일·방 이름만, 펼치면 사진을 크게 보여주고
  * 그 사진에 바로 덧붙이거나 모임방으로 갈 수 있다
  */
-function SourceCard({ source, myUserId }: { source: ChatSource; myUserId: string | null }) {
+function SourceCard({ source }: { source: ChatSource }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   // 두루마리가 완성된 방이면 덧붙이기 대신 두루마리 보기·답가로 보낸다. 펼칠 때 방 상태를 확인한다
@@ -108,8 +107,6 @@ function SourceCard({ source, myUserId }: { source: ChatSource; myUserId: string
   const completed = status === 'GROWING'
   const photo = source.photo
   const owner = photo?.uploader?.nickname
-  // 덧붙이기는 친구 사진에만 할 수 있다
-  const isMine = Boolean(myUserId && photo?.uploader?.userId === myUserId)
   const thumb = (className: string) =>
     photo?.imageUrl ? (
       <img src={photo.imageUrl} alt={owner ? `${owner}의 사진` : '사진'} className={`${className} object-cover`} />
@@ -180,11 +177,7 @@ function SourceCard({ source, myUserId }: { source: ChatSource; myUserId: string
                 >
                   모임방 가기
                 </button>
-                {isMine ? (
-                  <span className="flex h-10 items-center justify-center text-center text-[11px] leading-4 text-muted">
-                    내가 올린 사진이에요
-                  </span>
-                ) : photo ? (
+                {photo ? (
                   <button
                     type="button"
                     // 답을 보고 떠오른 이야기를 바로 이 사진에 덧붙인다
@@ -213,11 +206,9 @@ const FOLLOW_UP_OUTCOMES = ['SMALL_TALK', 'OUT_OF_SCOPE', 'INSUFFICIENT', 'INVAL
 
 function DuruBubble({
   line,
-  myUserId,
   onAsk,
 }: {
   line: ChatLine
-  myUserId: string | null
   onAsk: (question: string) => void
 }) {
   const citations = line.citations ?? []
@@ -242,7 +233,7 @@ function DuruBubble({
         {sources.length > 0 && (
           <div className="mt-2 flex flex-col gap-2">
             {sources.map((s) => (
-              <SourceCard key={sourceKey(s)} source={s} myUserId={myUserId} />
+              <SourceCard key={sourceKey(s)} source={s} />
             ))}
           </div>
         )}
@@ -304,13 +295,6 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
   }, [])
   const outOfQuestions = !canAsk(quota)
   const [roomCount] = useState(() => listSavedRoomIds().length)
-  // 내 사진에는 덧붙이기 버튼 대신 안내를 보여주려고 내 계정 id를 알아 둔다
-  const [myUserId, setMyUserId] = useState<string | null>(null)
-  useEffect(() => {
-    getMe()
-      .then((me) => setMyUserId(me?.id ?? null))
-      .catch(() => {})
-  }, [])
   const [input, setInput] = useState('')
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -456,7 +440,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
               </li>
             ) : (
               <li key={i}>
-                <DuruBubble line={line} myUserId={myUserId} onAsk={send} />
+                <DuruBubble line={line} onAsk={send} />
               </li>
             ),
           )}
