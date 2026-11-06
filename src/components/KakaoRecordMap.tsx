@@ -234,12 +234,12 @@ function KakaoRecordMap({
               aria-label={`${m.place.placeName} (${m.pin.city})`}
               className="flex flex-col items-center"
             >
-              <span className="flex max-w-[140px] items-center gap-1 rounded-full bg-surface py-0.5 pr-2 pl-1 text-[11px] font-semibold text-ink shadow-[0_2px_8px_rgba(42,38,35,0.2)]">
-                <Flower code={(m.place.uploader?.flowerCode as FlowerCode | undefined) ?? cityFlower(m.pin.city)} size={14} />
+              <span className="flex max-w-[180px] items-center gap-1.5 rounded-full bg-surface py-1.5 pr-3 pl-2 text-[14px] font-bold text-ink shadow-[0_2px_8px_rgba(42,38,35,0.2)]">
+                <Flower code={(m.place.uploader?.flowerCode as FlowerCode | undefined) ?? cityFlower(m.pin.city)} size={20} />
                 <span className="truncate">{m.place.placeName}</span>
-                {m.count > 1 && <span className="shrink-0 text-point">{m.count}</span>}
+                {m.count > 1 && <span className="shrink-0 text-[13px] text-point">{m.count}</span>}
               </span>
-              <span className="mt-0.5 size-2 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
+              <span className="mt-1 size-3 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
             </button>
           ),
           m.el,
