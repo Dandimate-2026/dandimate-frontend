@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { CityPin, MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
+import { DAEGU_GYEONGBUK_RINGS } from '../lib/daeguGyeongbukShape'
 import Flower from './Flower'
 
 // 카카오 지도 SDK (카카오톡 공유와 같은 JavaScript 키). 카카오 콘솔에서 "카카오맵" 사용 설정이 켜져 있어야 한다
@@ -33,6 +34,16 @@ interface KakaoMaps {
   load: (callback: () => void) => void
   LatLng: new (lat: number, lng: number) => LatLng
   Map: new (el: HTMLElement, options: { center: LatLng; level: number }) => KakaoMap
+  Polygon: new (options: {
+    map?: KakaoMap
+    path: LatLng[][]
+    strokeWeight?: number
+    strokeColor?: string
+    strokeOpacity?: number
+    fillColor?: string
+    fillOpacity?: number
+    zIndex?: number
+  }) => KakaoOverlay
   CustomOverlay: new (options: { position: LatLng; content: HTMLElement; yAnchor?: number; xAnchor?: number; zIndex?: number }) => KakaoOverlay
   event: { addListener: (target: KakaoMap, type: string, handler: () => void) => void }
 }
@@ -108,6 +119,24 @@ function KakaoRecordMap({
           const lat = Math.min(BOUNDS.maxLat, Math.max(BOUNDS.minLat, c.getLat()))
           const lng = Math.min(BOUNDS.maxLng, Math.max(BOUNDS.minLng, c.getLng()))
           if (lat !== c.getLat() || lng !== c.getLng()) map.setCenter(new km.LatLng(lat, lng))
+        })
+        // 대구·경북 밖은 바다색으로 덮어서 대구·경북만 보이게 한다 (큰 사각형에 대구·경북 모양으로 구멍을 낸다)
+        const toPath = (ring: [number, number][]) => ring.map(([lat, lng]) => new km.LatLng(lat, lng))
+        const world: [number, number][] = [
+          [30, 120],
+          [30, 140],
+          [45, 140],
+          [45, 120],
+        ]
+        new km.Polygon({
+          map,
+          path: [toPath(world), ...DAEGU_GYEONGBUK_RINGS.map(toPath)],
+          strokeWeight: 2,
+          strokeColor: '#c9bfb2',
+          strokeOpacity: 1,
+          fillColor: '#e9eeec',
+          fillOpacity: 1,
+          zIndex: 1,
         })
         mapRef.current = map
         setMaps(km)
