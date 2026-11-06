@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { getCirculation } from '../api/memories'
 import type { CirculationCard } from '../api/types'
+import { getSeenStories, saveSeenStories } from '../lib/seenStories'
 import { paths } from '../routes/paths'
 import Flower from './Flower'
 
@@ -43,11 +44,34 @@ function ArrowIcon() {
  * 모임방 홈: 친구들이 올린 사진을 한 줄 카드로 보여주고, 여러 장이면 옆으로 넘긴다.
  * version이 바뀌면(홈을 다시 불러오면 = 실시간 이벤트가 오면) 같이 다시 불러온다
  */
-function RecentPhotosCarousel({ roomId, token, version }: { roomId: string; token: string; version: unknown }) {
+const ACTIVITY_SHOW_MS = 5000
+
+function RecentPhotosCarousel({
+  roomId,
+  token,
+  version,
+  myMemberId,
+}: {
+  roomId: string
+  token: string
+  version: unknown
+  myMemberId: string
+}) {
   const navigate = useNavigate()
   const [cards, setCards] = useState<CirculationCard[]>([])
   const [page, setPage] = useState(0)
   const trackRef = useRef<HTMLUListElement>(null)
+  // 사진마다 마지막으로 본 이야기 수. 처음 들어온 방이면 지금 수를 기준으로 삼아 배지를 띄우지 않는다
+  const [seen, setSeen] = useState<Record<string, number> | null>(() => getSeenStories(roomId))
+  // 화면을 보는 동안 새로 붙은 이야기 한 줄 안내 ("방금 민지님이 서연님 사진에 덧붙였어요")
+  const [activity, setActivity] = useState<string | null>(null)
+  const knownEntries = useRef<Set<string> | null>(null)
+
+  useEffect(() => {
+    if (!activity) return
+    const timer = window.setTimeout(() => setActivity(null), ACTIVITY_SHOW_MS)
+    return () => window.clearTimeout(timer)
+  }, [activity])
 
   useEffect(() => {
     let active = true
@@ -59,14 +83,46 @@ function RecentPhotosCarousel({ roomId, token, version }: { roomId: string; toke
           (b.firstEntry?.confirmedAt ?? '').localeCompare(a.firstEntry?.confirmedAt ?? ''),
         )
         setCards(sorted)
+
+        // 처음 불러올 때는 지금 있는 이야기를 다 본 것으로 기억해 둔다
+        setSeen((prev) => {
+          if (prev) return prev
+          const base = Object.fromEntries(sorted.map((c) => [c.photo.id, c.otherEntries.length]))
+          saveSeenStories(roomId, base)
+          return base
+        })
+
+        // 화면을 보는 동안 친구가 새로 덧붙였으면 한 줄로 알린다 (내가 쓴 건 빼고)
+        const fresh = sorted.flatMap((c) =>
+          c.otherEntries
+            .filter((e) => knownEntries.current && !knownEntries.current.has(e.id) && e.member.id !== myMemberId)
+            .map((e) => ({ entry: e, card: c })),
+        )
+        knownEntries.current = new Set(sorted.flatMap((c) => c.otherEntries.map((e) => e.id)))
+        const latest = fresh.sort((a, b) => b.entry.confirmedAt.localeCompare(a.entry.confirmedAt))[0]
+        if (latest) {
+          const owner = latest.card.photo.uploader
+          const whose = owner.id === myMemberId ? '내' : `${owner.nickname}님`
+          setActivity(`방금 ${latest.entry.member.nickname}님이 ${whose} 사진에 이야기를 붙였어요`)
+        }
       })
       .catch(() => {})
     return () => {
       active = false
     }
-  }, [roomId, token, version])
+  }, [roomId, token, version, myMemberId])
 
   if (cards.length === 0) return null
+
+  // 본 것으로 표시: 그 사진의 이야기 수를 지금 수로 맞춘다
+  const markSeen = (card: CirculationCard) => {
+    const next = { ...(seen ?? {}), [card.photo.id]: card.otherEntries.length }
+    setSeen(next)
+    saveSeenStories(roomId, next)
+  }
+  const newCount = (card: CirculationCard) =>
+    seen ? Math.max(0, card.otherEntries.length - (seen[card.photo.id] ?? 0)) : 0
+  const totalNew = cards.reduce((sum, c) => sum + newCount(c), 0)
 
   const goTo = (index: number) => {
     const track = trackRef.current
@@ -76,6 +132,16 @@ function RecentPhotosCarousel({ roomId, token, version }: { roomId: string; toke
 
   return (
     <section className="mt-3" aria-label="친구들이 올린 사진">
+      {/* 새 이야기가 붙은 순간 잠깐 보여주는 한 줄, 그 외에는 새 이야기 총 개수 */}
+      {(activity || totalNew > 0) && (
+        <p className="mb-1.5 flex items-center gap-1.5 px-1 text-[12px] font-semibold text-point" role="status" aria-live="polite">
+          <span className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-point opacity-60" />
+            <span className="relative inline-flex size-2 rounded-full bg-point" />
+          </span>
+          {activity ?? `새 이야기 ${totalNew}개가 붙었어요`}
+        </p>
+      )}
       <ul
         ref={trackRef}
         onScroll={(e) => {
@@ -88,22 +154,34 @@ function RecentPhotosCarousel({ roomId, token, version }: { roomId: string; toke
           const own = card.myResponse.status === 'OWN_PHOTO'
           const line = statusLine(card)
           const uploader = card.photo.uploader
+          const fresh = newCount(card)
           return (
             <li key={card.photo.id} className="w-full shrink-0 snap-center px-px">
               <div
+                // 내 사진은 보러 갈 곳이 없어서, 카드를 누르면 새 이야기를 본 것으로 표시한다
+                onClick={own && fresh > 0 ? () => markSeen(card) : undefined}
                 className={`flex items-center gap-3 rounded-[18px] border bg-surface p-2.5 ${
-                  line.todo ? 'border-point' : 'border-line'
+                  line.todo || fresh > 0 ? 'border-point' : 'border-line'
                 }`}
               >
-                <img src={card.photo.imageUrl} alt={`${uploader.nickname}님의 사진`} className="size-14 shrink-0 rounded-[12px] bg-bg object-cover" />
+                <span className="relative shrink-0">
+                  <img src={card.photo.imageUrl} alt={`${uploader.nickname}님의 사진`} className="size-14 rounded-[12px] bg-bg object-cover" />
+                  {fresh > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-point px-1.5 text-[10px] font-bold text-surface ring-2 ring-surface">
+                      N{fresh > 1 ? ` ${fresh}` : ''}
+                    </span>
+                  )}
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1 truncate text-[14px]">
                     <Flower code={uploader.flowerCode} size={16} />
                     <b className="font-bold">{own ? '내가' : uploader.nickname}</b>
                     {own ? ' 올렸어요' : ' 님이 올렸어요'}
                   </p>
-                  <p className={`mt-0.5 truncate text-[12px] ${line.todo ? 'font-semibold text-point' : 'text-sub'}`}>
-                    {[timeAgo(card.firstEntry?.confirmedAt), line.text].filter(Boolean).join(' · ')}
+                  <p className={`mt-0.5 truncate text-[12px] ${line.todo || fresh > 0 ? 'font-semibold text-point' : 'text-sub'}`}>
+                    {fresh > 0
+                      ? `새 이야기 ${fresh}개 · ${line.text}`
+                      : [timeAgo(card.firstEntry?.confirmedAt), line.text].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 {/* 친구 사진은 그 사진부터 덧붙이기 화면을 연다. 내 사진은 덧붙일 수 없어 버튼이 없다 */}
@@ -111,7 +189,10 @@ function RecentPhotosCarousel({ roomId, token, version }: { roomId: string; toke
                   <button
                     type="button"
                     aria-label={`${uploader.nickname}님 사진 보러 가기`}
-                    onClick={() => navigate(paths.roomCirculation(roomId, card.photo.id))}
+                    onClick={() => {
+                      markSeen(card)
+                      navigate(paths.roomCirculation(roomId, card.photo.id))
+                    }}
                     className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink text-surface active:opacity-80"
                   >
                     <ArrowIcon />

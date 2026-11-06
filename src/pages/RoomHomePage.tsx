@@ -513,7 +513,7 @@ ${url}`).catch(() => {})
         </section>
 
         {/* 돌려보는 동안: 친구들이 올린 사진을 한 줄씩, 여러 장이면 옆으로 넘긴다 */}
-        {room.status === 'CIRCULATING' && <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} />}
+        {room.status === 'CIRCULATING' && <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} myMemberId={me.id} />}
 
         {!allDone && myTodo.topAskback && (
           <section className="mt-4 rounded-xl bg-[#f6e3ea] px-3.5 pt-3.5 pb-4">
