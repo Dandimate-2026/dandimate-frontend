@@ -6,6 +6,7 @@ import type { RoomHome, RoomPlanType, RoomStatus } from '../api/types'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
 import ChatFab from '../components/ChatFab'
 import ChatSheet from '../components/ChatSheet'
+import PushBanner from '../components/PushBanner'
 import Flower from '../components/Flower'
 import { formatDateSpaced } from '../lib/date'
 import { logout } from '../lib/auth'
@@ -264,6 +265,8 @@ function RoomListPage() {
           <section className="mt-[clamp(28px,6dvh,48px)]">
           <h1 className="px-1.5 text-[26px] leading-8 font-bold">내 모임방</h1>
           <p className="mt-2 px-1.5 text-[11px] text-sub">할 일이 있는 방이 먼저 보여요</p>
+          {/* 웹 푸시 알림 켜기 (아이폰은 홈 화면 추가 안내) */}
+          <PushBanner />
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
               {ongoing.map((h) => (

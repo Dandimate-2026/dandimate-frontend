@@ -36,6 +36,8 @@ jobs:
           VITE_TOSS_CLIENT_KEY: ${{ vars.VITE_TOSS_CLIENT_KEY }}
           # 카카오톡 공유창용 JavaScript 키 (도메인이 묶인 공개 키라 저장소 변수에 둔다). 비어 있으면 기기 공유 시트로 대신 연다
           VITE_KAKAO_JS_KEY: ${{ vars.VITE_KAKAO_JS_KEY }}
+          # 웹 푸시 VAPID 공개키 (공개 키라 저장소 변수에 둔다). 서버가 공개키 API를 주면 비워 둬도 된다
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
         run: |
           npm ci
           npm run build
