@@ -25,3 +25,15 @@ export function searchPlaces(query: string) {
   }
   return request<Place[]>(`/places/search?query=${encodeURIComponent(query)}`)
 }
+
+/**
+ * 사진에 장소를 붙인다 (사진을 올린 본인만, 처리가 끝난 사진만).
+ * 주소·좌표까지 보내야 기록 지도에 나온다. 도시는 서버가 주소에서 정한다
+ */
+export function setPhotoLocation(photoId: string, place: Place) {
+  if (USE_MOCK) return Promise.resolve()
+  return request<unknown>(`/photos/${photoId}/location`, {
+    method: 'PUT',
+    body: { placeName: place.placeName, address: place.address, latitude: place.latitude, longitude: place.longitude },
+  })
+}

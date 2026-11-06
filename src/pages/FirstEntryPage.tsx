@@ -3,12 +3,15 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { createEntry, skipFirstEntry, transcribe } from '../api/entries'
 import { USE_MOCK } from '../api/mock'
+import { setPhotoLocation, type Place } from '../api/places'
 import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon } from '../components/entry/EntryIcons'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
+import PlaceSheet from '../components/PlaceSheet'
 import { VoiceLimitSheet } from '../components/PlanLimitSheet'
 import { formatVoiceLimit, isLimitError, usePlanLimitAction, useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
 import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
+import { addRecentPlace, getRecentPlaces } from '../lib/roomExtras'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
@@ -51,6 +54,11 @@ function FirstEntryPage() {
   const [saving, setSaving] = useState(false)
   // 방 전체 말하기 시간을 다 썼을 때 띄우는 시트
   const [voiceLimitOpen, setVoiceLimitOpen] = useState(false)
+  // 사진마다 먼저 장소를 묻는다. 고른 장소 또는 'skipped'(건너뜀). 아직 안 물었으면 없음
+  const [places, setPlaces] = useState<Record<number, Place | 'skipped'>>({})
+  const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
+  const [confirmSkipPlace, setConfirmSkipPlace] = useState(false)
+  const [savingPlace, setSavingPlace] = useState(false)
   const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const quota = home?.room.quota
   const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setError)
@@ -91,7 +99,30 @@ function FirstEntryPage() {
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (!photo) return <NotFoundPage message="한마디를 남길 사진이 없어요" />
 
+  const placeChoice = places[index]
+
+  const handlePickPlace = async (place: Place) => {
+    setPlaceSheetOpen(false)
+    setSavingPlace(true)
+    setError(null)
+    try {
+      await setPhotoLocation(photo.photoId, place)
+      setPlaces((prev) => ({ ...prev, [index]: place }))
+      addRecentPlace(place.city)
+    } catch {
+      setError('장소를 저장하지 못했어요. 다시 골라 주세요')
+    } finally {
+      setSavingPlace(false)
+    }
+  }
+
+  const skipPlace = () => {
+    setConfirmSkipPlace(false)
+    setPlaces((prev) => ({ ...prev, [index]: 'skipped' }))
+  }
+
   const resetForNextPhoto = () => {
+    setConfirmSkipPlace(false)
     setStep('idle')
     setTranscript('')
     setDraft(null)
@@ -190,7 +221,81 @@ function FirstEntryPage() {
         )}
       </div>
 
-      {showAnswerCard ? (
+      {/* 장소를 고른 뒤에는 사진 아래에 작게 보여주고 다시 바꿀 수 있다 */}
+      {placeChoice && (
+        <button
+          type="button"
+          onClick={() => setPlaceSheetOpen(true)}
+          className="mt-2.5 flex items-center gap-1.5 self-start rounded-full bg-surface px-3 py-1.5 text-[12px] active:opacity-80"
+        >
+          {placeChoice === 'skipped' ? (
+            <span className="text-sub">📍 장소 없음 · 기록 지도에 표시되지 않아요</span>
+          ) : (
+            <span>
+              📍 <b className="font-semibold">{placeChoice.placeName}</b>
+            </span>
+          )}
+          <span className="font-semibold text-point">{placeChoice === 'skipped' ? '추가 ›' : '바꾸기 ›'}</span>
+        </button>
+      )}
+
+      {!placeChoice ? (
+        // 1단계: 이 사진을 찍은 곳. 건너뛸 수 있지만 그러면 기록 지도에 나오지 않는다고 알려 준다
+        <section className="flex flex-1 flex-col items-center justify-center pt-6 text-center">
+          <h2 className="text-[17px] font-bold">이 사진, 어디서 찍었어요?</h2>
+          <p className="mt-1.5 text-[12px] text-sub">고른 장소는 기록 지도에 꽃으로 피어요</p>
+          {error && (
+            <p className="mt-3 text-[12px] text-point" role="alert">
+              {error}
+            </p>
+          )}
+          {confirmSkipPlace ? (
+            <div className="mt-5 w-full rounded-[20px] bg-surface px-4 py-4">
+              <p className="text-[14px] font-semibold">장소 없이 넘어갈까요?</p>
+              <p className="mt-1 text-[12px] leading-5 text-sub">
+                건너뛰면 기록 지도에서 어디를 갔는지 적용되지 않아요
+              </p>
+              <div className="mt-3.5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={skipPlace}
+                  className="h-11 rounded-full border border-line bg-surface text-[14px] active:opacity-80"
+                >
+                  그래도 건너뛰기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmSkipPlace(false)
+                    setPlaceSheetOpen(true)
+                  }}
+                  className="h-11 rounded-full bg-ink text-[14px] font-semibold text-surface active:opacity-80"
+                >
+                  장소 고르기
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                disabled={savingPlace}
+                onClick={() => setPlaceSheetOpen(true)}
+                className="mt-6 h-[52px] w-full rounded-full bg-ink text-[15px] font-semibold text-surface active:opacity-80 disabled:opacity-50"
+              >
+                {savingPlace ? '저장하는 중…' : '📍 장소 고르기'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmSkipPlace(true)}
+                className="mt-3 text-[13px] text-sub underline"
+              >
+                건너뛰기
+              </button>
+            </>
+          )}
+        </section>
+      ) : showAnswerCard ? (
         <section className="flex flex-1 flex-col pt-8">
           <h2 className="px-[11px] text-[17px] font-bold">이 사진, 왜 골랐어요?</h2>
           <AnswerForm
@@ -222,6 +327,16 @@ function FirstEntryPage() {
             recorder.cancel()
             setError(null)
             setStep('text')
+          }}
+        />
+      )}
+      {placeSheetOpen && (
+        <PlaceSheet
+          initial={placeChoice && placeChoice !== 'skipped' ? placeChoice.city : undefined}
+          recent={getRecentPlaces()}
+          onClose={() => setPlaceSheetOpen(false)}
+          onSelect={(_, detail) => {
+            if (detail) void handlePickPlace(detail)
           }}
         />
       )}
