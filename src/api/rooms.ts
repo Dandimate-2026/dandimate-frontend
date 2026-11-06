@@ -113,7 +113,7 @@ export function closeRoom(roomId: string, token: string) {
 export function updateRoom(
   roomId: string,
   /** capacity: 방장이 인원을 바꾼다 (지금 들어온 인원 이상 ~ 8명). 백엔드 반영 전에는 서버가 무시하거나 거절할 수 있다 */
-  body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number },
+  body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number; coverImageUrl?: string },
   token: string,
 ) {
   if (USE_MOCK) return Promise.resolve()

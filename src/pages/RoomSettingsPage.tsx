@@ -16,6 +16,7 @@ import type { Member, RoomHome } from '../api/types'
 import Card from '../components/Card'
 import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
+import { coverSrc, uploadRoomCover } from '../api/roomCovers'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
@@ -79,6 +80,18 @@ const PILL_BUTTON_CLASS = 'h-[52px] rounded-full text-[15px] font-semibold activ
 const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
 
+/** 방 만든 시각 기준 24~72시간(그리고 지금 이후)을 날짜 입력칸 범위로 바꾼다. 만든 시각을 모르면 지금 이후만 */
+function deadlineRange(createdAt?: string) {
+  const now = Date.now()
+  if (!createdAt) return { min: toLocalDateTimeInput(new Date(now).toISOString()) }
+  const created = new Date(createdAt).getTime()
+  const hour = 60 * 60 * 1000
+  return {
+    min: toLocalDateTimeInput(new Date(Math.max(now, created + 24 * hour)).toISOString()),
+    max: toLocalDateTimeInput(new Date(created + 72 * hour).toISOString()),
+  }
+}
+
 type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname' | 'capacity'
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
@@ -94,6 +107,7 @@ function EditDialog({
   target,
   initialValue,
   minCapacity = 1,
+  deadlineRange,
   onCancel,
   onSave,
 }: {
@@ -101,6 +115,8 @@ function EditDialog({
   initialValue: string
   /** 인원 바꾸기: 지금 들어온 인원보다 적게는 줄일 수 없다 */
   minCapacity?: number
+  /** 첫 두루마리 시각으로 고를 수 있는 범위 (방을 만든 뒤 24~72시간, 지금 이후) */
+  deadlineRange?: { min: string; max?: string }
   onCancel: () => void
   onSave: (value: string) => Promise<void>
 }) {
@@ -190,7 +206,8 @@ function EditDialog({
             <input
               aria-label={title}
               type={target === 'deadlineAt' ? 'datetime-local' : 'date'}
-              min={target === 'deadlineAt' ? toLocalDateTimeInput(new Date().toISOString()) : undefined}
+              min={target === 'deadlineAt' ? (deadlineRange?.min ?? toLocalDateTimeInput(new Date().toISOString())) : undefined}
+              max={target === 'deadlineAt' ? deadlineRange?.max : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="h-[52px] w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
@@ -310,7 +327,7 @@ function RoomSettingsPage() {
   // 링크를 새로 만들면 화면의 링크도 바로 바꾼다
   const [inviteToken, setInviteToken] = useState(session?.inviteToken)
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
-  // 대표 사진은 서버에 칸이 없어 이 기기에 방마다 저장해 둔 값을 쓴다 (장소는 사진마다 올릴 때 정한다)
+  // 대표 사진은 서버 값(coverImageUrl)을 먼저 쓰고, 없으면 이 기기에 남겨 둔 미리보기를 쓴다
   const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
   const [photoError, setPhotoError] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -324,12 +341,24 @@ function RoomSettingsPage() {
     setPlaceCover(next)
   }
 
+  // 대표 사진: 서버에 올리고 방 정보에 저장한다. 이 기기에도 미리보기를 남겨 둔다
   const handleCoverPhoto = async (file?: File) => {
-    if (!file) return
+    if (!file || !home || !session) return
+    let preview: string
     try {
-      updatePlaceCover({ ...placeCover, coverPhoto: await shrinkImage(file) })
+      preview = await shrinkImage(file, 960)
     } catch {
       setPhotoError('사진을 열 수 없어요. 다른 사진을 골라 주세요')
+      return
+    }
+    try {
+      const blob = await (await fetch(preview)).blob()
+      const cover = await uploadRoomCover(blob, preview)
+      await updateRoom(home.room.id, { coverImageUrl: cover.imageUrl }, session.memberAccessToken)
+      setHome({ ...home, room: { ...home.room, coverImageUrl: cover.imageUrl } })
+      updatePlaceCover({ ...placeCover, coverPhoto: preview })
+    } catch {
+      setPhotoError('대표 사진을 바꾸지 못했어요. 다시 시도해 주세요')
     }
   }
 
@@ -418,6 +447,7 @@ function RoomSettingsPage() {
   }
 
   const isHost = me.role === 'HOST'
+  const coverImage = coverSrc(room.coverImageUrl) ?? placeCover.coverPhoto
   const canChangeDeadline = room.status === 'COLLECTING' || room.status === 'CIRCULATING'
 
   return (
@@ -448,18 +478,26 @@ function RoomSettingsPage() {
           <InfoRow label="대표 사진" editable={isHost} onEdit={() => photoInputRef.current?.click()}>
             {/* 대표 사진은 줄 안에서 작은 썸네일로 바로 보여준다 */}
             <span className="flex items-center gap-2">
-              {placeCover.coverPhoto ? (
-                <img src={placeCover.coverPhoto} alt="대표 사진" className="size-9 shrink-0 rounded-[10px] object-cover" />
+              {coverImage ? (
+                <img src={coverImage} alt="대표 사진" className="size-9 shrink-0 rounded-[10px] object-cover" />
               ) : (
                 <span className="size-9 shrink-0 rounded-[10px] border border-dashed border-line bg-bg" aria-hidden="true" />
               )}
-              {!placeCover.coverPhoto && <Empty>없어요</Empty>}
+              {!coverImage && <Empty>없어요</Empty>}
             </span>
           </InfoRow>
           {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
           {canChangeDeadline && (
-            <InfoRow label="첫 두루마리" editable={isHost} onEdit={() => setEditing('deadlineAt')}>
+            // 첫 두루마리 시각은 한 번만 바꿀 수 있어서, 이미 바꿨으면 변경 버튼 대신 안내를 둔다
+            <InfoRow
+              label="첫 두루마리"
+              editable={isHost && !room.deadlineChangedByHost}
+              onEdit={() => setEditing('deadlineAt')}
+            >
               {formatDateTime(room.deadlineAt)}
+              {isHost && room.deadlineChangedByHost && (
+                <span className="ml-1 text-[11px] text-muted">· 이미 한 번 바꿨어요</span>
+              )}
             </InfoRow>
           )}
         </ul>
@@ -514,13 +552,8 @@ function RoomSettingsPage() {
               단톡방에 보내기
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setConfirming('rotateInvite')}
-            className="mt-3 w-full text-center text-[11px] text-sub underline underline-offset-2 active:opacity-80"
-          >
-            링크 새로 만들기
-          </button>
+          {/* 초대 링크는 고정: 한 번 만든 링크를 계속 쓴다 (새로 만들기 없음) */}
+          <p className="mt-3 text-center text-[11px] text-sub">이 링크는 바뀌지 않아요. 언제든 같은 링크로 초대하세요</p>
         </Section>
       )}
 
@@ -585,6 +618,7 @@ function RoomSettingsPage() {
                     : me.nickname
           }
           minCapacity={members.length}
+          deadlineRange={deadlineRange(room.createdAt)}
           onCancel={() => setEditing(null)}
           onSave={handleSave}
         />

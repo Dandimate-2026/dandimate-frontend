@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { getMockRole, USE_MOCK } from '../api/mock'
-import { getMyRecordMap } from '../api/recordMap'
 import { getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomPlanType, RoomStatus } from '../api/types'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
@@ -10,6 +9,7 @@ import ChatSheet from '../components/ChatSheet'
 import Flower from '../components/Flower'
 import { formatDateSpaced } from '../lib/date'
 import { logout } from '../lib/auth'
+import { coverSrc } from '../api/roomCovers'
 import { getRoomPlaceCover } from '../lib/roomExtras'
 import { getRoomSession, listSavedRoomIds, saveRoomSession } from '../lib/session'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
@@ -84,10 +84,11 @@ function todoLine(home: RoomHome): { text: string; todo: boolean } | null {
   return { text: '친구들의 이야기를 기다리는 중이에요', todo: false }
 }
 
-function RoomCard({ home, meta, places = [] }: { home: RoomHome; meta: string; places?: string[] }) {
+function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
   const { room } = home
   const line = todoLine(home)
-  const cover = getRoomPlaceCover(room.id).coverPhoto
+  // 서버에 올린 대표 사진을 먼저, 없으면 이 기기에서 고른 미리보기
+  const cover = coverSrc(room.coverImageUrl) ?? getRoomPlaceCover(room.id).coverPhoto
   return (
     <li>
       <Link
@@ -130,13 +131,6 @@ function RoomCard({ home, meta, places = [] }: { home: RoomHome; meta: string; p
           </div>
           <p className="mt-[5px] truncate text-[16px] leading-5 font-semibold">{room.name}</p>
           <p className="mt-0.5 text-[11px] leading-4 text-sub">{meta}</p>
-          {/* 사진마다 검색으로 고른 장소들 */}
-          {places.length > 0 && (
-            <p className="mt-0.5 truncate text-[11px] leading-4 text-sub">
-              📍 {places.slice(0, 2).join(' · ')}
-              {places.length > 2 && ` 외 ${places.length - 2}곳`}
-            </p>
-          )}
           {line && <p className={`mt-[3px] text-[11px] leading-4 ${line.todo ? 'text-point' : 'text-sub'}`}>{line.text}</p>}
         </div>
       </Link>
@@ -148,25 +142,11 @@ function RoomCard({ home, meta, places = [] }: { home: RoomHome; meta: string; p
 function RoomListPage() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<RoomHome[] | null>(null)
-  // 방마다 사진에 붙인 장소 이름 (기록 지도 응답에서 방별로 모은다)
-  const [placesByRoom, setPlacesByRoom] = useState<Record<string, string[]>>({})
-  useEffect(() => {
-    getMyRecordMap()
-      .then((cities) => {
-        const byRoom: Record<string, string[]> = {}
-        cities.forEach((c) =>
-          c.places.forEach((p) => {
-            const list = (byRoom[p.roomId] ??= [])
-            if (!list.includes(p.placeName)) list.push(p.placeName)
-          }),
-        )
-        setPlacesByRoom(byRoom)
-      })
-      .catch(() => {})
-  }, [])
   const [loggingOut, setLoggingOut] = useState(false)
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
-  const [chatOpen, setChatOpen] = useState(false)
+  // 상점(크레딧 구매)에서 돌아오면 챗봇을 다시 열어 이어서 물어볼 수 있게 한다
+  const location = useLocation()
+  const [chatOpen, setChatOpen] = useState(() => Boolean((location.state as { openChat?: boolean } | null)?.openChat))
 
   useEffect(() => {
     // 로그인한 계정의 방 목록을 받아 방마다 홈 정보를 불러온다. 지워졌거나 더 들어갈 수 없는 방은 뺀다
@@ -287,7 +267,7 @@ function RoomListPage() {
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
               {ongoing.map((h) => (
-                <RoomCard key={h.room.id} home={h} meta={ongoingMeta(h)} places={placesByRoom[h.room.id]} />
+                <RoomCard key={h.room.id} home={h} meta={ongoingMeta(h)} />
               ))}
             </ul>
           )}
@@ -299,7 +279,7 @@ function RoomListPage() {
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             <ul className="mt-3 flex flex-col gap-[11px]">
               {done.map((h) => (
-                <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} places={placesByRoom[h.room.id]} />
+                <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} />
               ))}
             </ul>
           </section>
