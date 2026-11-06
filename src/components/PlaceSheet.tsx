@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { searchPlaces, type Place } from '../api/places'
+import { useSheetDrag } from '../hooks/useSheetDrag'
 import Button from './Button'
 
 const SEARCH_DELAY_MS = 300
@@ -118,6 +119,7 @@ function PlaceSheet({
   const [picked, setPicked] = useState<Place | null>(null)
   const [tab, setTab] = useState<'list' | 'search'>('list')
   const [query, setQuery] = useState('')
+  const sheetDrag = useSheetDrag(onClose)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -156,9 +158,12 @@ function PlaceSheet({
         aria-modal="true"
         aria-labelledby="place-sheet-title"
         onClick={(e) => e.stopPropagation()}
+        style={sheetDrag.sheetStyle}
         className="mx-auto flex max-h-[85dvh] w-full max-w-[430px] flex-col rounded-t-[28px] bg-surface px-5 pt-2.5 pb-6 text-ink"
       >
-        <span className="mx-auto h-1 w-9 rounded-full bg-line" aria-hidden="true" />
+        <div {...sheetDrag.handleProps} className="-my-2 flex w-full justify-center py-2" aria-hidden="true">
+          <span className="h-1 w-9 rounded-full bg-line" />
+        </div>
         <h2 id="place-sheet-title" className="mt-4 text-[20px] font-bold">
           {title}
         </h2>

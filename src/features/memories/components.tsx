@@ -6,6 +6,7 @@ import pink from '../../assets/memories/flower-pink.svg'
 import blue from '../../assets/memories/flower-blue.svg'
 import orange from '../../assets/memories/flower-orange.svg'
 import type { FlowerColor, MemoryStory } from './types'
+import { useSheetDrag } from '../../hooks/useSheetDrag'
 
 const FLOWERS = { pink, blue, orange }
 
@@ -96,11 +97,12 @@ export function BottomSheet({ title, children, onClose }: { title: string; child
     document.body.style.overflow = 'hidden'
     return () => { dialog?.close(); document.body.style.overflow = old; previous?.focus() }
   }, [])
-  return <dialog ref={dialogRef} className="memory-sheet" aria-label={title} onCancel={(event) => { event.preventDefault(); onClose() }} onClick={(event) => {
+  const sheetDrag = useSheetDrag(onClose)
+  return <dialog ref={dialogRef} className="memory-sheet" style={sheetDrag.sheetStyle} aria-label={title} onCancel={(event) => { event.preventDefault(); onClose() }} onClick={(event) => {
     if (event.target !== event.currentTarget) return
     const box = event.currentTarget.getBoundingClientRect()
     if (event.clientY < box.top || event.clientX < box.left || event.clientX > box.right) onClose()
-  }}><div className="memory-sheet-body"><button type="button" className="memory-sheet-close" onClick={onClose} aria-label="닫기"><span /></button><h2 tabIndex={-1}>{title}</h2>{children}</div></dialog>
+  }}><div className="memory-sheet-body"><button type="button" className="memory-sheet-close" {...sheetDrag.handleProps} onClick={onClose} aria-label="닫기"><span /></button><h2 tabIndex={-1}>{title}</h2>{children}</div></dialog>
 }
 
 export function ShareMemoryButton({ label = '단톡방에 알리기', roomName = '경주 1박2일', url }: { label?: string; roomName?: string; url?: string }) {

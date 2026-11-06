@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
+import { USE_MOCK } from '../api/mock'
 import {
   deleteRoom,
   getRoomHome,
   leaveRoom,
+  ROOM_CAPACITY,
   rotateInviteToken,
   transferHost,
   updateMyNickname,
@@ -15,6 +17,7 @@ import Card from '../components/Card'
 import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
 import { objectParticle } from '../lib/plans'
 import { getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
@@ -76,24 +79,28 @@ const PILL_BUTTON_CLASS = 'h-[52px] rounded-full text-[15px] font-semibold activ
 const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
 
-type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname'
+type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname' | 'capacity'
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
   roomName: { title: '모임 이름 바꾸기', maxLength: MAX_ROOM_NAME_LENGTH },
   meetingDate: { title: '모임 날짜 바꾸기' },
   deadlineAt: { title: '첫 두루마리 시각 바꾸기' },
   nickname: { title: '내 이름 바꾸기', maxLength: MAX_NICKNAME_LENGTH },
+  capacity: { title: '함께할 인원 바꾸기' },
 }
 
 /** 모임 이름·날짜나 내 이름을 바꾸는 창 */
 function EditDialog({
   target,
   initialValue,
+  minCapacity = 1,
   onCancel,
   onSave,
 }: {
   target: EditTarget
   initialValue: string
+  /** 인원 바꾸기: 지금 들어온 인원보다 적게는 줄일 수 없다 */
+  minCapacity?: number
   onCancel: () => void
   onSave: (value: string) => Promise<void>
 }) {
@@ -116,7 +123,9 @@ function EditDialog({
         err instanceof ApiError && err.status === 409 && target === 'nickname'
           ? '이 방에 같은 이름이 있어요. 다른 이름을 써 주세요'
           : // 첫 두루마리 시각은 서버가 범위·횟수를 확인하고 이유를 알려 준다 (예: 한 번만 바꿀 수 있어요)
-            err instanceof ApiError && target === 'deadlineAt' && err.status < 500 && err.message
+            err instanceof ApiError && (target === 'deadlineAt' || target === 'capacity') && err.status < 500 && err.message
+            ? err.message
+            : target === 'capacity' && err instanceof Error && !(err instanceof ApiError)
             ? err.message
             : '바꾸지 못했어요. 잠시 후 다시 시도해 주세요',
       )
@@ -138,7 +147,32 @@ function EditDialog({
           {title}
         </h2>
         <div className="relative mt-4">
-          {maxLength ? (
+          {target === 'capacity' ? (
+            // 1~8명 중 고른다. 지금 들어온 인원보다 적은 수는 고를 수 없다
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={title}>
+              {Array.from({ length: ROOM_CAPACITY }, (_, i) => i + 1).map((n) => {
+                const disabled = n < minCapacity
+                const selected = value === String(n)
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={disabled}
+                    onClick={() => setValue(String(n))}
+                    className={`h-11 rounded-[14px] border text-[14px] ${
+                      selected
+                        ? 'border-ink bg-ink font-semibold text-surface'
+                        : 'border-line bg-surface disabled:border-transparent disabled:bg-bg disabled:text-muted'
+                    }`}
+                  >
+                    {n}명
+                  </button>
+                )
+              })}
+            </div>
+          ) : maxLength ? (
             <>
               <input
                 aria-label={title}
@@ -163,6 +197,13 @@ function EditDialog({
             />
           )}
         </div>
+        {target === 'capacity' && (
+          <p className="mt-3 text-center text-[12px] leading-5 text-sub">
+            지금 들어온 {minCapacity}명보다 적게는 줄일 수 없어요.
+            <br />
+            나를 포함해 최대 {ROOM_CAPACITY}명까지 늘릴 수 있어요.
+          </p>
+        )}
         {target === 'deadlineAt' && (
           <p className="mt-3 text-center text-[12px] leading-5 text-sub">
             방을 만든 뒤 24~72시간 사이로 정할 수 있어요.
@@ -301,6 +342,11 @@ function RoomSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId])
 
+  // 다른 사람이 방장을 넘겨주거나 이름·인원을 바꾸면(member.updated·room.updated) 이 화면도 바로 다시 불러온다
+  useRoomLiveUpdates(roomId, session?.memberAccessToken, () => {
+    if (session) getRoomHome(roomId, session.memberAccessToken).then(setHome).catch(() => {})
+  })
+
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (error) return <NotFoundPage message={error} />
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
@@ -317,6 +363,15 @@ function RoomSettingsPage() {
       const deadlineAt = new Date(value).toISOString()
       await updateRoom(room.id, { deadlineAt }, session.memberAccessToken)
       setHome({ ...home, room: { ...room, deadlineAt } })
+    } else if (editing === 'capacity') {
+      const capacity = Number(value)
+      await updateRoom(room.id, { capacity }, session.memberAccessToken)
+      // 서버가 인원 변경을 아직 모르면 요청을 받고도 그대로 둘 수 있어서, 다시 불러와 실제로 바뀌었는지 확인한다
+      const fresh = await getRoomHome(room.id, session.memberAccessToken)
+      if (!USE_MOCK && fresh.room.capacity !== capacity) {
+        throw new Error('아직 인원을 바꿀 수 없어요. 서버 준비가 끝나면 다시 시도해 주세요')
+      }
+      setHome(USE_MOCK ? { ...home, room: { ...room, capacity } } : fresh)
     } else if (editing === 'meetingDate') {
       await updateRoom(room.id, { meetingDate: value }, session.memberAccessToken)
       setHome({ ...home, room: { ...room, meetingDate: value } })
@@ -383,6 +438,9 @@ function RoomSettingsPage() {
         <ul className="-mx-1 divide-y divide-line">
           <InfoRow label="모임 이름" editable={isHost} onEdit={() => setEditing('roomName')}>
             <span className="font-bold">{room.name}</span>
+          </InfoRow>
+          <InfoRow label="함께할 인원" editable={isHost} onEdit={() => setEditing('capacity')}>
+            {room.capacity ?? ROOM_CAPACITY}명 <span className="text-[12px] text-sub">· 지금 {members.length}명</span>
           </InfoRow>
           <InfoRow label="모임 날짜" editable={isHost} onEdit={() => setEditing('meetingDate')}>
             {room.meetingDate ? formatDateSpaced(room.meetingDate) : <Empty>정하지 않았어요</Empty>}
@@ -522,8 +580,11 @@ function RoomSettingsPage() {
                 ? (room.meetingDate ?? '')
                 : editing === 'deadlineAt'
                   ? toLocalDateTimeInput(room.deadlineAt)
-                  : me.nickname
+                  : editing === 'capacity'
+                    ? String(room.capacity ?? ROOM_CAPACITY)
+                    : me.nickname
           }
+          minCapacity={members.length}
           onCancel={() => setEditing(null)}
           onSave={handleSave}
         />

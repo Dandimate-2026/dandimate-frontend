@@ -9,6 +9,7 @@ import Flower, { EmptySlot } from '../components/Flower'
 import { formatDate } from '../lib/date'
 import { getRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
+import WelcomeView from './WelcomeView'
 import { paths } from '../routes/paths'
 
 const MAX_NAME_LENGTH = 10
@@ -22,6 +23,9 @@ function InviteJoinPage() {
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // 이미 로그인한 사람도 처음엔 첫 화면(어느 방에 초대받았는지 + 입장하기)을 보고, 누르면 이름을 정한다.
+  // 이미 이 방에 들어와 있으면 첫 화면 없이 바로 방으로 간다
+  const [entered, setEntered] = useState(false)
 
   useEffect(() => {
     getInvitePreview(inviteToken)
@@ -47,6 +51,29 @@ function InviteJoinPage() {
 
   if (loadError) return <NotFoundPage message={loadError} />
   if (!preview) return <main className="flex-1 bg-bg" aria-busy="true" />
+
+  if (!entered) {
+    return (
+      <WelcomeView
+        invite
+        inviteRoomName={preview.roomName}
+        actions={
+          <Button onClick={() => setEntered(true)} disabled={!preview.canJoin} className="w-full">
+            {preview.canJoin ? '입장하기' : '지금은 들어갈 수 없어요'}
+          </Button>
+        }
+        note={
+          <>
+            입장하면{' '}
+            <Link to={paths.terms()} className="text-point">
+              이용 안내
+            </Link>
+            에 동의하게 돼요
+          </>
+        }
+      />
+    )
+  }
 
   const canJoin = preview.canJoin && name.trim().length > 0 && !submitting
   const emptyCount = Math.max(preview.capacity - preview.flowers.length, 0)

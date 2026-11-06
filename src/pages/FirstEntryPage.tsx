@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { createEntry, skipFirstEntry, transcribe } from '../api/entries'
 import { USE_MOCK } from '../api/mock'
+import { deletePhoto } from '../api/photos'
 import { setPhotoLocation, type Place } from '../api/places'
 import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon } from '../components/entry/EntryIcons'
@@ -59,6 +60,10 @@ function FirstEntryPage() {
   const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
   const [confirmSkipPlace, setConfirmSkipPlace] = useState(false)
   const [savingPlace, setSavingPlace] = useState(false)
+  // 한마디를 확정했거나 '나중에'로 넘긴 사진 (뒤로 가면 나머지 사진은 올리지 않은 것으로 지운다)
+  const [finished, setFinished] = useState<Set<number>>(() => new Set())
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const quota = home?.room.quota
   const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setError)
@@ -130,6 +135,7 @@ function FirstEntryPage() {
   }
 
   const goNext = () => {
+    setFinished((prev) => new Set(prev).add(index))
     if (isLast) {
       navigate(paths.roomHome(roomId), { replace: true })
       return
@@ -186,6 +192,15 @@ function FirstEntryPage() {
   }
 
   const showAnswerCard = step === 'review' || step === 'text'
+  const unfinishedCount = photos.length - finished.size
+
+  // 뒤로 가기: 한마디를 안 남긴 사진은 이미 서버에 올라가 있어서, 지워야 "안 올린" 상태로 돌아간다
+  const leaveAndDelete = async () => {
+    setLeaving(true)
+    recorder.cancel()
+    await Promise.allSettled(photos.filter((_, i) => !finished.has(i)).map((p) => deletePhoto(p.photoId)))
+    navigate(-1)
+  }
 
   return (
     // 화면 높이에 맞춰 사진 영역이 늘었다 줄었다 해서, 아래 버튼이 항상 한 화면에 보이게 한다
@@ -193,7 +208,11 @@ function FirstEntryPage() {
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-[18px]">
           {/* TODO: 뒤로 가기 목적지 확정 필요 (지금은 브라우저 히스토리 기준) */}
-          <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-2 text-[17px] font-bold">
+          <button
+            type="button"
+            onClick={() => (unfinishedCount > 0 ? setConfirmLeave(true) : navigate(-1))}
+            className="flex items-center gap-2 text-[17px] font-bold"
+          >
             <ChevronLeftIcon />첫 한마디
           </button>
           <span className="text-[11px] text-sub">
@@ -329,6 +348,43 @@ function FirstEntryPage() {
             setStep('text')
           }}
         />
+      )}
+      {confirmLeave && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-8" onClick={() => setConfirmLeave(false)}>
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="leave-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full rounded-[24px] bg-surface px-5 pt-6 pb-5 text-center"
+          >
+            <h2 id="leave-title" className="text-[16px] font-bold">
+              사진 올리기를 그만둘까요?
+            </h2>
+            <p className="mt-2 text-[13px] leading-5 text-sub">
+              아직 한마디를 남기지 않은 사진 {unfinishedCount}장은
+              <br />
+              올리지 않은 것으로 지워져요.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmLeave(false)}
+                className="h-12 rounded-full border border-line bg-surface text-[15px] font-semibold active:opacity-80"
+              >
+                계속 남기기
+              </button>
+              <button
+                type="button"
+                disabled={leaving}
+                onClick={() => void leaveAndDelete()}
+                className="h-12 rounded-full bg-ink text-[15px] font-semibold text-surface active:opacity-80 disabled:opacity-50"
+              >
+                {leaving ? '지우는 중…' : '그만두기'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {placeSheetOpen && (
         <PlaceSheet

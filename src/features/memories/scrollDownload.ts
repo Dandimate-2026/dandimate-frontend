@@ -1,3 +1,5 @@
+import { devProxyUrl } from '../../api/client'
+
 export type DownloadFormat = 'image' | 'cards' | 'pdf'
 export interface DownloadResult { blob: Blob; name: string }
 
@@ -20,7 +22,9 @@ async function capture(node: HTMLElement, square = false) {
     if (!img.naturalWidth) throw new Error('사진을 불러오지 못했어요.')
     // 외부 사진이 CORS로 누락된 채 성공 처리되는 것을 막는다.
     if (!img.src.startsWith('data:')) {
-      const response = await fetch(img.src, { signal: AbortSignal.timeout(20_000) })
+      // 화면의 <img>가 CORS 헤더 없이 먼저 캐시해 둔 사진을 fetch가 그대로 재사용하면 CORS 오류가 난다 → 캐시를 쓰지 않는다.
+      // 로컬 개발에서는 S3가 localhost를 허용하지 않아서 개발 서버 프록시(/__s3)로 받는다
+      const response = await fetch(devProxyUrl(img.src), { cache: 'no-store', signal: AbortSignal.timeout(20_000) })
       if (!response.ok) throw new Error('사진 원본을 가져오지 못했어요.')
       const imageBlob = await response.blob()
       img.src = await new Promise<string>((resolve, reject) => {

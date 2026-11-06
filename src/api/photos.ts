@@ -44,3 +44,9 @@ export async function uploadPhotos(
   )
   return files.map((f) => uploads.find((u) => u.clientFileId === f.request.clientFileId)?.photoId ?? '')
 }
+
+/** 내가 올린 사진을 지운다 (한마디를 남기기 전에 사진 올리기를 그만둘 때) */
+export function deletePhoto(photoId: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request<void>(`/photos/${photoId}`, { method: 'DELETE' })
+}

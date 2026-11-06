@@ -115,7 +115,9 @@ function CapacitySelect({ id, value, onChange }: { id: string; value: number; on
                   {selected ? (
                     <CheckIcon />
                   ) : (
-                    option === ROOM_CAPACITY && <span className="text-[11px] text-sub">최대</span>
+                    (option === ROOM_CAPACITY || option === 1) && (
+                      <span className="text-[11px] text-sub">{option === 1 ? '혼자 여행' : '최대'}</span>
+                    )
                   )}
                 </button>
               </li>
