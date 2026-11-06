@@ -19,12 +19,20 @@
 
 /* 넓은 화면(노트북·태블릿)에서도 휴대폰 앱처럼 가운데 한 줄로 보여준다.
    아래 탭·떠 있는 버튼·바텀시트도 같은 폭(430px)으로 맞춰 두었다 */
-html {
-  background: #ece6dc;
+/* 휴대폰에서는 화면 아래(내비게이션 바·홈 표시줄 자리)까지 앱 배경색과 같게,
+   넓은 화면에서만 양옆을 조금 진한 색으로 */
+html,
+body {
+  background: var(--color-bg);
 }
 body {
   margin: 0;
-  background: #ece6dc;
+}
+@media (min-width: 600px) {
+  html,
+  body {
+    background: #ece6dc;
+  }
 }
 #root {
   width: 100%;

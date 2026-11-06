@@ -11,7 +11,7 @@ import Flower, { EmptySlot } from '../components/Flower'
 import { TodayFlowers } from '../components/TodayFlowers'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
-import { shareWithDevice } from '../lib/share'
+import { copyForShare, shareWithDevice } from '../lib/share'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
@@ -485,7 +485,7 @@ function RoomHomePage() {
     }
   }
 
-  /** 공유 화면으로 가지 않고 바로 기기 공유창(카카오톡 키가 있으면 카카오톡 공유)을 연다 */
+  /** 공유 화면으로 가지 않고 바로 기기 공유창을 연다. 못 열면 글+링크를 복사하고 알려 준다 */
   const handleShareToChat = async () => {
     const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
     if (inviteToken) {
@@ -494,8 +494,7 @@ function RoomHomePage() {
     }
     const url = siteUrl(paths.roomHome(room.id))
     if (await shareWithDevice(text, url)) return
-    await navigator.clipboard?.writeText(`${text}
-${url}`).catch(() => {})
+    await copyForShare(text, url)
   }
 
   const timeUpSheet =
