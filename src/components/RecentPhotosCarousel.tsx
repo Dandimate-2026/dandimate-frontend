@@ -204,9 +204,22 @@ function RecentPhotosCarousel({
         })}
       </ul>
 
-      {/* 여러 장이면 점으로 몇 번째인지 보여주고, 눌러서도 넘길 수 있다 */}
+      {/* 여러 장이면 점으로 몇 번째인지 보여주고, 눌러서도 넘길 수 있다.
+          마우스로는 옆으로 밀 수 없어서, 마우스를 쓰는 PC에서는 양옆에 이전·다음 버튼도 보여준다 */}
       {cards.length > 1 && (
-        <div className="mt-2 flex justify-center gap-1.5" role="tablist" aria-label="사진 넘기기">
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            aria-label="이전 사진"
+            disabled={page === 0}
+            onClick={() => goTo(page - 1)}
+            className="hidden size-7 items-center justify-center rounded-full border border-line bg-surface text-sub disabled:opacity-30 [@media(hover:hover)]:flex"
+          >
+            <span className="rotate-180">
+              <ArrowIcon />
+            </span>
+          </button>
+        <div className="flex justify-center gap-1.5" role="tablist" aria-label="사진 넘기기">
           {cards.map((card, i) => (
             <button
               key={card.photo.id}
@@ -218,6 +231,16 @@ function RecentPhotosCarousel({
               className={`h-1.5 rounded-full transition-all ${page === i ? 'w-4 bg-ink' : 'w-1.5 bg-line'}`}
             />
           ))}
+        </div>
+          <button
+            type="button"
+            aria-label="다음 사진"
+            disabled={page === cards.length - 1}
+            onClick={() => goTo(page + 1)}
+            className="hidden size-7 items-center justify-center rounded-full border border-line bg-surface text-sub disabled:opacity-30 [@media(hover:hover)]:flex"
+          >
+            <ArrowIcon />
+          </button>
         </div>
       )}
     </section>
