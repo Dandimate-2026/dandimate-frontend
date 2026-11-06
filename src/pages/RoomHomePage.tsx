@@ -12,6 +12,7 @@ import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { shareToKakao } from '../lib/kakao'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
+import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
@@ -324,14 +325,23 @@ function MyTodoCard({ home }: { home: RoomHome }) {
   )
 }
 
-/** 약속한 시간이 다 됐을 때 아래에서 올라오는 알림 시트 */
+/**
+ * 엮을 때가 되면 아래에서 올라오는 알림 시트.
+ * - timeUp: 약속한 시간이 다 됐을 때
+ * - allDone: 마감 전에 모두가 다 봤을 때 (조기 엮기)
+ * 내리면 홈 아래쪽 카드로 같은 내용이 남아 있다
+ */
 function TimeUpSheet({
+  reason = 'timeUp',
+  hoursLeft: left = 0,
   isHost,
   weaving,
   error,
   onWeave,
   onClose,
 }: {
+  reason?: 'timeUp' | 'allDone'
+  hoursLeft?: number
   isHost: boolean
   weaving: boolean
   error: string | null
@@ -352,10 +362,24 @@ function TimeUpSheet({
           <ScrollIcon />
         </div>
         <h2 id="timeup-title" className="mt-3 text-[18px] font-bold">
-          약속한 시간이 다 됐어요
+          {reason === 'allDone' ? '모두 다 봤어요' : '약속한 시간이 다 됐어요'}
         </h2>
         <p className="mt-2 text-[13px] leading-5 text-sub">
-          {isHost ? (
+          {reason === 'allDone' ? (
+            isHost ? (
+              <>
+                이제 첫 두루마리를 엮을 수 있어요
+                <br />
+                {left > 0 ? `지금 엮으면 남은 ${left}시간을 기다리지 않아도 돼요` : '지금 바로 엮을 수 있어요'}
+              </>
+            ) : (
+              <>
+                친구들이 모두 다 봤어요
+                <br />
+                방장이 엮으면 첫 두루마리가 나와요
+              </>
+            )
+          ) : isHost ? (
             <>
               지금까지 모인 이야기로
               <br />첫 두루마리를 엮어 볼까요?
@@ -403,6 +427,8 @@ function RoomHomePage() {
   const [weaveError, setWeaveError] = useState<string | null>(null)
   // 시간이 다 됐다는 시트는 이 화면에 들어올 때마다 한 번 보여주고, 닫으면 다시 띄우지 않는다
   const [timeUpClosed, setTimeUpClosed] = useState(false)
+  // 모두 다 봤을 때 시트도 같은 방식: 들어올 때 한 번, 내리면 아래 카드로만 남는다
+  const [allDoneClosed, setAllDoneClosed] = useState(false)
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
   const { share: shareInvite } = useInviteShare(session?.inviteToken ?? '')
 
@@ -471,6 +497,16 @@ ${url}`).catch(() => {})
         onWeave={handleWeave}
         onClose={() => setTimeUpClosed(true)}
       />
+    ) : room.status === 'CIRCULATING' && home.allCompleted && !allDoneClosed ? (
+      <TimeUpSheet
+        reason="allDone"
+        hoursLeft={hoursLeft(room.deadlineAt)}
+        isHost={me.role === 'HOST'}
+        weaving={weaving}
+        error={weaveError}
+        onWeave={handleWeave}
+        onClose={() => setAllDoneClosed(true)}
+      />
     ) : null
 
   // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
@@ -510,6 +546,9 @@ ${url}`).catch(() => {})
               : `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`}
           </p>
         </section>
+
+        {/* 돌려보는 동안: 친구들이 올린 사진을 한 줄씩, 여러 장이면 옆으로 넘긴다 */}
+        {room.status === 'CIRCULATING' && <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} myMemberId={me.id} />}
 
         {!allDone && myTodo.topAskback && (
           <section className="mt-4 rounded-xl bg-[#f6e3ea] px-3.5 pt-3.5 pb-4">
@@ -577,6 +616,14 @@ ${url}`).catch(() => {})
             ) : (
               <p className="mt-2 text-[11px] text-sub">방장이 엮으면 두루마리가 나와요</p>
             )}
+            {/* 엮기 전에 아직 남길 이야기가 있으면 더 덧붙일 수 있다고 알려 준다 */}
+            <button
+              type="button"
+              onClick={() => navigate(paths.roomCirculation(room.id))}
+              className="mt-3 py-1 text-[12px] text-sub active:opacity-80"
+            >
+              아직 남길 이야기가 있나요? <span className="font-semibold text-point">더 덧붙이기 ›</span>
+            </button>
           </Card>
         ) : (
           <MyTodoCard home={home} />

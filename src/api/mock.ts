@@ -41,7 +41,10 @@ export const MOCK_READY_ROOM_ID = 'done'
 export const MOCK_TIMEUP_ROOM_ID = 'timeup'
 /** 플랜 한도를 모두 쓴 방 */
 export const MOCK_LIMIT_ROOM_ID = 'limit'
+/** 사진 한도 없이 계속 올려 볼 수 있는 방 (사진 올리기·장소 고르기 화면 확인용) */
+export const MOCK_UNLIMITED_ROOM_ID = 'unlimited'
 export const MOCK_ROOM_IDS = [
+  MOCK_UNLIMITED_ROOM_ID,
   MOCK_ROOM_ID,
   MOCK_READY_ROOM_ID,
   MOCK_TIMEUP_ROOM_ID,
@@ -402,4 +405,26 @@ export function withMockActivity(home: RoomHome): RoomHome {
     ],
     myTodo: { ...home.myTodo, needsFirstEntry: home.myTodo.needsFirstEntry && done.entries === 0 },
   }
+}
+
+/** 사진 무한: 한도가 사실상 없어서 사진 올리기 화면을 몇 번이고 볼 수 있다 */
+export const mockUnlimitedRoomHome: RoomHome = {
+  ...mockRoomHome,
+  room: {
+    ...mockRoomHome.room,
+    id: MOCK_UNLIMITED_ROOM_ID,
+    name: '사진 무한',
+    quota: {
+      ...mockLimitRoomHome.room.quota!,
+      photosPerMember: 999,
+      myPhotoCount: 0,
+      myPhotosRemaining: 999,
+      voiceUsedMs: 0,
+      voiceRemainingMs: 15 * 60 * 1000,
+      regenerationCount: 0,
+      regenerationsRemaining: 3,
+    },
+  },
+  // 홈의 내 할 일이 늘 "사진 올리고 한마디 남기기"로 보이게 한다
+  myTodo: { ...mockRoomHome.myTodo, needsFirstEntry: true },
 }

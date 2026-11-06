@@ -13,12 +13,11 @@ import {
 import type { Member, RoomHome } from '../api/types'
 import Card from '../components/Card'
 import Flower from '../components/Flower'
-import PlaceSheet from '../components/PlaceSheet'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
 import { objectParticle } from '../lib/plans'
-import { addRecentPlace, getRecentPlaces, getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
+import { getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
@@ -270,9 +269,8 @@ function RoomSettingsPage() {
   // 링크를 새로 만들면 화면의 링크도 바로 바꾼다
   const [inviteToken, setInviteToken] = useState(session?.inviteToken)
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
-  // 장소·대표 사진은 서버에 칸이 없어 이 기기에 방마다 저장해 둔 값을 쓴다
+  // 대표 사진은 서버에 칸이 없어 이 기기에 방마다 저장해 둔 값을 쓴다 (장소는 사진마다 올릴 때 정한다)
   const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
-  const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
   const [photoError, setPhotoError] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -388,9 +386,6 @@ function RoomSettingsPage() {
           </InfoRow>
           <InfoRow label="모임 날짜" editable={isHost} onEdit={() => setEditing('meetingDate')}>
             {room.meetingDate ? formatDateSpaced(room.meetingDate) : <Empty>정하지 않았어요</Empty>}
-          </InfoRow>
-          <InfoRow label="장소" editable={isHost} onEdit={() => setPlaceSheetOpen(true)}>
-            {placeCover.place ? `📍 ${placeCover.place}` : <Empty>정하지 않았어요</Empty>}
           </InfoRow>
           <InfoRow label="대표 사진" editable={isHost} onEdit={() => photoInputRef.current?.click()}>
             {/* 대표 사진은 줄 안에서 작은 썸네일로 바로 보여준다 */}
@@ -591,27 +586,6 @@ function RoomSettingsPage() {
           confirmLabel="삭제하기"
           onCancel={() => setConfirming(null)}
           onConfirm={handleDeleteRoom}
-        />
-      )}
-      {placeSheetOpen && (
-        <PlaceSheet
-          initial={placeCover.placeDetail?.city ?? placeCover.place}
-          recent={getRecentPlaces()}
-          onClose={() => setPlaceSheetOpen(false)}
-          onSelect={(place, detail) => {
-            updatePlaceCover({
-              ...placeCover,
-              place,
-              placeDetail: detail && {
-                address: detail.address,
-                city: detail.city,
-                latitude: detail.latitude,
-                longitude: detail.longitude,
-              },
-            })
-            addRecentPlace(detail?.city ?? place)
-            setPlaceSheetOpen(false)
-          }}
         />
       )}
     </main>

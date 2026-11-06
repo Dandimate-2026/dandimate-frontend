@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
+import { USE_MOCK } from '../api/mock'
 import { MAX_PHOTOS, uploadPhotos } from '../api/photos'
 import Button from '../components/Button'
 import PlanLimitSheet from '../components/PlanLimitSheet'
@@ -58,6 +59,9 @@ function LockIcon() {
 }
 
 /** 이야기를 남길 사진을 1~3장 고르고 올리는 화면 */
+/** 데모에서 한 번에 고를 수 있는 장수 (사실상 제한 없음) */
+const DEMO_MAX_PHOTOS = 99
+
 function PhotoUploadPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
@@ -79,8 +83,8 @@ function PhotoUploadPage() {
   const quota = home?.room.quota
   /** 1인당 사진 한도 (플랜별 3/6/10장) */
   const perMember = quota?.photosPerMember ?? MAX_PHOTOS
-  /** 이번에 더 고를 수 있는 장수 */
-  const maxPhotos = quota?.myPhotosRemaining ?? MAX_PHOTOS
+  /** 이번에 더 고를 수 있는 장수. 데모에서는 화면을 계속 보려고 사실상 제한 없이 고를 수 있게 한다 */
+  const maxPhotos = USE_MOCK ? DEMO_MAX_PHOTOS : (quota?.myPhotosRemaining ?? MAX_PHOTOS)
 
   // 화면을 떠날 때 미리보기용 URL을 정리한다
   const photosRef = useRef(photos)
@@ -209,7 +213,9 @@ function PhotoUploadPage() {
         <br />
         골라주세요.
       </h1>
-      <p className="mt-3.5 px-[7px] text-[11px] text-sub">1장부터 괜찮아요 · 최대 {maxPhotos}장</p>
+      <p className="mt-3.5 px-[7px] text-[11px] text-sub">
+        {USE_MOCK ? '1장부터 괜찮아요 · 데모라 장수 제한 없이 골라 볼 수 있어요' : `1장부터 괜찮아요 · 최대 ${maxPhotos}장`}
+      </p>
 
       <ul ref={listRef} className="mt-4 grid grid-cols-3 gap-[9px]">
         {photos.map((p) => (
@@ -307,8 +313,10 @@ function PhotoUploadPage() {
 
       {/* 화면이 낮아도 버튼 위에 빈 공간을 남긴다 */}
       <div className="mt-auto pt-[clamp(32px,10dvh,96px)]">
+        {/* 다음 화면에서 사진마다 장소부터 고른다 */}
+        <p className="mb-2 text-center text-[11px] text-sub">📍 사진마다 고른 장소는 기록 지도에 표시돼요</p>
         <Button onClick={handleNext} disabled={photos.length === 0 || uploading} className="w-full">
-          {uploading ? '사진 올리는 중…' : '다음 : 한마디 남기기'}
+          {uploading ? '사진 올리는 중…' : '다음 : 장소 고르러 가기'}
         </Button>
       </div>
 

@@ -98,13 +98,15 @@ function PlaceSearch({
   )
 }
 
-/** 방 만들기의 "어디서 놀았나요?" 장소 선택 시트. 도시 목록에서 고르거나 장소를 검색한다 */
+/** 사진의 장소를 고르는 시트: 목록에서 도시를 고르고 → 검색에서 실제 장소(주소·좌표)를 고른다 */
 function PlaceSheet({
+  title = '어디서 찍었나요?',
   initial,
   recent,
   onClose,
   onSelect,
 }: {
+  title?: string
   initial?: string
   recent: string[]
   onClose: () => void
@@ -158,7 +160,7 @@ function PlaceSheet({
       >
         <span className="mx-auto h-1 w-9 rounded-full bg-line" aria-hidden="true" />
         <h2 id="place-sheet-title" className="mt-4 text-[20px] font-bold">
-          어디서 놀았나요?
+          {title}
         </h2>
         <p className="mt-1 text-[12px] text-sub">고른 장소는 기록 지도에 꽃으로 피어요</p>
 
@@ -235,12 +237,6 @@ function PlaceSheet({
             <Button type="button" disabled={!picked} onClick={() => picked && onSelect(picked.placeName, picked)} className="mt-4 w-full">
               {picked ? `${picked.placeName}${withRo(picked.placeName)} 정하기` : '장소를 골라 주세요'}
             </Button>
-            {/* 장소가 검색되지 않거나 기억나지 않으면 도시까지만 정할 수 있다 */}
-            {city && city !== OTHER_REGION && !picked && (
-              <button type="button" onClick={() => onSelect(city)} className="mt-2.5 text-center text-[12px] text-sub underline">
-                {city}{withRo(city)}만 정하기
-              </button>
-            )}
           </>
         )}
       </div>
