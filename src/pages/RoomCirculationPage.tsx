@@ -74,7 +74,8 @@ function RoomCirculationPage() {
     let active = true
     getCirculation(roomId, token).then((result) => {
       if (!active) return
-      const list = result.filter((card) => card.myResponse.status !== 'OWN_PHOTO')
+      // 내 사진에도 덧붙일 수 있어서 내 사진까지 함께 돌려본다
+      const list = result
       setCards(list)
       const start = startPhotoId ? list.findIndex((card) => card.photo.id === startPhotoId) : -1
       if (start >= 0) setIndex(start)
@@ -97,7 +98,7 @@ function RoomCirculationPage() {
 
   async function refresh() {
     const result = await getCirculation(roomId, token)
-    setCards(result.filter((item) => item.myResponse.status !== 'OWN_PHOTO'))
+    setCards(result)
   }
 
   async function pass() {
