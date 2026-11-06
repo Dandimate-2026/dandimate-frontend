@@ -2,16 +2,22 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Card from '../../components/Card'
 import { ChevronLeftIcon, ImagePlaceholderIcon, PlayIcon } from '../../components/entry/EntryIcons'
 import { ShareIcon } from '../../components/ShareIcons'
-import pink from '../../assets/memories/flower-pink.svg'
-import blue from '../../assets/memories/flower-blue.svg'
-import orange from '../../assets/memories/flower-orange.svg'
+import type { FlowerCode } from '../../api/types'
+import Flower from '../../components/Flower'
 import type { FlowerColor, MemoryStory } from './types'
 import { useSheetDrag } from '../../hooks/useSheetDrag'
+import { ViewablePhoto } from '../../components/PhotoViewer'
 
-const FLOWERS = { pink, blue, orange }
+const LEGACY: Record<'pink' | 'blue' | 'orange', FlowerCode> = { pink: 'AZALEA', blue: 'ROYAL_AZALEA', orange: 'FORSYTHIA' }
 
+/** 기억 화면의 꽃. 앱 공통 8색 꽃으로 그린다 */
 export function MemoryFlower({ color, size = 21 }: { color: FlowerColor; size?: number }) {
-  return <img className="memory-flower" src={FLOWERS[color]} width={size} height={size} alt="" />
+  const code = color in LEGACY ? LEGACY[color as keyof typeof LEGACY] : (color as FlowerCode)
+  return (
+    <span className="memory-flower inline-flex" aria-hidden="true">
+      <Flower code={code} size={size} />
+    </span>
+  )
 }
 
 export function MemoryHeader({ title = '돌려보기', progress, onBack }: { title?: string; progress?: string; onBack: () => void }) {
@@ -24,7 +30,7 @@ export function MemoryCard({ children, className = '' }: { children: ReactNode; 
 
 export function PhotoSlot({ label, date, src, icon = false }: { label: string; date?: string; src?: string; icon?: boolean }) {
   return <div className={`memory-photo ${src ? 'has-photo' : ''}`}>
-    {src ? <img src={src} alt={label} /> : <div className="memory-photo-label">{icon && <ImagePlaceholderIcon />}<span>사진 · {label}</span></div>}
+    {src ? <ViewablePhoto src={src} alt={label} /> : <div className="memory-photo-label">{icon && <ImagePlaceholderIcon />}<span>사진 · {label}</span></div>}
     {date && <span className="memory-photo-date">{date}</span>}
   </div>
 }
