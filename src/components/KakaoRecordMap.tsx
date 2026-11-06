@@ -94,7 +94,8 @@ function KakaoRecordMap({
   pins: CityPin[]
   activeCity?: string
   cityFlower: (city: string) => FlowerCode
-  onOpenCity: (pin: CityPin) => void
+  /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
+  onOpenCity: (pin: CityPin, placeName?: string) => void
   onFail: () => void
   children?: ReactNode
 }) {
@@ -218,7 +219,7 @@ function KakaoRecordMap({
           ) : (
             <button
               type="button"
-              onClick={() => onOpenCity(m.pin)}
+              onClick={() => onOpenCity(m.pin, m.place.placeName)}
               aria-label={`${m.place.placeName} (${m.pin.city})`}
               className="flex flex-col items-center"
             >
