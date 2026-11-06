@@ -24,7 +24,6 @@ const CHAPTERS = [
 
 export default function ScrollPage({ onBack, onReply, replies }: { onBack: () => void; onReply: (chapter: string, quote: string) => void; replies: Record<string, MemoryContribution[]> }) {
   const [liked, setLiked] = useState<Record<string, boolean>>({})
-  const [rating, setRating] = useState(5)
   const [rated, setRated] = useState(false)
   const [original, setOriginal] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
@@ -65,12 +64,11 @@ export default function ScrollPage({ onBack, onReply, replies }: { onBack: () =>
       </div>
       {(replies[chapter.id] ?? []).map((reply, i) => <div className="memory-added-reply" key={i}><StoryCard mine story={{ ...reply, author: '민지', flower: 'orange', kind: '답가' }} /></div>)}
     </section>)}
-    <MemoryCard className="memory-rating">
+    {!rated && <MemoryCard className="memory-rating">
       <h2>AI가 내 이야기를 잘 옮겼나요?</h2><p>내가 말한 문단 2개 기준이에요</p>
-      <fieldset><legend className="sr-only">이야기 반영 만족도</legend><div className="memory-rating-options">{[1, 2, 3, 4, 5].map((value) => <label key={value}><input type="radio" name="memory-rating" value={value} checked={rating === value} onChange={() => { setRating(value); setRated(true) }} aria-label={`${value}점${value === 1 ? ' · 다르게 옮겼어요' : value === 5 ? ' · 딱 내 말이에요' : ''}`} /><span /></label>)}</div></fieldset>
+      <fieldset><legend className="sr-only">이야기 반영 만족도</legend><div className="memory-rating-options">{[1, 2, 3, 4, 5].map((value) => <label key={value}><input type="radio" name="memory-rating" value={value} checked={false} onChange={() => setRated(true)} aria-label={`${value}점${value === 1 ? ' · 다르게 옮겼어요' : value === 5 ? ' · 딱 내 말이에요' : ''}`} /><span /></label>)}</div></fieldset>
       <div className="memory-rating-scale"><span>다르게 옮겼어요</span><span>딱 내 말이에요</span></div>
-      {rated && <p className="memory-rating-thanks" role="status">의견을 남겼어요. 고마워요!</p>}
-    </MemoryCard>
+    </MemoryCard>}
     {extras.map((item, i) => <MemoryCard className="memory-extra" key={i}>{item.url && <PhotoSlot label="내가 더 보탠 사진" src={item.url} />}<p>{item.text}</p></MemoryCard>)}
     <section className="memory-more"><h2>더 보태고 싶은 이야기가 있나요?</h2><Button onClick={() => setAdding(true)}>사진·이야기 더 올리기</Button></section>
     {original && <BottomSheet title="함께 남긴 원문" onClose={() => setOriginal(null)}><div className="memory-original-stories">{CHAPTERS.find((chapter) => chapter.id === original)?.quotes.map((quote) => <StoryCard key={quote.author} textOnly story={{ ...quote, kind: '원문' }} />)}</div><Button className="memory-save" onClick={() => setOriginal(null)}>확인했어요</Button></BottomSheet>}

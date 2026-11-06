@@ -174,3 +174,5 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
   .memory-actions > button { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .memory-loading span { animation: none; } .memory-switch::before { transition: none; } }
+
+.memory-app .memory-chapter-actions + .memory-rating { margin-top: 10px; }

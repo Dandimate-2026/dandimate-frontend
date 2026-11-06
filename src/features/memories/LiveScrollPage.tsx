@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getParagraphRating, rememberParagraphRating } from '../../lib/paragraphRatings'
 import { rateParagraph, setAhMatda } from '../../api/memories'
 import type { RoomHome, Scroll, ScrollParagraph } from '../../api/types'
 import { BottomSheet, MemoryCard, PhotoSlot, StoryCard, TripHeading } from './components'
@@ -41,7 +42,8 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     setBusy(paragraph.id); setError('')
     try {
       await rateParagraph(paragraph.id, token, score)
-      setRatings((value) => ({ ...value, [paragraph.id]: score }))
+      rememberParagraphRating(home.room.id, home.me.id, paragraph.id, paragraph.version, score)
+      setRatings((value) => ({ ...value, [`${paragraph.id}:${paragraph.version}`]: score }))
     } catch (cause) { setError(cause instanceof Error ? cause.message : '평가를 저장하지 못했어요.') }
     finally { setBusy(null) }
   }
@@ -52,7 +54,9 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       members={home.members.map((member) => ({ name: member.nickname, color: color(member.flowerCode) }))} />
     {error && <p className="memory-error" role="alert">{error}</p>}
     {scroll.paragraphs.length === 0 && <p className="memory-chapter">두루마리에 담긴 문단이 없어요.</p>}
-    {scroll.paragraphs.map((paragraph) => <section className="memory-chapter" key={paragraph.id}>
+    {scroll.paragraphs.map((paragraph) => {
+      const rating = ratings[`${paragraph.id}:${paragraph.version}`] ?? getParagraphRating(home.room.id, home.me.id, paragraph.id, paragraph.version)
+      return <section className="memory-chapter" key={paragraph.id}>
       <PhotoSlot label={`${paragraph.photo.uploader.nickname}님의 사진`} src={paragraph.photo.imageUrl} />
       <p className="memory-chapter-meta">{paragraph.photo.uploader.nickname}님이 올린 사진</p>
       <p className="memory-narrative">{paragraph.body}</p>
@@ -61,13 +65,12 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
         <button type="button" className="memory-reply" onClick={() => onReply(paragraph)}>답가 남기기 {paragraph.replyCount > 0 && `· ${paragraph.replyCount}`}</button>
         <button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button>
       </div>
-      <MemoryCard className="memory-rating">
+      {!rating && <MemoryCard className="memory-rating">
         <h2>AI가 내 이야기를 잘 옮겼나요?</h2>
-        <fieldset><legend className="sr-only">이 문단 평가</legend><div className="memory-rating-options">{[1, 2, 3, 4, 5].map((score) => <label key={score}><input type="radio" name={`rating-${paragraph.id}`} value={score} checked={ratings[paragraph.id] === score} disabled={busy === paragraph.id} onChange={() => void rate(paragraph, score)} aria-label={`${score}점`} /><span /></label>)}</div></fieldset>
+        <fieldset><legend className="sr-only">이 문단 평가</legend><div className="memory-rating-options">{[1, 2, 3, 4, 5].map((score) => <label key={score}><input type="radio" name={`rating-${paragraph.id}`} value={score} checked={false} disabled={busy === paragraph.id} onChange={() => void rate(paragraph, score)} aria-label={`${score}점`} /><span /></label>)}</div></fieldset>
         <div className="memory-rating-scale"><span>다르게 옮겼어요</span><span>딱 내 말이에요</span></div>
-        {ratings[paragraph.id] && <p className="memory-rating-thanks" role="status">평가를 저장했어요.</p>}
-      </MemoryCard>
-    </section>)}
+      </MemoryCard>}
+    </section>})}
     {original && <BottomSheet title="함께 남긴 원문" onClose={() => setOriginal(null)}><div className="memory-original-stories">
       {original.sources.map((source) => <StoryCard key={source.entryId} textOnly story={{ author: source.member.nickname, flower: color(source.member.flowerCode), kind: '원문', text: source.quote }} />)}
     </div><button type="button" className="memory-text-link" onClick={() => setOriginal(null)}>닫기</button></BottomSheet>}
