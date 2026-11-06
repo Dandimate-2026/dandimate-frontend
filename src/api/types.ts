@@ -39,6 +39,11 @@ export interface RoomSummary {
   /** 방장을 포함한 정원 (1~8) */
   capacity?: number
   planType?: RoomPlanType
+  /** 대표 사진 주소 (서버 경로). coverSrc로 바꿔 쓴다 */
+  coverImageUrl?: string | null
+  /** 방을 만든 시각 · 방장이 첫 두루마리 시각을 이미 바꿨는지 (한 번만 바꿀 수 있다) */
+  createdAt?: string
+  deadlineChangedByHost?: boolean
   /** 플랜별 한도와 사용량. 모임방 홈 조회에만 들어 있다 */
   quota?: RoomQuota
 }
@@ -90,6 +95,8 @@ export interface CreateRoomRequest {
   planType: RoomPlanType
   /** 방장을 포함한 정원 (1~8, 생략하면 8) */
   capacity?: number
+  /** 대표 사진 업로드 API가 준 imageUrl */
+  coverImageUrl?: string
   consent: Consent
 }
 

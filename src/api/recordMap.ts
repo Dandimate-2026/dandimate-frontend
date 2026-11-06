@@ -36,6 +36,24 @@ export interface MapPlaceItem {
   placeName: string
   latitude: number
   longitude: number
+  /** 사진 주소 */
+  imageUrl?: string | null
+  /** 사진을 올린 사람 */
+  uploader?: { userId: string; nickname: string; flowerCode: string } | null
+  /** 그 사진의 첫 한마디 일부 */
+  firstEntrySnippet?: string | null
+}
+
+/** 기록 지도는 대구·경북만 보여준다. 서버가 주소에서 뽑은 도시 이름(시·군 이름) 기준 */
+export const DAEGU_GYEONGBUK_CITIES = [
+  '대구', '포항', '경주', '김천', '안동', '구미', '영주', '영천', '상주', '문경', '경산', '군위',
+  '의성', '청송', '영양', '영덕', '청도', '고령', '성주', '칠곡', '예천', '봉화', '울진', '울릉',
+]
+
+/** 대구·경북 범위 (울릉도·독도 포함). 이름이 같은 다른 지역 도시를 걸러내려고 좌표도 같이 본다 */
+function inDaeguGyeongbuk(pin: CityPin) {
+  const inBox = pin.latitude > 35.4 && pin.latitude < 37.6 && pin.longitude > 127.7 && pin.longitude < 131.95
+  return inBox && DAEGU_GYEONGBUK_CITIES.includes(pin.city)
 }
 
 const MOCK_MAP: CityPin[] = [
@@ -65,9 +83,9 @@ const MOCK_MAP: CityPin[] = [
 
 /** 내가 참여 중인 방의 사진 장소를 도시별로 묶은 지도 */
 export async function getMyRecordMap(): Promise<CityPin[]> {
-  if (USE_MOCK) return MOCK_MAP
+  if (USE_MOCK) return MOCK_MAP.filter(inDaeguGyeongbuk)
   const res = await request<{ cities: CityPin[] }>('/users/me/map')
-  return res.cities
+  return res.cities.filter(inDaeguGyeongbuk)
 }
 
 export interface ChatAuthor {
@@ -94,7 +112,11 @@ export interface ChatCitation {
   author: ChatAuthor | null
 }
 
+/** 서버가 붙여 주는 답의 종류. 기록으로 답했는지, 인사·범위 밖·근거 부족인지 */
+export type ChatOutcome = 'ANSWER' | 'CONFLICT' | 'INSUFFICIENT' | 'SMALL_TALK' | 'OUT_OF_SCOPE' | 'INVALID'
+
 export interface ChatAnswer {
+  outcome?: ChatOutcome
   answer: string
   sources: ChatSource[]
   citations?: ChatCitation[]

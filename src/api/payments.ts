@@ -47,6 +47,15 @@ export function createPlanOrder(roomId: string, planType: RoomPlanType) {
   })
 }
 
+/** 두루 챗봇 질문 크레딧 묶음 주문 (계정 단위). 승인되면 서버가 크레딧을 적립한다 */
+export function createCreditOrder(packId: string) {
+  return request<PaymentOrder>('/payments/credit-orders', {
+    method: 'POST',
+    body: { packId },
+    idempotent: true,
+  })
+}
+
 /** 토스 결제창에서 돌아온 값으로 서버에 승인을 요청한다. 같은 값으로 다시 불러도 한 번만 적용된다 */
 export function confirmPayment(body: { orderId: string; paymentKey: string; amount: number }) {
   return request<PaymentOrder>('/payments/confirm', { method: 'POST', body })
@@ -64,6 +73,8 @@ export interface PendingPayment {
   /** 기존 방 플랜 변경이면 방 id, 새 방이면 없음 */
   roomId?: string
   roomName?: string
+  /** 두루 챗봇 크레딧 구매면 'credits' (방·플랜과 상관없다) */
+  kind?: 'credits'
 }
 
 const PENDING_KEY = 'duruduru:pending-payment'

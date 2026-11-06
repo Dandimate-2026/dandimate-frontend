@@ -4,11 +4,12 @@ import type { ChatCitation, ChatSource } from '../api/recordMap'
 import { getRoomHome } from '../api/rooms'
 import type { RoomStatus } from '../api/types'
 import { getMe } from '../lib/auth'
-import { resetChat, sendChat, useChat, type ChatLine } from '../lib/chatStore'
+import { canAsk } from '../api/chatQuota'
+import { refreshChatQuota, resetChat, sendChat, useChat, type ChatLine } from '../lib/chatStore'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession, listSavedRoomIds } from '../lib/session'
 import { paths } from '../routes/paths'
-import { BotIcon } from './ChatFab'
+import { BotIcon, StoreIcon } from './ChatFab'
 import Flower from './Flower'
 
 /** 손잡이를 이만큼 아래로 끌면 시트를 내린다 */
@@ -33,7 +34,7 @@ function ArrowIcon() {
   )
 }
 
-/** 두루 프로필: 모임방 목록의 떠 있는 챗봇 버튼과 같은 모양 */
+/** 두루 프로필: 모임방 목록의 떠 있는 챗봇 버튼과 같은 캐릭터 */
 function DuruAvatar({ size = 40 }: { size?: number }) {
   return (
     <span
@@ -41,8 +42,9 @@ function DuruAvatar({ size = 40 }: { size?: number }) {
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      <span className="flex" style={{ transform: `scale(${size / 60})` }}>
-        <BotIcon />
+      {/* 안테나 때문에 아래로 처져 보여서 살짝 올린다 */}
+      <span className="flex" style={{ marginTop: -Math.round(size * 0.1) }}>
+        <BotIcon size={Math.round(size * 0.72)} />
       </span>
     </span>
   )
@@ -206,7 +208,18 @@ function SourceCard({ source, myUserId }: { source: ChatSource; myUserId: string
 }
 
 /** 두루의 답 말풍선: 답 → 원문 인용 → 바로가기 → 출처 안내 */
-function DuruBubble({ line, myUserId }: { line: ChatLine; myUserId: string | null }) {
+/** 기록으로 답하지 못한 답(인사·범위 밖·근거 부족) 아래에 붙여, 다음에 물어볼 만한 질문을 보여준다 */
+const FOLLOW_UP_OUTCOMES = ['SMALL_TALK', 'OUT_OF_SCOPE', 'INSUFFICIENT', 'INVALID']
+
+function DuruBubble({
+  line,
+  myUserId,
+  onAsk,
+}: {
+  line: ChatLine
+  myUserId: string | null
+  onAsk: (question: string) => void
+}) {
   const citations = line.citations ?? []
   // 같은 사진(사진이 없으면 같은 방)이 여러 번 나오면 바로가기는 한 번만 보여준다
   const sourceKey = (s: ChatSource) => s.photo?.photoId ?? s.room?.roomId ?? ''
@@ -234,6 +247,25 @@ function DuruBubble({ line, myUserId }: { line: ChatLine; myUserId: string | nul
           </div>
         )}
         {grounded && <p className="mt-2 text-[11px] text-muted">AI가 원문에서 찾았어요</p>}
+        {line.outcome && FOLLOW_UP_OUTCOMES.includes(line.outcome) && (
+          <div className="mt-3 border-t border-line pt-2.5">
+            <p className="text-[11px] text-sub">
+              {line.outcome === 'SMALL_TALK' ? '이렇게 물어볼 수 있어요' : '이렇게 물어보면 잘 찾아요'}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {SUGGESTIONS.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => onAsk(q)}
+                  className="rounded-full border border-point/40 px-3 py-1.5 text-[12px] text-point active:opacity-70"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -262,7 +294,15 @@ function TypingBubble() {
  * 시트를 내려도 대화는 남아 있어서 다시 열면 이어서 물어볼 수 있다
  */
 function ChatSheet({ onClose }: { onClose: () => void }) {
-  const { lines, sending } = useChat()
+  const { lines, sending, quota } = useChat()
+  // 상점은 따로 화면으로 연다. 대화는 chatStore에 남아 있어서 돌아오면 이어진다
+  const navigate = useNavigate()
+  const openStore = () => navigate(paths.store())
+  // 시트를 열 때 남은 질문 횟수를 받아 온다
+  useEffect(() => {
+    void refreshChatQuota()
+  }, [])
+  const outOfQuestions = !canAsk(quota)
   const [roomCount] = useState(() => listSavedRoomIds().length)
   // 내 사진에는 덧붙이기 버튼 대신 안내를 보여주려고 내 계정 id를 알아 둔다
   const [myUserId, setMyUserId] = useState<string | null>(null)
@@ -348,6 +388,16 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
               {roomCount > 0 ? `내 모임방 ${roomCount}곳의 이야기를 기억해요` : '내 모임방의 이야기를 기억해요'}
             </p>
           </div>
+          {/* 상점: 크레딧을 사서 더 물어본다 */}
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={openStore}
+            aria-label="상점"
+            className="flex size-9 items-center justify-center rounded-full border border-line text-ink active:opacity-70"
+          >
+            <StoreIcon />
+          </button>
           {/* 지난 대화를 지우고 처음부터 다시 묻는다 */}
           {lines.length > 0 && (
             <button
@@ -406,7 +456,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
               </li>
             ) : (
               <li key={i}>
-                <DuruBubble line={line} myUserId={myUserId} />
+                <DuruBubble line={line} myUserId={myUserId} onAsk={send} />
               </li>
             ),
           )}
@@ -419,27 +469,62 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
         <div ref={endRef} />
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 border-t border-line bg-surface px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]"
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          maxLength={MAX_MESSAGE_LENGTH}
-          placeholder="추억에 대해 물어보세요"
-          aria-label="두루에게 보낼 말"
-          className="h-12 min-w-0 flex-1 rounded-full bg-bg px-5 text-[15px] outline-none placeholder:text-muted"
-        />
-        <button
-          type="submit"
-          aria-label="보내기"
-          disabled={!input.trim() || sending}
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-ink text-surface active:opacity-80 disabled:opacity-30"
+      <div className="border-t border-line bg-surface pb-[max(14px,env(safe-area-inset-bottom))]">
+        {outOfQuestions ? (
+          // 무료도 크레딧도 다 썼을 때: 입력창 대신 안내. 상점을 강조하되, 내일 다시 올 수 있다고도 알려 준다
+          <div className="mx-4 mt-3 rounded-[20px] bg-bg px-4 pt-4 pb-3.5 text-center">
+            <p className="text-[15px] font-bold">오늘 물어볼 수 있는 횟수를 다 썼어요</p>
+            <p className="mt-1.5 text-[12px] leading-5 text-sub">
+              내일 0시에 다시 {quota?.freeLimit ?? 4}번이 생겨요.
+              <br />
+              지금 더 물어보려면 상점에서 구매할 수 있어요.
+            </p>
+            <button
+              type="button"
+              onClick={openStore}
+              className="mt-3.5 h-12 w-full rounded-full bg-point text-[15px] font-semibold text-surface active:opacity-80"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <StoreIcon size={17} />
+                상점에서 구매하기
+              </span>
+            </button>
+            <button type="button" onClick={onClose} className="mt-2 py-1 text-[12px] text-sub active:opacity-70">
+              내일 다시 올게요
+            </button>
+          </div>
+        ) : (
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 px-4 pt-3"
         >
-          <ArrowIcon />
-        </button>
-      </form>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            maxLength={MAX_MESSAGE_LENGTH}
+            placeholder="추억에 대해 물어보세요"
+            aria-label="두루에게 보낼 말"
+            className="h-12 min-w-0 flex-1 rounded-full bg-bg px-5 text-[15px] outline-none placeholder:text-muted"
+          />
+          <button
+            type="submit"
+            aria-label="보내기"
+            disabled={!input.trim() || sending}
+            className="flex size-12 shrink-0 items-center justify-center rounded-full bg-ink text-surface active:opacity-80 disabled:opacity-30"
+          >
+            <ArrowIcon />
+          </button>
+        </form>
+        )}
+        {/* 보내기 아래: 오늘 남은 무료 질문 · 남은 크레딧 */}
+        {quota && (
+          <p className="mt-2 text-center text-[11px] text-sub">
+            오늘의 남은 횟수 <b className="font-semibold text-ink">{quota.freeRemaining}/{quota.freeLimit}</b>
+            <span className="mx-1.5 text-line">|</span>
+            남은 크레딧 <b className="font-semibold text-ink">{quota.credits}</b>
+          </p>
+        )}
+      </div>
         {confirmReset && (
           <div
             className="absolute inset-0 z-10 flex items-center justify-center bg-ink/40 px-8"

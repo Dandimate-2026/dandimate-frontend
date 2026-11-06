@@ -7,6 +7,8 @@ export interface RoomDraft {
   meetingDate: string
   hostNickname: string
   capacity: number
+  /** 서버에 올린 대표 사진 주소 (방을 만들 때 그대로 보낸다) */
+  coverImageUrl?: string
 }
 
 export function saveRoomDraft(draft: RoomDraft) {

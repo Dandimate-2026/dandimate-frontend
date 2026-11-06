@@ -6,6 +6,7 @@ import Card from '../components/Card'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import { formatDateSpaced, todayIsoDate } from '../lib/date'
 import { getRoomDraft, saveRoomDraft } from '../lib/roomDraft'
+import { uploadRoomCover } from '../api/roomCovers'
 import { getRoomExtras, saveRoomExtras, shrinkImage } from '../lib/roomExtras'
 import { paths } from '../routes/paths'
 
@@ -212,20 +213,37 @@ function RoomCreatePage() {
   const [capacity, setCapacity] = useState(draft?.capacity ?? DEFAULT_CAPACITY)
   const [extras] = useState(getRoomExtras)
   const [coverPhoto, setCoverPhoto] = useState(extras.coverPhoto ?? '')
+  // 고르자마자 서버에 올려 두고, 방을 만들 때 이 주소를 같이 보낸다
+  const [coverImageUrl, setCoverImageUrl] = useState(draft?.coverImageUrl)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const [photoError, setPhotoError] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // 장소는 꼭 골라야 하고, 대표 사진은 골라도 안 골라도 된다
+  // 대표 사진은 골라도 안 골라도 된다 (올리는 중이면 끝날 때까지 기다린다)
   const canSubmit =
-    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0
+    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && !uploadingCover
 
   const handlePhoto = async (file?: File) => {
     if (!file) return
     setPhotoError('')
+    let preview: string
     try {
-      setCoverPhoto(await shrinkImage(file))
+      preview = await shrinkImage(file, 960)
     } catch {
       setPhotoError('사진을 열 수 없어요. 다른 사진을 골라 주세요')
+      return
+    }
+    setCoverPhoto(preview)
+    setUploadingCover(true)
+    try {
+      const blob = await (await fetch(preview)).blob()
+      const cover = await uploadRoomCover(blob, preview)
+      setCoverImageUrl(cover.imageUrl)
+    } catch {
+      setCoverImageUrl(undefined)
+      setPhotoError('대표 사진을 올리지 못했어요. 다시 골라 주세요')
+    } finally {
+      setUploadingCover(false)
     }
   }
 
@@ -233,7 +251,7 @@ function RoomCreatePage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
-    saveRoomDraft({ name: roomName.trim(), meetingDate, hostNickname: nickname.trim(), capacity })
+    saveRoomDraft({ name: roomName.trim(), meetingDate, hostNickname: nickname.trim(), capacity, coverImageUrl })
     saveRoomExtras({ coverPhoto: coverPhoto || undefined })
     navigate(paths.roomCreatePlan())
   }
