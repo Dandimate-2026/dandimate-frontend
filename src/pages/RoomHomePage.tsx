@@ -187,7 +187,7 @@ const SHARE_BUTTON_CLASS =
 function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: string }) {
   const navigate = useNavigate()
   const { room, members, todayFlowers, myTodo } = home
-  const { copied, copy, share } = useInviteShare(inviteToken ?? '')
+  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
 
@@ -240,23 +240,11 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
             </ul>
             <p className="ml-[7px] text-[11px] text-sub">{memberNames}</p>
           </div>
-          {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 공유 버튼을 보여준다 */}
-          {inviteToken && (
-            <div className="mt-2.5 grid grid-cols-2 gap-[15px]">
-              <button type="button" onClick={() => copy()} className={SHARE_BUTTON_CLASS}>
-                <CopyIcon />
-                {copied ? '복사됨' : '링크복사'}
-              </button>
-              <button type="button" onClick={() => share()} className={SHARE_BUTTON_CLASS}>
-                <ShareIcon />
-                단톡방에 보내기
-              </button>
-            </div>
-          )}
         </Card>
       </div>
 
-      <footer className="mt-auto px-5 pt-3 pb-6">
+      {/* 긴 화면(노트북 등)에서는 아래에 붙이지 않고 내용 바로 아래에 둔다 */}
+      <footer className="mt-auto px-5 pt-3 pb-6 [@media(min-height:900px)]:mt-2">
         <Card className="px-[26px] pt-[15px] pb-6">
           <p className="text-[11px] text-sub">내 할 일</p>
           <p className="mt-1 text-[15px] font-bold">
@@ -266,6 +254,24 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
             <Button onClick={() => navigate(paths.photoUpload(room.id))} className="mt-3 w-full">
               사진 고르기
             </Button>
+          )}
+
+          {/* 친구를 부르는 것도 지금 할 일: 고정 초대 링크와 공유 버튼 */}
+          {inviteToken && (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="text-[11px] text-sub">친구 초대하기</p>
+              <p className="mt-1.5 truncate rounded-xl bg-bg px-3 py-2.5 text-[12px] text-sub">{link}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => copy()} className={SHARE_BUTTON_CLASS}>
+                  <CopyIcon />
+                  {copied ? '복사됨' : '링크 복사'}
+                </button>
+                <button type="button" onClick={() => share()} className={SHARE_BUTTON_CLASS}>
+                  <ShareIcon />
+                  단톡방에 공유하기
+                </button>
+              </div>
+            </div>
           )}
         </Card>
       </footer>
@@ -597,7 +603,7 @@ ${url}`).catch(() => {})
         </section>
       </div>
 
-      <footer className="mt-auto px-5 pb-5">
+      <footer className="mt-auto px-5 pb-5 [@media(min-height:900px)]:mt-2">
         {grown ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon />

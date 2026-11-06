@@ -171,7 +171,11 @@ function KakaoRecordMap({
     const overlays = next.map((m) => {
       const lat = m.kind === 'place' ? m.place.latitude : m.pin.latitude
       const lng = m.kind === 'place' ? m.place.longitude : m.pin.longitude
-      const overlay = new maps.CustomOverlay({ position: new maps.LatLng(lat, lng), content: m.el, yAnchor: 1, zIndex: 3 })
+      // 핀 내용은 React가 나중에 채워서, 카카오가 크기로 계산하는 기준점(yAnchor)이 어긋나 확대할 때 핀이 제자리를 벗어났다.
+      // 기준점을 좌표 그 자리(0,0)로 두고, 핀을 CSS로 "가운데 아래 = 좌표"가 되게 직접 옮긴다
+      m.el.style.transform = 'translate(-50%, -100%)'
+      m.el.style.width = 'max-content'
+      const overlay = new maps.CustomOverlay({ position: new maps.LatLng(lat, lng), content: m.el, xAnchor: 0, yAnchor: 0, zIndex: 3 })
       overlay.setMap(map)
       return overlay
     })

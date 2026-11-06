@@ -26,6 +26,9 @@ import { getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomE
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
+import { ViewablePhoto } from '../components/PhotoViewer'
+import { LengthNotice } from '../components/LengthNotice'
+import { clampText } from '../lib/textLimit'
 
 function ChevronLeftIcon() {
   return (
@@ -181,12 +184,13 @@ function EditDialog({
                 value={value}
                 maxLength={maxLength}
                 autoFocus
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(e) => setValue(clampText(e.target.value, maxLength))}
                 className="h-[52px] w-full rounded-full border border-line bg-surface pr-14 pl-[18px] outline-none focus:border-sub"
               />
               <span className="absolute top-1/2 right-4 -translate-y-1/2 text-[12px] text-sub">
                 {value.length}/{maxLength}
               </span>
+              <LengthNotice length={value.length} max={maxLength} className="text-center" />
             </>
           ) : (
             <input
@@ -474,7 +478,7 @@ function RoomSettingsPage() {
             {/* 대표 사진은 줄 안에서 작은 썸네일로 바로 보여준다 */}
             <span className="flex items-center gap-2">
               {coverImage ? (
-                <img src={coverImage} alt="대표 사진" className="size-9 shrink-0 rounded-[10px] object-cover" />
+                <ViewablePhoto src={coverImage} alt="대표 사진" className="size-9 shrink-0 rounded-[10px] object-cover" />
               ) : (
                 <span className="size-9 shrink-0 rounded-[10px] border border-dashed border-line bg-bg" aria-hidden="true" />
               )}

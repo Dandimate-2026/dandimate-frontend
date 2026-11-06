@@ -5,6 +5,8 @@ import { formatDuration, useVoiceRecorder } from '../../hooks/useVoiceRecorder'
 import { BottomSheet } from './components'
 import type { MemoryContribution } from './types'
 import { formatVoiceLimit } from '../../hooks/useRoomQuota'
+import { LengthNotice } from '../../components/LengthNotice'
+import { clampText } from '../../lib/textLimit'
 
 export default function ContributionSheet({ kind, quote, initial, startWithText = false, onSave, onClose, onTranscribe, maxLength = 500, maxVoiceMs }: {
   kind: 'addition' | 'reply'
@@ -102,8 +104,9 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
       </>}
     </div> : <div className="memory-write-field">
       <label htmlFor="memory-contribution">내 이야기</label>
-      <textarea id="memory-contribution" value={text} onChange={(event) => setText(event.target.value)} maxLength={maxLength} rows={4} placeholder="내가 기억하는 장면을 적어 주세요" autoFocus />
+      <textarea id="memory-contribution" value={text} onChange={(event) => setText(clampText(event.target.value, maxLength))} maxLength={maxLength} rows={4} placeholder="내가 기억하는 장면을 적어 주세요" autoFocus />
       <span>{text.length}/{maxLength}</span>
+      <LengthNotice length={text.length} max={maxLength} />
       {audio && <audio controls src={audio.url} aria-label="함께 남길 녹음" />}
     </div>}
     {error && <p role="alert" className="memory-error">{error}</p>}

@@ -10,6 +10,7 @@ import Flower from '../components/Flower'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import { useSheetDrag } from '../hooks/useSheetDrag'
+import { ViewablePhoto } from '../components/PhotoViewer'
 
 // 시안 지도 그림(840×860) 크기. 그림 속 도시 위치(안동·구미·대구·포항·경주)에 맞춰 좌표 → 픽셀 식을 구했다
 const MAP_W = 840
@@ -71,12 +72,12 @@ function PlacePhotoCard({
   if (!canOpen) note = '이 기기에서 들어간 방이 아니라 열 수 없어요'
   else if (completed)
     action = {
-      label: '이 문단에 답가 남기기',
+      label: '답가 남기기',
       path: paths.roomScrollReply(place.roomId, place.photoId),
     }
   else
     action = {
-      label: '이 사진에 덧붙이기',
+      label: '덧붙이기',
       path: paths.roomCirculation(place.roomId, place.photoId),
     }
 
@@ -85,7 +86,7 @@ function PlacePhotoCard({
       <div className="flex gap-3">
         {/* 사진은 작은 썸네일로: 못 불러오면 빈 칸 */}
         {place.imageUrl ? (
-          <img
+          <ViewablePhoto
             src={place.imageUrl}
             alt={`${place.placeName}에서 찍은 사진`}
             onError={(e) => {
@@ -112,16 +113,20 @@ function PlacePhotoCard({
           )}
         </div>
       </div>
+      {/* 사진이 많아도 눈이 덜 피곤하게: 꽉 찬 분홍 버튼 대신 오른쪽 작은 글자 버튼 */}
       {action ? (
-        <button
-          type="button"
-          onClick={() => onGo(action.path)}
-          className="mt-2.5 h-10 w-full rounded-full bg-point text-[13px] font-semibold text-surface active:opacity-80"
-        >
-          {action.label}
-        </button>
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => onGo(action.path)}
+            className="flex items-center gap-0.5 rounded-full px-2.5 py-1 text-[12px] font-semibold text-point active:bg-[#fbe9f0]"
+          >
+            {action.label}
+            <span aria-hidden="true">›</span>
+          </button>
+        </div>
       ) : (
-        <p className="mt-2.5 text-center text-[12px] text-muted">{note}</p>
+        <p className="mt-2 text-right text-[11px] text-muted">{note}</p>
       )}
     </div>
   )

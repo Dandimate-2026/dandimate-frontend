@@ -10,6 +10,8 @@ import { getRoomSession, listSavedRoomIds } from '../lib/session'
 import { paths } from '../routes/paths'
 import { BotIcon, StoreIcon } from './ChatFab'
 import Flower from './Flower'
+import { ViewablePhoto } from './PhotoViewer'
+import { clampText } from '../lib/textLimit'
 
 /** 손잡이를 이만큼 아래로 끌면 시트를 내린다 */
 const CLOSE_DRAG_PX = 90
@@ -109,7 +111,7 @@ function SourceCard({ source }: { source: ChatSource }) {
   const owner = photo?.uploader?.nickname
   const thumb = (className: string) =>
     photo?.imageUrl ? (
-      <img src={photo.imageUrl} alt={owner ? `${owner}의 사진` : '사진'} className={`${className} object-cover`} />
+      <ViewablePhoto src={photo.imageUrl} alt={owner ? `${owner}의 사진` : '사진'} className={`${className} object-cover`} />
     ) : (
       <span className={`${className} bg-gradient-to-br from-[#f2c9b8] to-[#8e6a86]`} aria-hidden="true" />
     )
@@ -368,8 +370,9 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
           <DuruAvatar size={44} />
           <div className="min-w-0 flex-1">
             <h2 className="text-[17px] font-bold">두루</h2>
-            <p className="text-[12px] text-sub">
-              {roomCount > 0 ? `내 모임방 ${roomCount}곳의 이야기를 기억해요` : '내 모임방의 이야기를 기억해요'}
+            {/* 오른쪽 버튼들 때문에 좁아도 한 줄로 보이게 짧게 쓰고, 넘치면 말줄임 */}
+            <p className="truncate text-[12px] text-sub">
+              {roomCount > 0 ? `모임방 ${roomCount}곳을 기억해요` : '내 모임방을 기억해요'}
             </p>
           </div>
           {/* 상점: 크레딧을 사서 더 물어본다 */}
@@ -378,9 +381,11 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
             onPointerDown={(e) => e.stopPropagation()}
             onClick={openStore}
             aria-label="상점"
-            className="flex size-9 items-center justify-center rounded-full border border-line text-ink active:opacity-70"
+            // 한눈에 상점인 걸 알 수 있게 분홍 바탕 + 글자를 함께 둔다
+            className="flex h-9 items-center gap-1 rounded-full bg-[#fbe9f0] px-3 text-[12px] font-semibold text-point active:opacity-70"
           >
-            <StoreIcon />
+            <StoreIcon size={16} />
+            상점
           </button>
           {/* 지난 대화를 지우고 처음부터 다시 묻는다 */}
           {lines.length > 0 && (
@@ -484,7 +489,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
         >
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => setInput(clampText(e.target.value, MAX_MESSAGE_LENGTH))}
             maxLength={MAX_MESSAGE_LENGTH}
             placeholder="추억에 대해 물어보세요"
             aria-label="두루에게 보낼 말"

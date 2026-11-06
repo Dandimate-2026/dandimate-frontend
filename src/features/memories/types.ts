@@ -1,4 +1,4 @@
-import type { Member, ScrollParagraph } from '../../api/types'
+import type { FlowerCode, Member, ScrollParagraph } from '../../api/types'
 
 export interface ReweaveResult {
   paragraphId: string
@@ -7,7 +7,8 @@ export interface ReweaveResult {
   reply: { member: Member; text: string }
 }
 
-export type FlowerColor = 'pink' | 'blue' | 'orange'
+/** 꽃 코드(8색) 또는 예전 3색 이름 */
+export type FlowerColor = 'pink' | 'blue' | 'orange' | FlowerCode
 export type PreviewScreen = 'screens' | 's6-1' | 's6-2' | 's6-3' | 's6-4' | 's6-5' | 's8' | 's9' | 's10'
 
 export interface MemoryContribution {

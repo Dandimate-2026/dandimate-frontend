@@ -9,6 +9,8 @@ import { getRoomDraft, saveRoomDraft } from '../lib/roomDraft'
 import { uploadRoomCover } from '../api/roomCovers'
 import { getRoomExtras, saveRoomExtras, shrinkImage } from '../lib/roomExtras'
 import { paths } from '../routes/paths'
+import { LengthNotice } from '../components/LengthNotice'
+import { clampText } from '../lib/textLimit'
 
 const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
@@ -169,13 +171,14 @@ function CountedInput({
         id={id}
         value={value}
         maxLength={maxLength}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(clampText(e.target.value, maxLength))}
         placeholder={placeholder}
         className="h-[52px] w-full rounded-full border border-line bg-surface pr-14 pl-[18px] outline-none placeholder:text-muted focus:border-sub"
       />
       <span className="absolute top-1/2 right-4 -translate-y-1/2 text-[12px] text-sub">
         {value.length}/{maxLength}
       </span>
+      <LengthNotice length={value.length} max={maxLength} className="pl-[18px]" />
     </div>
   )
 }

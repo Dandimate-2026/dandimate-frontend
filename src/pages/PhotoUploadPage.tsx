@@ -62,6 +62,9 @@ function LockIcon() {
 /** 데모에서 한 번에 고를 수 있는 장수 (사실상 제한 없음) */
 const DEMO_MAX_PHOTOS = 99
 
+const PLAN_NAME: Record<string, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
+const planName = (plan?: string) => PLAN_NAME[plan ?? 'FREE'] ?? 'Free'
+
 function PhotoUploadPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
@@ -323,23 +326,13 @@ function PhotoUploadPage() {
       {limitOpen && (
         <PlanLimitSheet
           kind="photo"
-          title={
-            <>
-              이 방에서는 1인당
-              <br />
-              사진 {perMember}장까지 올릴 수 있어요
-            </>
-          }
+          title={`사진 ${perMember === 3 ? '세' : perMember}장을 다 올렸어요`}
           description={
-            isHost ? (
-              <>플랜을 바꾸면 바로 더 올릴 수 있어요.</>
-            ) : (
-              <>
-                더 올리고 싶으면 방장에게 알려 주세요.
-                <br />
-                방장이 플랜을 바꾸면 바로 더 올릴 수 있어요.
-              </>
-            )
+            <>
+              {planName(home?.room.planType)} 플랜은 한 사람당 {perMember}장까지예요.
+              <br />
+              {isHost ? '플랜을 바꾸면' : '방장이 플랜을 바꾸면'} 방 친구 모두 더 올릴 수 있어요
+            </>
           }
           currentPlan={home?.room.planType}
           primary={{
@@ -349,7 +342,7 @@ function PhotoUploadPage() {
               photoPlan.action.onClick()
             },
           }}
-          secondary={{ label: maxPhotos === 0 ? '괜찮아요' : `괜찮아요, ${perMember}장만 고를게요`, onClick: closeLimit }}
+          secondary={{ label: '괜찮아요', onClick: closeLimit }}
           onClose={closeLimit}
         />
       )}

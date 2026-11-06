@@ -2,6 +2,8 @@ import { formatDuration } from '../../hooks/useVoiceRecorder'
 import Button from '../Button'
 import { useAudioPlayback } from '../../hooks/useAudioPlayback'
 import { PencilIcon, PlayIcon, RetryIcon, StopIcon } from './EntryIcons'
+import { LengthNotice } from '../LengthNotice'
+import { clampText } from '../../lib/textLimit'
 
 export interface VoiceDraft {
   transcriptionId: string
@@ -59,11 +61,12 @@ function AnswerForm({
           value={transcript}
           maxLength={maxLength}
           rows={2}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(clampText(e.target.value, maxLength))}
           placeholder="한두 문장이면 충분해요"
           className="mt-2 w-full resize-none bg-transparent text-[13px] leading-[19px] outline-none placeholder:text-muted"
         />
       </div>
+      <LengthNotice length={transcript.length} max={maxLength} className="px-1" />
       {error && <p className="mt-2 px-1 text-[11px] text-point">{error}</p>}
 
       <div className="mt-auto pt-8">

@@ -16,3 +16,27 @@
   --color-disabled: #cfc6ba;
   --color-point: #b03a6a;
 }
+
+/* 넓은 화면(노트북·태블릿)에서도 휴대폰 앱처럼 가운데 한 줄로 보여준다.
+   아래 탭·떠 있는 버튼·바텀시트도 같은 폭(430px)으로 맞춰 두었다 */
+html {
+  background: #ece6dc;
+}
+body {
+  margin: 0;
+  background: #ece6dc;
+}
+#root {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+@media (min-width: 600px) {
+  #root {
+    box-shadow: 0 0 0 1px rgb(42 38 35 / 0.06), 0 12px 40px rgb(42 38 35 / 0.08);
+  }
+}

@@ -8,6 +8,8 @@ import { useRoomInvite } from '../hooks/useRoomInvite'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
+import { LengthNotice } from '../components/LengthNotice'
+import { clampText } from '../lib/textLimit'
 
 const MAX_MESSAGE_LENGTH = 50
 
@@ -64,10 +66,11 @@ function RoomSharePage() {
             value={message}
             maxLength={MAX_MESSAGE_LENGTH}
             rows={2}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => setMessage(clampText(e.target.value, MAX_MESSAGE_LENGTH))}
             placeholder={DEFAULT_SHARE_MESSAGE}
             className="mt-0.5 w-full resize-none bg-transparent text-[13px] leading-[18px] outline-none placeholder:text-muted"
           />
+          <LengthNotice length={message.length} max={MAX_MESSAGE_LENGTH} />
         </div>
       </Card>
 

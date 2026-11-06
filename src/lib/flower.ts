@@ -1,21 +1,20 @@
 import type { FlowerCode } from '../api/types'
 
-// 백엔드 FlowerCode → 꽃 색상
-// TODO: 시안에 있는 3색(진달래·물망초·개나리) 외 나머지는 디자이너 확인 필요
+// 꽃 색 8가지 (앱 전체 통일). 서버는 방에 들어온 순서대로 아래 순서의 꽃 코드를 준다
+// 1 AZALEA · 2 FORSYTHIA · 3 ROYAL_AZALEA · 4 CANOLA · 5 LILAC · 6 FORGET_ME_NOT · 7 TEAL · 8 PURPLE
+// 그래서 들어온 순서대로 분홍 · 주황 · 파랑 · 청록 · 보라 · 황토 · 자주 · 올리브가 된다
 export const FLOWER_COLOR: Record<FlowerCode, string> = {
   AZALEA: '#E0568F',
-  FORGET_ME_NOT: '#3D7BD6',
   FORSYTHIA: '#E08A12',
-  ROYAL_AZALEA: '#C2407A',
-  CANOLA: '#E8C21A',
-  LILAC: '#A77BD6',
-  TEAL: '#2A9D8F',
-  PURPLE: '#7A4FC2',
+  ROYAL_AZALEA: '#3D7BD6',
+  CANOLA: '#428E80',
+  LILAC: '#946DC4',
+  FORGET_ME_NOT: '#B59633',
+  TEAL: '#8E2A6B',
+  PURPLE: '#728C0E',
 }
 
-/** 기억 화면에서 기존 SVG 꽃 에셋에 사용하는 색상 매핑. */
-export function memoryFlowerColor(code: FlowerCode): 'pink' | 'blue' | 'orange' {
-  if (code === 'FORGET_ME_NOT' || code === 'TEAL') return 'blue'
-  if (code === 'FORSYTHIA' || code === 'CANOLA') return 'orange'
-  return 'pink'
+/** 기억(돌려보기·두루마리) 화면도 같은 8가지 색 꽃을 쓴다 (예전 3색 그림 대신 꽃 코드 그대로) */
+export function memoryFlowerColor(code: FlowerCode): FlowerCode {
+  return code
 }
