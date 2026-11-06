@@ -34,6 +34,8 @@ jobs:
         env:
           # 토스 테스트 결제 클라이언트 키 (공개 키라 저장소 변수에 둔다). 비어 있으면 결제를 비활성화한다
           VITE_TOSS_CLIENT_KEY: ${{ vars.VITE_TOSS_CLIENT_KEY }}
+          # 카카오톡 공유창용 JavaScript 키 (도메인이 묶인 공개 키라 저장소 변수에 둔다). 비어 있으면 기기 공유 시트로 대신 연다
+          VITE_KAKAO_JS_KEY: ${{ vars.VITE_KAKAO_JS_KEY }}
         run: |
           npm ci
           npm run build
