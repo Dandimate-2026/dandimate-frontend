@@ -5,7 +5,9 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import { formatDateSpaced, todayIsoDate } from '../lib/date'
+import PlaceSheet from '../components/PlaceSheet'
 import { getRoomDraft, saveRoomDraft } from '../lib/roomDraft'
+import { addRecentPlace, getRecentPlaces, getRoomExtras, saveRoomExtras, shrinkImage } from '../lib/roomExtras'
 import { paths } from '../routes/paths'
 
 const MAX_ROOM_NAME_LENGTH = 20
@@ -176,11 +178,30 @@ function CountedInput({
   )
 }
 
-function Field({ htmlFor, label, children }: { htmlFor: string; label: string; children: ReactNode }) {
+function PinIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className={className}>
+      <path d="M8 1.5a4.75 4.75 0 0 0-4.75 4.75C3.25 9.9 8 14.5 8 14.5s4.75-4.6 4.75-8.25A4.75 4.75 0 0 0 8 1.5Zm0 6.5a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5Z" />
+    </svg>
+  )
+}
+
+function Field({
+  htmlFor,
+  label,
+  hint,
+  children,
+}: {
+  htmlFor: string
+  label: string
+  hint?: string
+  children: ReactNode
+}) {
   return (
     <div>
       <label htmlFor={htmlFor} className="pl-[18px] text-[11px] font-semibold">
         {label}
+        {hint && <span className="font-normal text-sub"> · {hint}</span>}
       </label>
       <div className="mt-2">{children}</div>
     </div>
@@ -196,14 +217,35 @@ function RoomCreatePage() {
   const [meetingDate, setMeetingDate] = useState(draft?.meetingDate ?? todayIsoDate)
   const [nickname, setNickname] = useState(draft?.hostNickname ?? '')
   const [capacity, setCapacity] = useState(draft?.capacity ?? DEFAULT_CAPACITY)
+  const [extras] = useState(getRoomExtras)
+  const [place, setPlace] = useState(extras.place ?? '')
+  const [placeDetail, setPlaceDetail] = useState(extras.placeDetail)
+  const [coverPhoto, setCoverPhoto] = useState(extras.coverPhoto ?? '')
+  const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
+  const [recentPlaces, setRecentPlaces] = useState(getRecentPlaces)
+  const [photoError, setPhotoError] = useState('')
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
-  const canSubmit = roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0
+  // 장소는 꼭 골라야 하고, 대표 사진은 골라도 안 골라도 된다
+  const canSubmit =
+    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && place !== ''
+
+  const handlePhoto = async (file?: File) => {
+    if (!file) return
+    setPhotoError('')
+    try {
+      setCoverPhoto(await shrinkImage(file))
+    } catch {
+      setPhotoError('사진을 열 수 없어요. 다른 사진을 골라 주세요')
+    }
+  }
 
   // 서버는 방을 만들 때 플랜을 받으므로, 여기서는 입력만 들고 플랜 선택으로 넘어간다. 방은 플랜을 고른 뒤 만든다
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
     saveRoomDraft({ name: roomName.trim(), meetingDate, hostNickname: nickname.trim(), capacity })
+    saveRoomExtras({ place, placeDetail, coverPhoto: coverPhoto || undefined })
     navigate(paths.roomCreatePlan())
   }
 
@@ -278,10 +320,75 @@ function RoomCreatePage() {
           </div>
 
           <div className="mt-3">
-            <Field htmlFor="capacity" label="함께할 인원">
+            <Field htmlFor="place" label="어디서 놀았나요?" hint="지도에 꽃이 피어요">
+              <button
+                id="place"
+                type="button"
+                onClick={() => setPlaceSheetOpen(true)}
+                className={`flex h-[52px] w-full items-center justify-between rounded-full border bg-surface pr-4 pl-[18px] text-left ${
+                  place ? 'border-line' : 'border-dashed border-line text-muted'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <PinIcon className="text-point" />
+                  {place ? <span className="font-semibold text-ink">{place}</span> : '장소를 골라 주세요'}
+                </span>
+                <span className={place ? 'text-[13px] font-semibold text-point' : 'text-sub'}>
+                  {place ? '바꾸기 ›' : '›'}
+                </span>
+              </button>
+            </Field>
+          </div>
+
+          <div className="mt-3">
+            <Field htmlFor="capacity" label="함께할 인원" hint="나 포함">
               <CapacitySelect id="capacity" value={capacity} onChange={setCapacity} />
             </Field>
-            <p className="mt-2 pl-[18px] text-[11px] text-sub">나를 포함해 최대 {ROOM_CAPACITY}명까지 들어올 수 있어요</p>
+          </div>
+
+          <div className="mt-3">
+            <Field htmlFor="cover-photo" label="대표 사진" hint="선택">
+              <input
+                ref={photoInputRef}
+                id="cover-photo"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  void handlePhoto(e.target.files?.[0])
+                  e.target.value = ''
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className={`flex w-full items-center gap-3.5 rounded-[20px] border bg-surface p-2.5 text-left ${
+                  coverPhoto ? 'border-line' : 'border-dashed border-line'
+                }`}
+              >
+                {coverPhoto ? (
+                  <img src={coverPhoto} alt="" className="size-[60px] shrink-0 rounded-[14px] object-cover" />
+                ) : (
+                  <span className="flex size-[60px] shrink-0 items-center justify-center rounded-[14px] bg-bg text-[24px] text-sub">
+                    +
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[14px] font-semibold">
+                    {coverPhoto ? '대표 사진을 골랐어요' : '앨범에서 고르기'}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-sub">
+                    {coverPhoto ? '모임방 목록에 이 사진이 보여요' : '나중에 골라도 괜찮아요'}
+                  </span>
+                </span>
+                {coverPhoto && <span className="pr-1.5 text-[13px] font-semibold text-point">바꾸기 ›</span>}
+              </button>
+            </Field>
+            {photoError && (
+              <p className="mt-2 pl-[18px] text-[11px] text-point" role="alert">
+                {photoError}
+              </p>
+            )}
           </div>
 
           <Button type="submit" disabled={!canSubmit} className="mt-4 w-full">
@@ -297,6 +404,29 @@ function RoomCreatePage() {
         </Link>
         에 동의하게 돼요 · 48시간 뒤 첫 두루마리
       </p>
+
+      {placeSheetOpen && (
+        <PlaceSheet
+          initial={place}
+          recent={recentPlaces}
+          onClose={() => setPlaceSheetOpen(false)}
+          onSelect={(next, detail) => {
+            setPlace(next)
+            setPlaceDetail(
+              detail && {
+                address: detail.address,
+                city: detail.city,
+                latitude: detail.latitude,
+                longitude: detail.longitude,
+              },
+            )
+            // 최근 고른 곳은 도시 칩으로 다시 보여주므로 도시 이름만 남긴다
+            addRecentPlace(detail?.city ?? next)
+            setRecentPlaces(getRecentPlaces())
+            setPlaceSheetOpen(false)
+          }}
+        />
+      )}
     </main>
   )
 }
