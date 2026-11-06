@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { PAYMENT_DEMO, purchasePlan, type PaymentMethod } from '../api/plans'
+import {
+  createPlanOrder,
+  createRoomOrder,
+  openTossPayment,
+  savePendingPayment,
+  TOSS_ENABLED,
+  type TossMethod,
+} from '../api/payments'
+import { paymentErrorMessage } from '../lib/paymentErrors'
 import { USE_MOCK } from '../api/mock'
 import { createRoom, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomPlanType } from '../api/types'
@@ -23,6 +32,14 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; badge: string; recent
   { id: 'BANK_TRANSFER', label: '계좌이체', badge: 'BANK' },
   { id: 'MOBILE', label: '휴대폰 결제', badge: 'MOB' },
 ]
+// 간편결제는 토스 카드 결제창 안에서 고른다
+const TOSS_METHOD: Record<PaymentMethod, TossMethod> = {
+  EASY_PAY_A: 'CARD',
+  EASY_PAY_B: 'CARD',
+  CARD: 'CARD',
+  BANK_TRANSFER: 'TRANSFER',
+  MOBILE: 'MOBILE_PHONE',
+}
 const AGREEMENTS = [
   { label: '주문 내용 확인 및 결제 동의' },
   { label: '결제대행 서비스 이용약관', note: '결제대행사 약관은 실제 결제 연동 시 제공됩니다.' },
@@ -138,6 +155,19 @@ function RoomCheckoutPage() {
   const handlePay = async () => {
     if (!allAgreed || status !== 'idle') return
     setStatus('processing')
+    if (TOSS_ENABLED) {
+      // 서버에 주문을 만들고 토스 결제창으로 간다. 결제가 끝나면 /payments/success 에서 승인한다
+      try {
+        const planType = plan.id.toUpperCase() as RoomPlanType
+        const order = isNewRoom && draft ? await createRoomOrder({ ...draft, planType }) : await createPlanOrder(roomId ?? '', planType)
+        savePendingPayment({ orderId: order.orderId, plan: plan.id, roomId: isNewRoom ? undefined : roomId })
+        await openTossPayment(order, TOSS_METHOD[method])
+      } catch (cause) {
+        setFailureReason(paymentErrorMessage(cause))
+        setStatus('failed')
+      }
+      return
+    }
     try {
       await purchasePlan({ roomId: roomId ?? '', plan: plan.id, method })
       if (isNewRoom && draft) {
@@ -186,7 +216,8 @@ function RoomCheckoutPage() {
       <div className="rounded-[18px] border border-line bg-surface p-[15px]">
         <div className="flex gap-2"><input value={couponCode} disabled={!paymentOpen} onChange={(event) => setCouponCode(event.target.value)} placeholder="쿠폰 코드 입력" aria-label="쿠폰 코드" className="h-12 min-w-0 flex-1 rounded-xl border border-line bg-white px-3.5 text-[14px] outline-point placeholder:text-muted" />
           <button type="button" disabled={!paymentOpen} onClick={() => {
-            if (!paymentOpen) { setCouponMessage('서버에 쿠폰 API가 준비되지 않았어요'); return }
+            // 실제 결제는 서버가 금액을 정해서, 서버에 쿠폰이 생기기 전까지는 할인을 넣지 않는다
+            if (!paymentOpen || TOSS_ENABLED) { setCouponMessage('쿠폰은 아직 쓸 수 없어요'); return }
             if (couponCode.trim().toUpperCase() === COUPON_CODE) { setCouponApplied(true); setCouponMessage('미리보기 쿠폰이 적용되었어요') }
             else { setCouponApplied(false); setCouponMessage('사용할 수 없는 쿠폰 코드예요') }
           }} className="h-12 rounded-xl bg-ink px-6 text-[14px] font-semibold text-surface">적용</button></div>

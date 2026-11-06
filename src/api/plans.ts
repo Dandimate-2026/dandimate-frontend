@@ -1,6 +1,7 @@
 import type { PlanCatalogItem, PlanId } from '../lib/plans'
 import { request } from './client'
 import { USE_MOCK } from './mock'
+import { TOSS_ENABLED } from './payments'
 
 export type PaymentMethod = 'EASY_PAY_A' | 'EASY_PAY_B' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE'
 
@@ -12,13 +13,12 @@ export interface PurchaseRequest {
 
 /**
  * 결제 화면 시연 스위치.
- * TODO(백엔드 미지원): 결제 API가 없어서, 결제 화면(플랜 선택 → 결제 → 결제 완료)을 끝까지 보여줄 수 있게
- * 결제를 하드코딩으로 통과시킨다. 실제로 돈이 나가지 않고, 서버에 만들어지는 방은 Free다.
- * 결제 API가 붙으면 false로 바꾸고 아래 purchasePlan을 실제 요청으로 바꾼다
+ * 토스 클라이언트 키(VITE_TOSS_CLIENT_KEY)가 없으면 결제를 하드코딩으로 통과시켜 화면만 끝까지 보여준다.
+ * 이때는 실제로 결제되지 않고, 서버에 만들어지는 방은 Free다. 키가 있으면 실제 토스 테스트 결제를 쓴다
  */
-export const PAYMENT_DEMO = true
+export const PAYMENT_DEMO = !TOSS_ENABLED
 
-/** 플랜 결제. 지금은 시연용으로 잠깐 기다린 뒤 결제된 것으로 친다 */
+/** 시연용 결제. 잠깐 기다린 뒤 결제된 것으로 친다 (실제 결제는 api/payments.ts) */
 export async function purchasePlan(request: PurchaseRequest): Promise<void> {
   void request
   if (USE_MOCK || PAYMENT_DEMO) {

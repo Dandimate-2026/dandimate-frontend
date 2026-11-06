@@ -31,6 +31,9 @@ jobs:
 
       # 빌드가 실패하면 여기서 멈추고 서버에는 아무것도 올리지 않는다
       - name: Install dependencies and build
+        env:
+          # 토스 테스트 결제 클라이언트 키 (공개 키라 저장소 변수에 둔다). 비어 있으면 결제 화면 시연 모드로 빌드된다
+          VITE_TOSS_CLIENT_KEY: ${{ vars.VITE_TOSS_CLIENT_KEY }}
         run: |
           npm ci
           npm run build
