@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { RoomPlanType, RoomQuota } from '../api/types'
 import { PLANS, type Plan } from '../lib/plans'
 import Flower from './Flower'
+import { useSheetDrag } from '../hooks/useSheetDrag'
 
 export type PlanLimitKind = 'photo' | 'voice' | 'reweave'
 
@@ -69,6 +70,7 @@ function PlanLimitSheet({
   const { label, icon, value } = KIND[kind]
   const current = (currentPlan ?? 'FREE').toLowerCase()
 
+  const sheetDrag = useSheetDrag(onClose)
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40" onClick={onClose}>
       <section
@@ -76,10 +78,11 @@ function PlanLimitSheet({
         aria-modal="true"
         aria-labelledby="plan-limit-title"
         onClick={(e) => e.stopPropagation()}
+        style={sheetDrag.sheetStyle}
         className="w-full max-w-[430px] rounded-t-[28px] bg-surface px-6 pt-3 pb-7 text-ink"
       >
-        <div className="flex justify-center">
-          <span className="h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+        <div {...sheetDrag.handleProps} className="-my-2 flex w-full justify-center py-2" aria-hidden="true">
+          <span className="h-1 w-10 rounded-full bg-line" />
         </div>
         <span className="mt-5 flex size-[70px] items-center justify-center rounded-full bg-[#f6e3ea] text-point">
           {icon}

@@ -17,6 +17,7 @@ import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
+import { useSheetDrag } from '../hooks/useSheetDrag'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
   COLLECTING: '모으는 중',
@@ -348,6 +349,7 @@ function TimeUpSheet({
   onWeave: () => void
   onClose: () => void
 }) {
+  const sheetDrag = useSheetDrag(onClose)
   return (
     <div className="fixed inset-0 z-20 flex items-end justify-center bg-ink/40" onClick={onClose}>
       <section
@@ -355,9 +357,12 @@ function TimeUpSheet({
         aria-modal="true"
         aria-labelledby="timeup-title"
         onClick={(e) => e.stopPropagation()}
+        style={sheetDrag.sheetStyle}
         className="flex w-full max-w-[430px] flex-col items-center rounded-t-[28px] bg-surface px-6 pt-3 pb-8 text-center text-ink"
       >
-        <span className="h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+        <div {...sheetDrag.handleProps} className="-my-2 flex w-full justify-center py-2" aria-hidden="true">
+          <span className="h-1 w-10 rounded-full bg-line" />
+        </div>
         <div className="mt-6">
           <ScrollIcon />
         </div>
