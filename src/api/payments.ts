@@ -10,7 +10,7 @@ import type { CreateRoomRequest, RoomPlanType } from './types'
 /** 토스 결제창용 클라이언트 키 (test_ck_…). 백엔드의 테스트 시크릿 키와 같은 상점의 키여야 한다 */
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY as string | undefined
 
-/** 실제 토스 테스트 결제를 쓸 수 있는지. 키가 없으면 결제 화면 시연(PAYMENT_DEMO)으로 동작한다 */
+/** 백엔드와 같은 상점의 테스트 키가 있을 때만 결제창을 연다. */
 export const TOSS_ENABLED = !USE_MOCK && Boolean(TOSS_CLIENT_KEY?.startsWith('test_ck_'))
 
 export type PaymentOrderStatus = 'READY' | 'PROCESSING' | 'DONE' | 'FAILED'
@@ -63,6 +63,7 @@ export interface PendingPayment {
   plan: string
   /** 기존 방 플랜 변경이면 방 id, 새 방이면 없음 */
   roomId?: string
+  roomName?: string
 }
 
 const PENDING_KEY = 'duruduru:pending-payment'
@@ -111,5 +112,5 @@ export async function openTossPayment(order: PaymentOrder, method: TossMethod) {
   // 결제 수단마다 SDK 타입이 따로라 수단별로 나눠 부른다
   if (method === 'TRANSFER') await payment.requestPayment({ ...common, method: 'TRANSFER' })
   else if (method === 'MOBILE_PHONE') await payment.requestPayment({ ...common, method: 'MOBILE_PHONE' })
-  else await payment.requestPayment({ ...common, method: 'CARD' })
+  else await payment.requestPayment({ ...common, method: 'CARD', card: { flowMode: 'DEFAULT' } })
 }

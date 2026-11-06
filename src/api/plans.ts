@@ -13,10 +13,10 @@ export interface PurchaseRequest {
 
 /**
  * 결제 화면 시연 스위치.
- * 토스 클라이언트 키(VITE_TOSS_CLIENT_KEY)가 없으면 결제를 하드코딩으로 통과시켜 화면만 끝까지 보여준다.
+ * 개발 환경에서 VITE_PAYMENT_DEMO=true로 명시한 경우에만 시연한다.
  * 이때는 실제로 결제되지 않고, 서버에 만들어지는 방은 Free다. 키가 있으면 실제 토스 테스트 결제를 쓴다
  */
-export const PAYMENT_DEMO = !TOSS_ENABLED
+export const PAYMENT_DEMO = import.meta.env.DEV && import.meta.env.VITE_PAYMENT_DEMO === 'true' && !TOSS_ENABLED
 
 /** 시연용 결제. 잠깐 기다린 뒤 결제된 것으로 친다 (실제 결제는 api/payments.ts) */
 export async function purchasePlan(request: PurchaseRequest): Promise<void> {

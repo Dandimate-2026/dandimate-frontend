@@ -36,7 +36,7 @@ export const PLANS: Plan[] = [
     otherMaxSeconds: 20,
     available: true,
     decor: '기본 꾸미기',
-    summary: ['사진 1인 3장 · 말하기 총 15분 · 재엮기 3회 · 기본 꾸미기'],
+    summary: ['사진 1인 3장 · 말하기 15분 · 재엮기 3회'],
   },
   {
     id: 'lite',
@@ -49,7 +49,7 @@ export const PLANS: Plan[] = [
     otherMaxSeconds: 30,
     available: false,
     decor: '일반 꾸미기 전부',
-    summary: ['사진 1인 6장 · 말하기 총 40분 · 재엮기 6회', '일반 꾸미기 전부'],
+    summary: ['사진 1인 6장 · 말하기 40분 · 재엮기 6회 · 꾸미기 전부'],
   },
   {
     id: 'pro',
@@ -62,7 +62,7 @@ export const PLANS: Plan[] = [
     otherMaxSeconds: 60,
     available: false,
     decor: '일반 + 특별 꾸미기',
-    summary: ['사진 1인 10장 · 말하기 총 90분 · 재엮기 12회', '일반 + 특별 꾸미기 (화전놀이 테마 등)'],
+    summary: ['사진 1인 10장 · 말하기 90분 · 재엮기 12회 · 특별 꾸미기'],
   },
 ]
 
@@ -117,7 +117,7 @@ export function mergePlanCatalog(items: PlanCatalogItem[]): Plan[] {
     const item = items.find((i) => i.planType.toLowerCase() === plan.id)
     if (!item) return plan
     const voiceMinutes = Math.round(item.voiceLimitMs / 60000)
-    const limits = `사진 1인 ${item.photosPerMember}장 · 말하기 총 ${voiceMinutes}분 · 재엮기 ${item.regenerationLimit}회`
+    const limits = `사진 1인 ${item.photosPerMember}장 · 말하기 ${voiceMinutes}분 · 재엮기 ${item.regenerationLimit}회`
     return {
       ...plan,
       price: item.price,
@@ -127,8 +127,7 @@ export function mergePlanCatalog(items: PlanCatalogItem[]): Plan[] {
       firstMaxSeconds: item.firstMaxSeconds,
       otherMaxSeconds: item.otherMaxSeconds,
       available: item.roomCreationAvailable,
-      // Free는 시안처럼 한 줄, 유료는 한도와 꾸미기를 두 줄로 보여준다
-      summary: plan.id === 'free' ? [`${limits} · ${plan.decor}`] : [limits, plan.summary[1] ?? plan.decor],
+      summary: [`${limits}${plan.id === 'free' ? '' : plan.id === 'lite' ? ' · 꾸미기 전부' : ' · 특별 꾸미기'}`],
     }
   })
 }
