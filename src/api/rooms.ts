@@ -141,6 +141,12 @@ export function transferHost(roomId: string, memberId: string) {
   return request(`/rooms/${roomId}/host-transfer`, { method: 'POST', body: { memberId }, idempotent: true })
 }
 
+/** 방장이 멤버를 방에서 내보낸다 (강퇴). 방장만 할 수 있고, 내보낸 사람은 같은 초대 링크로 다시 들어올 수 없다 */
+export function kickMember(roomId: string, memberId: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}/members/${memberId}`, { method: 'DELETE' })
+}
+
 /** 방장이 초대 링크를 새로 만든다. 이전 링크로는 더 들어올 수 없다 */
 export async function rotateInviteToken(roomId: string, token: string) {
   if (USE_MOCK) return MOCK_INVITE_TOKEN
