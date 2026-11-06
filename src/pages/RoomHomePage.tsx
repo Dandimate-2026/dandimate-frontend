@@ -19,6 +19,7 @@ import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 import { siteUrl } from '../lib/siteUrl'
+import { useRoomInvite } from '../hooks/useRoomInvite'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
   COLLECTING: '모으는 중',
@@ -436,7 +437,9 @@ function RoomHomePage() {
   // 모두 다 봤을 때 시트도 같은 방식: 들어올 때 한 번, 내리면 아래 카드로만 남는다
   const [allDoneClosed, setAllDoneClosed] = useState(false)
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
-  const { share: shareInvite } = useInviteShare(session?.inviteToken ?? '')
+  // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다 (방 참가자 누구나 같은 링크)
+  const inviteToken = useRoomInvite(roomId)
+  const { share: shareInvite } = useInviteShare(inviteToken ?? '')
 
   // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
   const token = session?.memberAccessToken
@@ -489,7 +492,7 @@ function RoomHomePage() {
   /** 공유 화면으로 가지 않고 바로 기기 공유창(카카오톡 키가 있으면 카카오톡 공유)을 연다 */
   const handleShareToChat = async () => {
     const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
-    if (session.inviteToken) {
+    if (inviteToken) {
       await shareInvite(text)
       return
     }
@@ -525,7 +528,7 @@ ${url}`).catch(() => {})
   if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
     return (
       <>
-        <GatheringHome home={home} inviteToken={session.inviteToken} />
+        <GatheringHome home={home} inviteToken={inviteToken} />
         {timeUpSheet}
       </>
     )

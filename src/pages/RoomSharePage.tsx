@@ -4,6 +4,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import { CopyIcon } from '../components/ShareIcons'
 import { DEFAULT_SHARE_MESSAGE, useInviteShare } from '../hooks/useInviteShare'
+import { useRoomInvite } from '../hooks/useRoomInvite'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
@@ -17,9 +18,12 @@ function RoomSharePage() {
   const [message, setMessage] = useState('')
   // 원본 초대 토큰은 방 생성 응답에서 한 번만 받으므로 저장해 둔 값을 쓴다
   const session = getRoomSession(roomId)
-  const { link, copied, copy, share } = useInviteShare(session?.inviteToken ?? '')
+  // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다
+  const inviteToken = useRoomInvite(roomId)
+  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
 
-  if (!session?.inviteToken) return <NotFoundPage message="초대 링크를 찾을 수 없어요" />
+  if (!session) return <NotFoundPage message="초대 링크를 찾을 수 없어요" />
+  if (!inviteToken) return <main className="flex-1 bg-bg" aria-busy="true" />
   // 비워두면 기본 문구로 보낸다
   const shareText = message.trim() || DEFAULT_SHARE_MESSAGE
 
