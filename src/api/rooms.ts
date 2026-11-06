@@ -10,6 +10,7 @@ import {
   MOCK_READY_ROOM_ID,
   MOCK_TIMEUP_ROOM_ID,
   MOCK_LIMIT_ROOM_ID,
+  MOCK_UNLIMITED_ROOM_ID,
   mockCloseRoom,
   mockCreateRoom,
   mockDoneRoomHome,
@@ -20,6 +21,7 @@ import {
   mockRoomHome,
   mockTimeUpRoomHome,
   mockLimitRoomHome,
+  mockUnlimitedRoomHome,
   USE_MOCK,
 } from './mock'
 import type {
@@ -92,6 +94,7 @@ function mockRoomHomeById(roomId: string) {
   if (roomId === MOCK_READY_ROOM_ID) return mockReadyRoomHome
   if (roomId === MOCK_TIMEUP_ROOM_ID) return mockTimeUpRoomHome
   if (roomId === MOCK_LIMIT_ROOM_ID) return mockLimitRoomHome
+  if (roomId === MOCK_UNLIMITED_ROOM_ID) return mockUnlimitedRoomHome
   return mockRoomHome
 }
 
