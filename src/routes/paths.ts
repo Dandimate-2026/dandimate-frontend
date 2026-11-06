@@ -6,6 +6,9 @@ export const paths = {
   // 이 기기에 저장된 방이 없으면 방 만들기로 보낸다
   roomList: () => '/',
   roomCreate: () => '/rooms/new',
+  /** 방 만들기 다음: 플랜 선택 → (유료면) 결제 → 방 생성 */
+  roomCreatePlan: () => '/rooms/new/plan',
+  roomCreateCheckout: (plan?: string) => `/rooms/new/checkout${plan ? `?plan=${plan}` : ''}`,
   roomHome: (roomId: string) => `/rooms/${roomId}`,
   // 방 만들기 → 플랜 선택 → (유료면) 결제 → 결제 완료 → 초대 링크 공유
   roomPlan: (roomId: string) => `/rooms/${roomId}/plan`,
@@ -13,7 +16,11 @@ export const paths = {
   roomCheckout: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/checkout${plan ? `?plan=${plan}` : ''}`,
   roomPlanDone: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/done${plan ? `?plan=${plan}` : ''}`,
   roomShare: (roomId: string) => `/rooms/${roomId}/share`,
+  /** 토스 결제창에서 돌아오는 주소 (api/payments.ts의 successUrl·failUrl과 같아야 한다) */
+  paymentSuccess: () => '/payments/success',
+  paymentFail: () => '/payments/fail',
   roomSettings: (roomId: string) => `/rooms/${roomId}/settings`,
+  roomNotifications: (roomId: string) => `/rooms/${roomId}/notifications`,
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
   photoUpload: (roomId: string) => `/rooms/${roomId}/photos/new`,
   firstEntry: (roomId: string) => `/rooms/${roomId}/entries/new`,

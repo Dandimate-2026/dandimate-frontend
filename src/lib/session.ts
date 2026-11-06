@@ -1,11 +1,13 @@
-// 계정 없이 방에 들어오므로, 방마다 받은 토큰을 기기에 저장해 둔다
-import { MOCK_INVITE_TOKEN, MOCK_READY_ROOM_ID, MOCK_ROOM_IDS, MOCK_SCROLL_PREVIEW_ROOM_ID, USE_MOCK } from '../api/mock'
+// 방마다 이 기기에서 기억해 둘 정보 (방 이름, 방장이 받은 원본 초대 토큰)
+// 인증은 카카오 로그인 세션 쿠키로 하므로, 이 정보가 없어도 서버에서는 방에 들어갈 수 있다
+import { MOCK_INVITE_TOKEN, MOCK_ROOM_IDS, MOCK_SCROLL_PREVIEW_ROOM_ID, USE_MOCK } from '../api/mock'
 import { paths } from '../routes/paths'
 
 const KEY_PREFIX = 'duruduru:room:'
 const key = (roomId: string) => `${KEY_PREFIX}${roomId}`
 
 export interface RoomSession {
+  /** @deprecated 예전 참가자 토큰. 지금은 쿠키로 인증해서 빈 문자열로 둔다 */
   memberAccessToken: string
   /** 방장이 방을 만들 때 한 번만 받는 원본 초대 토큰 */
   inviteToken?: string
@@ -28,10 +30,12 @@ export function getRoomSession(roomId: string): RoomSession | null {
     // 저장소를 쓸 수 없으면 아래로 넘어간다
   }
   // mock 모드에서는 방을 만들거나 입장하지 않고 바로 들어와도 화면을 볼 수 있게 한다
-  if (USE_MOCK && (MOCK_ROOM_IDS.includes(roomId) || roomId === MOCK_READY_ROOM_ID || roomId === MOCK_SCROLL_PREVIEW_ROOM_ID)) {
+  if (USE_MOCK && (MOCK_ROOM_IDS.includes(roomId) || roomId === MOCK_SCROLL_PREVIEW_ROOM_ID)) {
     return { memberAccessToken: 'mock-token', inviteToken: MOCK_INVITE_TOKEN, roomName: '경주 1박2일' }
   }
-  return null
+  if (USE_MOCK) return null
+  // 실제 서버는 로그인 쿠키로 방 참여 여부를 확인하므로, 이 기기에 저장된 정보가 없어도 방을 열어 본다
+  return { memberAccessToken: '' }
 }
 
 export function removeRoomSession(roomId: string) {

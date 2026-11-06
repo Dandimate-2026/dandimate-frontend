@@ -7,14 +7,15 @@ import Button from '../components/Button'
 import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon, SparkleIcon } from '../components/entry/EntryIcons'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
+import { VoiceLimitSheet } from '../components/PlanLimitSheet'
+import { formatVoiceLimit, isLimitError, usePlanLimitAction, useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
 import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
-// 되묻기 답은 음성 1~30초, 글 200자까지 (백엔드 명세)
+// 되묻기 답은 음성 1초부터 플랜별 최대 20/30/60초, 글 200자까지 (백엔드 명세)
 const MIN_VOICE_MS = 1_000
-const MAX_VOICE_MS = 30_000
 const MAX_TEXT_LENGTH = 200
 
 /**
@@ -50,9 +51,14 @@ function AskbackPage() {
   const [draft, setDraft] = useState<VoiceDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // 방 전체 말하기 시간을 다 썼을 때 띄우는 시트
+  const [voiceLimitOpen, setVoiceLimitOpen] = useState(false)
+  const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
+  const quota = home?.room.quota
+  const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setError)
+  const maxVoiceMs = voiceMaxMs(quota, 'other')
 
   useEffect(() => {
-    if (!token) return
     getAskback(askbackId, token)
       .then(setAskback)
       .catch((e: unknown) =>
@@ -77,14 +83,19 @@ function AskbackPage() {
       setDraft({ transcriptionId: result.transcriptionId, durationMs, audioUrl: URL.createObjectURL(blob) })
       setTranscript(result.transcript)
       setStep('review')
-    } catch {
+    } catch (e) {
+      if (isLimitError(e)) {
+        setStep('idle')
+        setVoiceLimitOpen(true)
+        return
+      }
       // 받아 적기에 실패해도 글로 이어서 답할 수 있게 한다
       setError('받아 적지 못했어요. 글로 답해 주세요')
       setStep('text')
     }
   }
 
-  const recorder = useVoiceRecorder({ maxMs: MAX_VOICE_MS, onFinish: handleRecorded })
+  const recorder = useVoiceRecorder({ maxMs: maxVoiceMs, onFinish: handleRecorded })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (loadError) return <NotFoundPage message={loadError} />
@@ -95,6 +106,11 @@ function AskbackPage() {
 
   const handleMicClick = async () => {
     setError(null)
+    // 방 전체 말하기 시간을 다 썼으면 녹음하지 않고 안내한다
+    if (quota?.voiceRemainingMs === 0) {
+      setVoiceLimitOpen(true)
+      return
+    }
     try {
       await recorder.start()
       setStep('recording')
@@ -234,13 +250,13 @@ function AskbackPage() {
               </div>
               <div className="mt-3 flex h-6 items-center">
                 {step === 'recording' ? (
-                  <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={MAX_VOICE_MS} />
+                  <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={maxVoiceMs} />
                 ) : (
                   <p className={`text-[11px] ${error ? 'text-point' : 'text-sub'}`}>
                     {error ??
                       (step === 'transcribing'
                         ? '받아 적는 중이에요…'
-                        : '눌러서 한 문장만 말해 주세요 · 최대 30초')}
+                        : `눌러서 한 문장만 말해 주세요 · 최대 ${formatVoiceLimit(maxVoiceMs)}`)}
                   </p>
                 )}
               </div>
@@ -276,6 +292,23 @@ function AskbackPage() {
             </section>
           )}
         </div>
+      )}
+      {voiceLimitOpen && (
+        <VoiceLimitSheet
+          quota={quota}
+          onWriteText={() => {
+            setVoiceLimitOpen(false)
+            setStep('text')
+          }}
+          planAction={{
+            ...voicePlan.action,
+            onClick: () => {
+              setVoiceLimitOpen(false)
+              voicePlan.action.onClick()
+            },
+          }}
+          onClose={() => setVoiceLimitOpen(false)}
+        />
       )}
     </main>
   )

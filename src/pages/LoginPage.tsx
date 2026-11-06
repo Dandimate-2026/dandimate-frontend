@@ -1,9 +1,12 @@
-import { useState } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useSearchParams } from 'react-router'
 import type { FlowerCode } from '../api/types'
 import Flower from '../components/Flower'
-import { isLoggedIn, loginWithKakao } from '../lib/auth'
+import { type MockRole, USE_MOCK } from '../api/mock'
+import { getInvitePreview } from '../api/rooms'
+import { getMe, loginWithKakao, takeLoginRedirect } from '../lib/auth'
 import { paths } from '../routes/paths'
+import InviteLoginView from './InviteLoginView'
 
 const FLOWER_ROW: FlowerCode[] = ['AZALEA', 'CANOLA', 'FORGET_ME_NOT', 'FORSYTHIA', 'LILAC']
 
@@ -22,17 +25,42 @@ function safeRedirect(redirect: string | null) {
 
 /** 첫 화면: 카카오로 시작하기 */
 function LoginPage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirect = safeRedirect(searchParams.get('redirect'))
+  const [loggedIn, setLoggedIn] = useState(false)
   const [loggingIn, setLoggingIn] = useState(false)
+  // 초대 링크(/invite/{코드})에서 넘어왔으면 초대받은 사람 전용 로그인 화면을 보여준다
+  const inviteToken = redirect.match(/^\/invite\/([^/?#]+)/)?.[1]
+  const [inviteRoomName, setInviteRoomName] = useState<string>()
 
-  if (isLoggedIn() && !loggingIn) return <Navigate to={redirect} replace />
+  // 초대 정보는 로그인 없이 볼 수 있어서 로그인 전에 방 이름을 보여준다. 못 불러오면 방 이름 없이 보여준다
+  useEffect(() => {
+    if (!inviteToken) return
+    getInvitePreview(inviteToken)
+      .then((preview) => setInviteRoomName(preview.roomName))
+      .catch(() => {})
+  }, [inviteToken])
 
-  const handleLogin = async () => {
+  // 카카오 로그인을 마치고 돌아왔거나 이미 로그인했으면 가려던 곳으로 보낸다
+  useEffect(() => {
+    getMe()
+      .then((me) => setLoggedIn(me !== null))
+      .catch(() => {})
+  }, [])
+
+  if (loggedIn) {
+    const stored = takeLoginRedirect()
+    return <Navigate to={stored ? safeRedirect(stored) : redirect} replace />
+  }
+
+  const handleLogin = (mockRole?: MockRole) => {
     setLoggingIn(true)
-    await loginWithKakao()
-    navigate(redirect, { replace: true })
+    loginWithKakao(redirect, mockRole)
+  }
+
+  // 초대받은 사람은 멤버로 들어온다 (데모에서도 멤버로 로그인)
+  if (inviteToken) {
+    return <InviteLoginView roomName={inviteRoomName} loggingIn={loggingIn} onLogin={() => handleLogin('MEMBER')} />
   }
 
   return (
@@ -55,15 +83,40 @@ function LoginPage() {
       </section>
 
       <footer className="pt-6">
-        <button
-          type="button"
-          onClick={handleLogin}
-          disabled={loggingIn}
-          className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] text-[15px] font-semibold text-black/85 active:opacity-80"
-        >
-          <KakaoIcon />
-          카카오로 시작하기
-        </button>
+        {USE_MOCK ? (
+          // 데모(mock)에서는 같은 방들을 방장 또는 멤버 입장에서 볼 수 있게 역할을 고르고 들어간다
+          <div className="flex flex-col gap-2">
+            <p className="mb-1 text-center text-[11px] text-sub">데모 모드 · 어떤 입장으로 볼까요?</p>
+            <button
+              type="button"
+              onClick={() => handleLogin('HOST')}
+              disabled={loggingIn}
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] text-[15px] font-semibold text-black/85 active:opacity-80"
+            >
+              <KakaoIcon />
+              방장으로 시작하기
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLogin('MEMBER')}
+              disabled={loggingIn}
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-[#e6cf00] bg-surface text-[15px] font-semibold text-black/85 active:opacity-80"
+            >
+              <KakaoIcon />
+              멤버로 시작하기
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleLogin()}
+            disabled={loggingIn}
+            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-[#fee500] text-[15px] font-semibold text-black/85 active:opacity-80"
+          >
+            <KakaoIcon />
+            카카오로 시작하기
+          </button>
+        )}
         <p className="mt-4 text-center text-[11px] leading-[17px] text-sub">
           시작하면{' '}
           <Link to={paths.terms()} className="text-point">

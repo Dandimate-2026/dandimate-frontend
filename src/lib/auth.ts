@@ -1,21 +1,75 @@
-// 카카오 로그인 상태를 기기에 저장해 둔다
-// TODO: 백엔드 로그인 API가 준비되면 Kakao JS SDK로 받은 인가 코드를 넘기고, 받은 토큰을 저장하도록 바꾼다
+// 카카오 로그인은 서버가 처리하고, 로그인 상태는 서버 세션 쿠키로 확인한다
+import { ApiError, request, resetCsrfToken, SERVER_ORIGIN } from '../api/client'
+import { MOCK_AUTH_KEY, type MockRole, USE_MOCK } from '../api/mock'
 
-const AUTH_KEY = 'duruduru:auth'
+// mock 모드에서는 서버 없이 로그인한 것처럼 기기에 표시만 남긴다 (데모에서 고른 역할도 같이 저장)
+// 카카오 로그인 화면에 다녀오는 동안 돌아올 앱 안 경로를 기억해 둔다
+const REDIRECT_KEY = 'duruduru:login-redirect'
 
-export function isLoggedIn() {
+export interface Me {
+  id: string
+  createdAt: string
+}
+
+/** 로그인한 계정. 로그인하지 않았으면 null */
+export async function getMe(): Promise<Me | null> {
+  if (USE_MOCK) {
+    try {
+      return localStorage.getItem(MOCK_AUTH_KEY) ? { id: 'mock-user', createdAt: new Date().toISOString() } : null
+    } catch {
+      return null
+    }
+  }
   try {
-    return localStorage.getItem(AUTH_KEY) !== null
-  } catch {
-    return false
+    return await request<Me>('/users/me')
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) return null
+    throw e
   }
 }
 
-/** 지금은 카카오 로그인에 성공했다고 치고 로그인 표시만 남긴다 */
-export async function loginWithKakao() {
+/** 카카오 로그인 화면으로 이동한다. 로그인이 끝나면 서버가 프론트로 되돌려 보낸다 */
+export function loginWithKakao(redirect: string, mockRole: MockRole = 'HOST') {
   try {
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ provider: 'KAKAO', loggedInAt: new Date().toISOString() }))
+    sessionStorage.setItem(REDIRECT_KEY, redirect)
   } catch {
-    // 저장소를 쓸 수 없는 환경(시크릿 모드 등)은 무시
+    // 저장소를 쓸 수 없으면 로그인 뒤 내 모임방 목록으로 간다
   }
+  if (USE_MOCK) {
+    try {
+      localStorage.setItem(
+        MOCK_AUTH_KEY,
+        JSON.stringify({ provider: 'KAKAO', role: mockRole, loggedInAt: new Date().toISOString() }),
+      )
+    } catch {
+      // 시크릿 모드 등은 무시
+    }
+    window.location.assign(redirect)
+    return
+  }
+  window.location.assign(`${SERVER_ORIGIN}/oauth2/authorization/kakao`)
+}
+
+/** 카카오 로그인 전에 가려던 경로를 한 번만 꺼낸다 */
+export function takeLoginRedirect() {
+  try {
+    const redirect = sessionStorage.getItem(REDIRECT_KEY)
+    sessionStorage.removeItem(REDIRECT_KEY)
+    return redirect
+  } catch {
+    return null
+  }
+}
+
+export async function logout() {
+  if (USE_MOCK) {
+    try {
+      localStorage.removeItem(MOCK_AUTH_KEY)
+    } catch {
+      // 무시
+    }
+    return
+  }
+  await request('/auth/logout', { method: 'POST' })
+  resetCsrfToken()
 }

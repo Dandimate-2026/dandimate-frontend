@@ -7,7 +7,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import Flower, { EmptySlot } from '../components/Flower'
 import { formatDate } from '../lib/date'
-import { saveRoomSession } from '../lib/session'
+import { getRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
 
@@ -25,13 +25,25 @@ function InviteJoinPage() {
 
   useEffect(() => {
     getInvitePreview(inviteToken)
-      .then(setPreview)
+      .then((value) => {
+        // 이미 이 방에 있는 계정(방장 포함)이면 이름을 다시 묻지 않고 방으로 보낸다. 정원이 다 찼어도 들어갈 수 있다
+        if (value.alreadyJoined) {
+          saveRoomSession(value.roomId, {
+            ...getRoomSession(value.roomId),
+            memberAccessToken: '',
+            roomName: value.roomName,
+          })
+          navigate(paths.roomHome(value.roomId), { replace: true })
+          return
+        }
+        setPreview(value)
+      })
       .catch((e: unknown) =>
         setLoadError(
           e instanceof ApiError && e.status === 404 ? '만료되었거나 없는 초대 링크예요' : '방 정보를 불러오지 못했어요',
         ),
       )
-  }, [inviteToken])
+  }, [inviteToken, navigate])
 
   if (loadError) return <NotFoundPage message={loadError} />
   if (!preview) return <main className="flex-1 bg-bg" aria-busy="true" />
@@ -45,8 +57,9 @@ function InviteJoinPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const { room, memberAccessToken } = await joinRoom(inviteToken, name.trim())
-      saveRoomSession(room.id, { memberAccessToken, roomName: room.name })
+      const { room } = await joinRoom(inviteToken, name.trim())
+      // 이미 이 방 방장이었으면(같은 계정으로 자기 초대 링크를 연 경우) 저장된 초대 코드를 지우지 않도록 합친다
+      saveRoomSession(room.id, { ...getRoomSession(room.id), memberAccessToken: '', roomName: room.name })
       // 입장한 뒤 뒤로 가도 이름 입력 화면이 다시 나오지 않게 기록을 바꿔치기한다
       navigate(paths.roomHome(room.id), { replace: true })
     } catch (err) {
@@ -109,7 +122,7 @@ function InviteJoinPage() {
       </form>
 
       <p className="mt-7 text-center text-[11px] leading-[14px] text-sub">
-        설치·가입 없이 이름만 있으면 돼요
+        이름만 정하면 바로 들어갈 수 있어요
         <br />
         들어가면{' '}
         <Link to={paths.terms()} className="text-point">

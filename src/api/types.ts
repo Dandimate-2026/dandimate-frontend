@@ -36,16 +36,36 @@ export interface RoomSummary {
   meetingDate?: string
   status: RoomStatus
   deadlineAt: string
-  planType?: 'FREE' | 'LITE' | 'PRO'
-  quota?: {
-    regenerationsRemaining?: number
-    regenerationCount?: number
-    regenerationLimit?: number
-    otherMaxSeconds?: number
-  }
+  /** 방장을 포함한 정원 (1~8) */
+  capacity?: number
+  planType?: RoomPlanType
+  /** 플랜별 한도와 사용량. 모임방 홈 조회에만 들어 있다 */
+  quota?: RoomQuota
+}
+
+/** 플랜별 한도와 지금까지 쓴 양 */
+export interface RoomQuota {
+  photosPerMember?: number
+  myPhotoCount?: number
+  myPhotosRemaining?: number
+  photosRemaining?: number
+  /** 첫 한마디 녹음 최대 초 (플랜별 30/60/120) */
+  firstMaxSeconds?: number
+  /** 덧붙임·되묻기 답변·답가 녹음 최대 초 (플랜별 20/30/60) */
+  otherMaxSeconds?: number
+  voiceLimitMs?: number
+  voiceUsedMs?: number
+  voiceRemainingMs?: number
+  regenerationLimit?: number
+  regenerationCount?: number
+  regenerationsRemaining?: number
 }
 
 export interface InvitePreview {
+  /** 초대 링크가 가리키는 방 */
+  roomId: string
+  /** 지금 로그인한 계정이 이미 이 방에 있는지 (방장 포함). 로그인 전에는 false */
+  alreadyJoined: boolean
   roomName: string
   meetingDate?: string
   status: RoomStatus
@@ -58,13 +78,18 @@ export interface InvitePreview {
 export interface JoinRoomResult {
   room: RoomSummary
   member: Member
-  memberAccessToken: string
 }
+
+export type RoomPlanType = 'FREE' | 'LITE' | 'PRO'
 
 export interface CreateRoomRequest {
   name: string
   meetingDate: string
   hostNickname: string
+  /** 방별 플랜. LITE·PRO는 서버 결제 검증이 붙기 전까지 503 PAYMENT_NOT_CONFIGURED */
+  planType: RoomPlanType
+  /** 방장을 포함한 정원 (1~8, 생략하면 8) */
+  capacity?: number
   consent: Consent
 }
 
@@ -73,7 +98,16 @@ export interface CreateRoomResult {
   member: Member
   /** 원본 초대 토큰. 이 응답에서 한 번만 받는다 */
   inviteToken: string
-  memberAccessToken: string
+}
+
+/** GET /users/me/rooms: 로그인한 계정이 참여 중인 방 */
+export interface MyRoom {
+  roomId: string
+  name: string
+  status: RoomStatus
+  memberId: string
+  nickname: string
+  role: 'HOST' | 'MEMBER'
 }
 
 export interface RoomHome {
@@ -209,4 +243,24 @@ export interface Job {
   errorCode?: string | null
   createdAt: string
   updatedAt: string
+}
+
+// PLAN_UPGRADE_REQUESTED: 멤버가 방장에게 플랜을 바꿔 달라고 요청함 (TODO: 백엔드 미지원, 가정한 값)
+export type NotificationType = 'ASKBACK_RECEIVED' | 'SCROLL_READY' | 'REPLY_APPLIED' | 'PLAN_UPGRADE_REQUESTED'
+
+/** 어떤 한도 때문에 플랜 변경을 요청했는지 */
+export type PlanRequestReason = 'PHOTO' | 'VOICE' | 'REWEAVE'
+
+export interface RoomNotification {
+  id: string
+  type: NotificationType
+  resourceType: string
+  resourceId: string
+  readAt?: string | null
+  createdAt: string
+}
+
+export interface EventToken {
+  eventsUrl: string
+  expiresAt: string
 }

@@ -10,6 +10,8 @@ import { SparkleIcon } from '../components/entry/EntryIcons'
 import Flower, { EmptySlot } from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
+import { shareToKakao } from '../lib/kakao'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
@@ -54,6 +56,21 @@ function GearIcon() {
   )
 }
 
+function BellIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 3a6 6 0 0 0-6 6v3.6l-1.5 2.6A1.2 1.2 0 0 0 5.5 17h13a1.2 1.2 0 0 0 1-1.8L18 12.6V9a6 6 0 0 0-6-6Z" />
+      <circle cx="12" cy="19.5" r="2" />
+    </svg>
+  )
+}
+
 function CheckIcon() {
   return (
     <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
@@ -77,7 +94,8 @@ function ScrollIcon() {
 
 /** 참여현황 한 줄: 꽃 + 이름, 사진/이야기 수(다 봤으면 체크), 참여율 막대 */
 function MemberProgress({ member, done }: { member: Member; done: boolean }) {
-  const rate = Math.min(Math.max(member.responseRate ?? 0, 0), 1)
+  // 모두 다 봤으면 막대를 꽉 채운다
+  const rate = done ? 1 : Math.min(Math.max(member.responseRate ?? 0, 0), 1)
   return (
     <li>
       <div className="flex items-center justify-between">
@@ -105,7 +123,7 @@ function MemberProgress({ member, done }: { member: Member; done: boolean }) {
 }
 
 /** 방 이름(뒤로 가기), 상태, 마감까지 남은 시간 */
-function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean }) {
+function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathering: boolean; unreadCount: number }) {
   const navigate = useNavigate()
   return (
     <header className="px-1">
@@ -119,14 +137,29 @@ function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean
           <ChevronLeftIcon />
           {room.name}
         </button>
-        <button
-          type="button"
-          aria-label="모임방 설정"
-          onClick={() => navigate(paths.roomSettings(room.id))}
-          className="-m-2 p-2 text-sub active:opacity-80"
-        >
-          <GearIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 안 읽음` : '알림'}
+            onClick={() => navigate(paths.roomNotifications(room.id))}
+            className="relative p-2 text-sub active:opacity-80"
+          >
+            <BellIcon />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-point px-1 text-[9px] font-semibold text-surface">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            aria-label="모임방 설정"
+            onClick={() => navigate(paths.roomSettings(room.id))}
+            className="-mr-2 p-2 text-sub active:opacity-80"
+          >
+            <GearIcon />
+          </button>
+        </div>
       </div>
       <div className="mt-2 flex items-center gap-2.5">
         <span
@@ -141,7 +174,6 @@ function RoomHeader({ room, gathering }: { room: RoomSummary; gathering: boolean
 }
 
 // 친구를 기다리는 동안 보여줄 빈 자리 수
-const EMPTY_TODAY_SLOTS = 5
 const EMPTY_MEMBER_SLOTS = 2
 
 const SHARE_BUTTON_CLASS =
@@ -152,28 +184,28 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
   const navigate = useNavigate()
   const { room, members, todayFlowers, myTodo } = home
   const { copied, copy, share } = useInviteShare(inviteToken ?? '')
-  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, ROOM_CAPACITY - members.length)
+  const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
-        <RoomHeader room={room} gathering />
+        <RoomHeader room={room} gathering unreadCount={home.unreadCount} />
 
         <section className="mt-3.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
-          <ul className="mt-2 flex flex-wrap gap-[5px]">
-            {todayFlowers.length > 0
-              ? todayFlowers.map((f, i) => (
-                  <li key={`${f.memberId}-${i}`}>
-                    <Flower code={f.flowerCode} />
-                  </li>
-                ))
-              : Array.from({ length: EMPTY_TODAY_SLOTS }, (_, i) => (
-                  <li key={i}>
-                    <EmptySlot />
-                  </li>
-                ))}
+          {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
+          <ul className="mt-2 flex flex-wrap items-center gap-[5px]">
+            {todayFlowers.map((f, i) => (
+              <li key={`${f.memberId}-${i}`}>
+                <Flower code={f.flowerCode} />
+              </li>
+            ))}
+            {Array.from({ length: Math.max(0, members.length - todayFlowers.length) }, (_, i) => (
+              <li key={`empty-${i}`}>
+                <EmptySlot />
+              </li>
+            ))}
           </ul>
           <p className="mt-2 text-[11px] text-sub">
             {todayFlowers.length > 0
@@ -186,7 +218,7 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
           <div className="flex items-center justify-between px-[3px] text-[11px]">
             <p className="text-sub">친구를 기다리고 있어요</p>
             <p>
-              {members.length}/{ROOM_CAPACITY}명
+              {members.length}/{room.capacity ?? ROOM_CAPACITY}명
             </p>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-[5px] gap-y-2 px-[3px]">
@@ -241,8 +273,10 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
 function MyTodoCard({ home }: { home: RoomHome }) {
   const navigate = useNavigate()
   const { room, me, members, myTodo } = home
-  const myPhotos = me.photoCount ?? 0
-  const canAddPhotos = myPhotos < MAX_PHOTOS
+  // 사진 한도는 플랜마다 다르다(1인 3/6/10장). 서버가 준 한도를 쓰고, 없으면 기본 3장으로 본다
+  const maxPhotos = room.quota?.photosPerMember ?? MAX_PHOTOS
+  const myPhotos = room.quota?.myPhotoCount ?? me.photoCount ?? 0
+  const canAddPhotos = myPhotos < maxPhotos
   // 친구 사진 수는 나를 뺀 참여자의 사진 수를 더하고, 본 수는 거기서 남은 수를 뺀다
   const friendPhotos = members.filter((m) => m.id !== me.id).reduce((sum, m) => sum + (m.photoCount ?? 0), 0)
   const pending = myTodo.pendingCirculationCount
@@ -254,13 +288,13 @@ function MyTodoCard({ home }: { home: RoomHome }) {
       <div className="mt-2 flex items-start justify-between gap-3 border-b border-line pb-2.5">
         <div>
           <p className="text-[15px] leading-5 font-bold">
-            내 사진 {myPhotos}/{MAX_PHOTOS}장
+            내 사진 {myPhotos}/{maxPhotos}장
           </p>
           <p className="text-[11px] leading-4 text-sub">
             {myTodo.needsFirstEntry
               ? '사진에 첫 한마디를 남겨 주세요'
               : canAddPhotos
-                ? `${MAX_PHOTOS - myPhotos}장 더 올릴 수 있어요`
+                ? `${maxPhotos - myPhotos}장 더 올릴 수 있어요`
                 : '사진을 모두 올렸어요'}
           </p>
         </div>
@@ -290,6 +324,74 @@ function MyTodoCard({ home }: { home: RoomHome }) {
   )
 }
 
+/** 약속한 시간이 다 됐을 때 아래에서 올라오는 알림 시트 */
+function TimeUpSheet({
+  isHost,
+  weaving,
+  error,
+  onWeave,
+  onClose,
+}: {
+  isHost: boolean
+  weaving: boolean
+  error: string | null
+  onWeave: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-20 flex items-end justify-center bg-ink/40" onClick={onClose}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="timeup-title"
+        onClick={(e) => e.stopPropagation()}
+        className="flex w-full max-w-[430px] flex-col items-center rounded-t-[28px] bg-surface px-6 pt-3 pb-8 text-center text-ink"
+      >
+        <span className="h-1 w-10 rounded-full bg-line" aria-hidden="true" />
+        <div className="mt-6">
+          <ScrollIcon />
+        </div>
+        <h2 id="timeup-title" className="mt-3 text-[18px] font-bold">
+          약속한 시간이 다 됐어요
+        </h2>
+        <p className="mt-2 text-[13px] leading-5 text-sub">
+          {isHost ? (
+            <>
+              지금까지 모인 이야기로
+              <br />첫 두루마리를 엮어 볼까요?
+            </>
+          ) : (
+            <>
+              방장이 엮으면
+              <br />첫 두루마리가 나와요
+            </>
+          )}
+        </p>
+        {error && <p className="mt-2 text-[12px] text-point">{error}</p>}
+        {isHost ? (
+          <>
+            <Button onClick={onWeave} disabled={weaving} className="mt-6 w-full">
+              {weaving ? '엮는 중…' : '엮으러 가기'}
+            </Button>
+            <button type="button" onClick={onClose} className="mt-3 py-1 text-[13px] text-sub active:opacity-80">
+              조금 있다가 할게요
+            </button>
+          </>
+        ) : (
+          <Button onClick={onClose} className="mt-6 w-full">
+            확인
+          </Button>
+        )}
+      </section>
+    </div>
+  )
+}
+
+/** 마감 시각이 지났는데 아직 엮지 않은 방인지 */
+function isTimeUp(room: RoomSummary) {
+  return (room.status === 'COLLECTING' || room.status === 'CIRCULATING') && new Date(room.deadlineAt).getTime() <= Date.now()
+}
+
 /** 모임방 홈: 방 상태, 오늘 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
 function RoomHomePage() {
   const { roomId = '' } = useParams()
@@ -299,32 +401,35 @@ function RoomHomePage() {
   const [error, setError] = useState<string | null>(null)
   const [weaving, setWeaving] = useState(false)
   const [weaveError, setWeaveError] = useState<string | null>(null)
+  // 시간이 다 됐다는 시트는 이 화면에 들어올 때마다 한 번 보여주고, 닫으면 다시 띄우지 않는다
+  const [timeUpClosed, setTimeUpClosed] = useState(false)
+  // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
+  const { share: shareInvite } = useInviteShare(session?.inviteToken ?? '')
+
+  // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
+  const token = session?.memberAccessToken
 
   useEffect(() => {
-    if (!session) return
-    getRoomHome(roomId, session.memberAccessToken)
+    if (token === undefined) return
+    getRoomHome(roomId, token)
       .then(setHome)
       .catch((e: unknown) =>
         setError(
           e instanceof ApiError && e.status === 403 ? '이 방에 들어갈 수 없어요' : '방 정보를 불러오지 못했어요',
         ),
       )
-    // session은 매 렌더마다 새로 읽으므로 roomId 기준으로만 다시 불러온다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId])
+  }, [roomId, token])
+
+  // 친구가 들어오거나 이야기를 남기면 홈을 다시 불러온다. 다시 불러오다 실패하면 지금 화면을 그대로 둔다
+  useRoomLiveUpdates(roomId, token, () => {
+    if (token !== undefined) getRoomHome(roomId, token).then(setHome).catch(() => {})
+  })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (error) return <NotFoundPage message={error} />
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
 
-  // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
-  if (home.room.status === 'COLLECTING' && home.members.length < ROOM_CAPACITY) {
-    return <GatheringHome home={home} inviteToken={session.inviteToken} />
-  }
-
   const { room, me, members, todayFlowers, myTodo } = home
-  // 돌려보는 중에 모두가 할 일을 마치면 마감을 기다리지 않고 엮을 수 있다
-  const readyToWeave = room.status === 'CIRCULATING' && home.allCompleted
 
   const handleWeave = async () => {
     setWeaving(true)
@@ -332,17 +437,63 @@ function RoomHomePage() {
     try {
       const result = await closeRoom(room.id, session.memberAccessToken)
       navigate(paths.roomWeaving(room.id, result.job.id))
-    } catch {
+    } catch (e) {
+      // 마감 시각이 지나 서버가 이미 엮기 시작했으면(409) 엮는 화면으로 간다
+      if (e instanceof ApiError && e.status === 409) {
+        navigate(paths.roomWeaving(room.id))
+        return
+      }
       setWeaveError('엮기를 시작하지 못했어요. 다시 시도해 주세요')
       setWeaving(false)
     }
   }
 
+  /** 공유 화면으로 가지 않고 바로 기기 공유창(카카오톡 키가 있으면 카카오톡 공유)을 연다 */
+  const handleShareToChat = async () => {
+    const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
+    if (session.inviteToken) {
+      await shareInvite(text)
+      return
+    }
+    const url = `${window.location.origin}${paths.roomHome(room.id)}`
+    if (await shareToKakao(text, url)) return
+    if (navigator.share) await navigator.share({ text, url }).catch(() => {})
+    else await navigator.clipboard?.writeText(`${text}
+${url}`).catch(() => {})
+  }
+
+  const timeUpSheet =
+    isTimeUp(room) && !timeUpClosed ? (
+      <TimeUpSheet
+        isHost={me.role === 'HOST'}
+        weaving={weaving}
+        error={weaveError}
+        onWeave={handleWeave}
+        onClose={() => setTimeUpClosed(true)}
+      />
+    ) : null
+
+  // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
+  if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
+    return (
+      <>
+        <GatheringHome home={home} inviteToken={session.inviteToken} />
+        {timeUpSheet}
+      </>
+    )
+  }
+
+  // 돌려보는 중에 모두가 할 일을 마치면 마감을 기다리지 않고 엮을 수 있다
+  const readyToWeave = room.status === 'CIRCULATING' && home.allCompleted
+  // 두루마리가 완성된 방도 시안처럼 모두 다 본 모양(체크·꽉 찬 막대)으로 보여준다
+  const grown = room.status === 'GROWING'
+  const allDone = readyToWeave || grown
+
   return (
     // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-16 pb-5">
-        <RoomHeader room={room} gathering={false} />
+        <RoomHeader room={room} gathering={false} unreadCount={home.unreadCount} />
 
         <section className="mt-2.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
@@ -354,13 +505,13 @@ function RoomHomePage() {
             ))}
           </ul>
           <p className="mt-1 text-[11px] text-sub">
-            {readyToWeave
+            {allDone
               ? `이야기 ${todayFlowers.length}개가 모였어요`
               : `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`}
           </p>
         </section>
 
-        {!readyToWeave && myTodo.topAskback && (
+        {!allDone && myTodo.topAskback && (
           <section className="mt-4 rounded-xl bg-[#f6e3ea] px-3.5 pt-3.5 pb-4">
             <p className="flex items-center gap-1.5 text-[11px] text-point">
               <SparkleIcon />
@@ -380,20 +531,31 @@ function RoomHomePage() {
         <section className="mt-2">
           <div className="flex items-center justify-between px-0.5 text-[11px]">
             <h2 className="text-sub">참여현황</h2>
-            <p>{readyToWeave ? `${members.length}명 다 봤어요` : `${members.length}/${ROOM_CAPACITY}명`}</p>
+            <p>
+              {members.length}/{room.capacity ?? ROOM_CAPACITY}명{allDone && ' 다 봤어요'}
+            </p>
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
             {members.map((m) => (
-              <MemberProgress key={m.id} member={m} done={readyToWeave} />
+              <MemberProgress key={m.id} member={m} done={allDone} />
             ))}
           </ul>
         </section>
       </div>
 
       <footer className="mt-auto px-5 pb-5">
-        {room.status === 'WEAVING' || room.status === 'GROWING' ? (
+        {grown ? (
+          <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
+            <ScrollIcon />
+            <p className="mt-2 text-[15px] font-bold">첫 두루마리가 완성됐어요</p>
+            <p className="mt-2 text-[11px] text-sub">답가를 달면 두루마리가 계속 자라요</p>
+            <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="mt-3.5 w-full">
+              두루마리 보기
+            </Button>
+          </Card>
+        ) : room.status === 'WEAVING' ? (
           <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="w-full">
-            {room.status === 'GROWING' ? '두루마리 보기' : '엮는 중 확인하기'}
+            엮는 중 확인하기
           </Button>
         ) : readyToWeave ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
@@ -422,7 +584,7 @@ function RoomHomePage() {
         <div className="mt-4 flex justify-center">
           <button
             type="button"
-            onClick={() => navigate(paths.roomShare(room.id))}
+            onClick={() => void handleShareToChat()}
             className="flex items-center gap-2 py-0.5 text-[11px] text-sub active:opacity-80"
           >
             <ShareIcon />
@@ -430,6 +592,7 @@ function RoomHomePage() {
           </button>
         </div>
       </footer>
+      {timeUpSheet}
     </main>
   )
 }

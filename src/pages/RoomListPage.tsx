@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
-import { getRoomHome } from '../api/rooms'
+import { getMockRole, USE_MOCK } from '../api/mock'
+import { getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomStatus } from '../api/types'
 import Button from '../components/Button'
 import Flower from '../components/Flower'
 import { formatDateSpaced } from '../lib/date'
-import { getRoomSession, listSavedRoomIds } from '../lib/session'
+import { logout } from '../lib/auth'
+import { getRoomSession, listSavedRoomIds, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
@@ -97,23 +99,35 @@ function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
 /** 이 기기에서 들어간 모임방 목록. 할 일이 있는 방이 먼저, 완성된 방은 따로 모아 보여준다 */
 function RoomListPage() {
   const navigate = useNavigate()
-  const [roomIds] = useState(listSavedRoomIds)
   const [homes, setHomes] = useState<RoomHome[] | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
-    // 백엔드에 내 방 목록 API가 없어서, 저장된 방마다 홈 정보를 불러온다.
-    // 지워졌거나 더 들어갈 수 없는 방은 목록에서 뺀다
-    Promise.allSettled(
-      roomIds.map((id) => {
-        const session = getRoomSession(id)
-        return session ? getRoomHome(id, session.memberAccessToken) : Promise.reject(new Error('no session'))
-      }),
-    ).then((results) =>
-      setHomes(results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))),
-    )
-  }, [roomIds])
+    // 로그인한 계정의 방 목록을 받아 방마다 홈 정보를 불러온다. 지워졌거나 더 들어갈 수 없는 방은 뺀다
+    // (mock 모드에서는 계정이 없어서 이 기기에 저장된 방 목록을 쓴다)
+    getMyRooms()
+      .then((rooms) => {
+        // 다른 기기에서 들어간 방도 이 기기에서 열 수 있게 방 이름을 기억해 둔다. 초대 토큰은 그대로 둔다
+        rooms?.forEach((r) =>
+          saveRoomSession(r.roomId, { memberAccessToken: '', ...getRoomSession(r.roomId), roomName: r.name }),
+        )
+        const ids = rooms ? rooms.map((r) => r.roomId) : listSavedRoomIds()
+        return Promise.allSettled(ids.map((id) => getRoomHome(id, '')))
+      })
+      .then((results) => setHomes(results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))))
+      .catch(() => setHomes([]))
+  }, [])
 
-  if (roomIds.length === 0 || homes?.length === 0) return <Navigate to={paths.roomCreate()} replace />
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      navigate(paths.login(), { replace: true })
+    }
+  }
+
+  if (homes?.length === 0) return <Navigate to={paths.roomCreate()} replace />
   if (!homes) return <main className="flex-1 bg-bg" aria-busy="true" />
 
   const ongoing = homes
@@ -130,7 +144,25 @@ function RoomListPage() {
   return (
     <main className="flex min-h-dvh flex-col bg-bg text-ink">
       <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
-        <p className="px-[13px] text-[16px] font-bold">두루두루</p>
+        <div className="flex items-center justify-between px-[13px]">
+          <p className="flex items-center gap-2 text-[16px] font-bold">
+            두루두루
+            {/* 데모에서 지금 어떤 입장으로 보고 있는지. 바꾸려면 로그아웃하고 다시 고른다 */}
+            {USE_MOCK && (
+              <span className="rounded-full bg-[#f6e3ea] px-2 py-0.5 text-[10px] font-semibold text-point">
+                데모 · {getMockRole() === 'HOST' ? '방장으로' : '멤버로'} 보는 중
+              </span>
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="text-[11px] text-sub active:opacity-80"
+          >
+            로그아웃
+          </button>
+        </div>
 
         <section className="mt-[clamp(28px,6dvh,48px)]">
           <h1 className="px-1.5 text-[26px] leading-8 font-bold">내 모임방</h1>

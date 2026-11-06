@@ -4,6 +4,7 @@ import FirstEntryPage from '../pages/FirstEntryPage'
 import InviteJoinPage from '../pages/InviteJoinPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
+import PaymentResultPage from '../pages/PaymentResultPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import PolicyPage from '../pages/PolicyPage'
 import RoomCheckoutPage from '../pages/RoomCheckoutPage'
@@ -13,6 +14,7 @@ import RoomHomePage from '../pages/RoomHomePage'
 import RoomListPage from '../pages/RoomListPage'
 import RoomPlanDonePage from '../pages/RoomPlanDonePage'
 import RoomPlanPage from '../pages/RoomPlanPage'
+import RoomNotificationsPage from '../pages/RoomNotificationsPage'
 import RoomSettingsPage from '../pages/RoomSettingsPage'
 import RoomSharePage from '../pages/RoomSharePage'
 import RoomWeavingPage from '../pages/RoomWeavingPage'
@@ -33,14 +35,22 @@ function AppRoutes() {
         <Route path={paths.roomList()} element={<RoomListPage />} />
         {/* 모임방 만들기 */}
         <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
+        {/* 방 만들기 다음: 플랜을 고르고(유료면 결제) 그 플랜으로 방을 만든다 */}
+        <Route path={paths.roomCreatePlan()} element={<RoomPlanPage />} />
+        <Route path={paths.roomCreateCheckout()} element={<RoomCheckoutPage />} />
         {/* 모임방 홈 */}
         <Route path={paths.roomHome(':roomId')} element={<RoomHomePage />} />
         {/* 모임방 설정: 초대 링크, 함께하는 사람, 나가기 */}
         <Route path={paths.roomSettings(':roomId')} element={<RoomSettingsPage />} />
+        {/* 모임방 알림: 받은 질문, 두루마리 완성, 답가 반영 */}
+        <Route path={paths.roomNotifications(':roomId')} element={<RoomNotificationsPage />} />
         {/* 방 생성 직후: 플랜 선택 → (유료면) 결제 → 결제 완료 */}
         <Route path={paths.roomPlan(':roomId')} element={<RoomPlanPage />} />
         <Route path={paths.roomCheckout(':roomId')} element={<RoomCheckoutPage />} />
         <Route path={paths.roomPlanDone(':roomId')} element={<RoomPlanDonePage />} />
+        {/* 토스 결제창에서 돌아오는 화면: 성공이면 서버 승인, 실패·취소면 이유 안내 */}
+        <Route path={paths.paymentSuccess()} element={<PaymentResultPage kind="success" />} />
+        <Route path={paths.paymentFail()} element={<PaymentResultPage kind="fail" />} />
         {/* 플랜을 고른 뒤: 초대 링크 공유 */}
         <Route path={paths.roomShare(':roomId')} element={<RoomSharePage />} />
         {/* 이야기를 남길 사진 고르기 */}

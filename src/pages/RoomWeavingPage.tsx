@@ -5,6 +5,8 @@ import { USE_MOCK } from '../api/mock'
 import { createReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
 import { getRoomHome } from '../api/rooms'
 import type { RoomHome, Scroll, ScrollParagraph } from '../api/types'
+import PlanLimitSheet, { VoiceLimitSheet } from '../components/PlanLimitSheet'
+import { isLimitError, usePlanLimitAction, voiceMaxMs } from '../hooks/useRoomQuota'
 import ContributionSheet from '../features/memories/ContributionSheet'
 import { WeavingPage } from '../features/memories/CompletionPages'
 import LiveScrollPage from '../features/memories/LiveScrollPage'
@@ -13,6 +15,7 @@ import '../features/memories/memories.css'
 import { getRoomSession } from '../lib/session'
 import { getParagraphRating } from '../lib/paragraphRatings'
 import { paths } from '../routes/paths'
+import NotFoundPage from './NotFoundPage'
 
 function RoomWeavingPage() {
   const { roomId = '' } = useParams()
@@ -46,6 +49,12 @@ function RoomWeavingPage() {
     const timer = window.setTimeout(() => setReplyNotice(''), 4500)
     return () => window.clearTimeout(timer)
   }, [replyNotice, jobId])
+
+  // 재엮기 횟수를 다 썼을 때 띄우는 시트
+  const [reweaveLimitOpen, setReweaveLimitOpen] = useState(false)
+  const [voiceLimitOpen, setVoiceLimitOpen] = useState(false)
+  const voicePlan = usePlanLimitAction(roomId, home, 'VOICE', setReplyNotice)
+  const reweavePlan = usePlanLimitAction(roomId, home, 'REWEAVE', setReplyNotice)
 
   const refresh = useCallback(async () => {
     const result = await getScroll(roomId, token)
@@ -102,12 +111,31 @@ function RoomWeavingPage() {
     return () => { active = false; window.clearInterval(interval) }
   }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam])
 
+  if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   const backToHome = () => navigate(paths.roomHome(roomId))
 
   async function retry() {
     setError(''); setFailedWeave(false)
     try { const result = await retryWeave(roomId, token); setJobId(result.job.id); setJobFailed(false); updateJobParam(result.job.id) }
     catch (cause) { setError(cause instanceof Error ? cause.message : '다시 엮기를 시작하지 못했어요.') }
+  }
+
+  /** 답가 받아쓰기. 방 전체 말하기 시간을 다 썼으면 말하기 시트를 띄우고 글로 남기게 한다 */
+  async function transcribeReplyWithLimit(audio: Blob) {
+    if (!replyTarget) throw new Error('답가를 남길 문단이 없어요.')
+    if (home?.room.quota?.voiceRemainingMs === 0) {
+      setVoiceLimitOpen(true)
+      throw new Error('말하기 시간을 모두 썼어요. 글로 남겨 주세요.')
+    }
+    try {
+      return await transcribeReply(replyTarget.id, token, audio)
+    } catch (cause) {
+      if (isLimitError(cause)) {
+        setVoiceLimitOpen(true)
+        throw new Error('말하기 시간을 모두 썼어요. 글로 남겨 주세요.', { cause })
+      }
+      throw cause
+    }
   }
 
   async function saveReply(value: MemoryContribution) {
@@ -120,8 +148,24 @@ function RoomWeavingPage() {
     const body = value.audioBlob && value.transcriptionId
       ? { inputMode: 'VOICE' as const, transcriptionId: value.transcriptionId, transcript: value.text }
       : { inputMode: 'TEXT' as const, transcript: value.text }
-    const result = await createReply(replyTarget.id, token, body)
+    // 답가는 한도 도달 후에도 원문으로 보관하고 기존 한도 안내를 유지한다.
+    const outOfReweaves = home?.room.quota?.regenerationsRemaining === 0
+    let result: Awaited<ReturnType<typeof createReply>>
+    try {
+      result = await createReply(replyTarget.id, token, body)
+    } catch (cause) {
+      if (!isLimitError(cause)) throw cause
+      setReplyTarget(null)
+      setReweaveLimitOpen(true)
+      return
+    }
     if (value.audioUrl) URL.revokeObjectURL(value.audioUrl)
+    if (outOfReweaves) {
+      setReplyTarget(null)
+      setReweaveLimitOpen(true)
+      return
+    }
+    if (!result?.job) { setReplyTarget(null); return }
     setJobId(result.job.id)
     setJobFailed(false)
     updateJobParam(result.job.id)
@@ -145,9 +189,33 @@ function RoomWeavingPage() {
         completionMessage={!jobId ? replyNotice : ''} onDismissCompletion={() => setReplyNotice('')}
         onAddStory={() => navigate(paths.photoUpload(roomId))} />
     </> : <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name ?? session?.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
-    {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} maxLength={200} maxVoiceSeconds={home?.room.quota?.otherMaxSeconds} startWithText={reweaving}
-      onTranscribe={(audio) => transcribeReply(replyTarget.id, token, audio)}
+    {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} maxLength={200} maxVoiceMs={voiceMaxMs(home?.room.quota, 'other')} startWithText={reweaving}
+      onTranscribe={transcribeReplyWithLimit}
       onSave={saveReply} onClose={() => setReplyTarget(null)} />}
+    {voiceLimitOpen && (
+      <VoiceLimitSheet
+        quota={home?.room.quota}
+        onWriteText={() => setVoiceLimitOpen(false)}
+        planAction={{ ...voicePlan.action, onClick: () => { setVoiceLimitOpen(false); voicePlan.action.onClick() } }}
+        onClose={() => setVoiceLimitOpen(false)}
+      />
+    )}
+    {reweaveLimitOpen && (
+      <PlanLimitSheet
+        kind="reweave"
+        title={<>이번 방의 재엮기를<br />모두 사용했어요</>}
+        description={<>답가는 계속 남길 수 있고 원문으로 보관돼요.<br />두루마리 본문에는 플랜을 바꾸면 엮여요.</>}
+        usage={home?.room.quota?.regenerationLimit ? {
+          label: '재엮기',
+          value: `${home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit}회 / ${home.room.quota.regenerationLimit}회`,
+          ratio: (home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit) / home.room.quota.regenerationLimit,
+        } : undefined}
+        currentPlan={home?.room.planType}
+        primary={{ ...reweavePlan.action, onClick: () => { setReweaveLimitOpen(false); reweavePlan.action.onClick() } }}
+        secondary={{ label: '다음에 할게요', onClick: () => setReweaveLimitOpen(false) }}
+        onClose={() => setReweaveLimitOpen(false)}
+      />
+    )}
   </div>
 }
 

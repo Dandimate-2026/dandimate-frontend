@@ -1,6 +1,7 @@
 import { formatDuration } from '../../hooks/useVoiceRecorder'
 import Button from '../Button'
-import { PencilIcon, PlayIcon, RetryIcon } from './EntryIcons'
+import { useAudioPlayback } from '../../hooks/useAudioPlayback'
+import { PencilIcon, PlayIcon, RetryIcon, StopIcon } from './EntryIcons'
 
 export interface VoiceDraft {
   transcriptionId: string
@@ -34,6 +35,9 @@ function AnswerForm({
   onRetry: () => void
   onConfirm: () => void
 }) {
+  // 다시 듣기: 같은 버튼으로 정지하고, 다시 누르면 멈춘 곳부터 이어 듣는다
+  const { playing, paused, toggle: togglePlayback, reset: resetPlayback } = useAudioPlayback(voice?.audioUrl)
+
   return (
     <>
       <div className="mt-3.5 rounded-[20px] border border-line bg-surface px-[19px] pt-3.5 pb-4">
@@ -67,16 +71,20 @@ function AnswerForm({
           {voice && (
             <Button
               variant="outline"
-              onClick={() => void new Audio(voice.audioUrl).play()}
+              onClick={togglePlayback}
+              aria-pressed={playing}
               className="flex h-[51px] items-center justify-center gap-2 rounded-full"
             >
-              <PlayIcon />
-              다시 듣기
+              {playing ? <StopIcon /> : <PlayIcon />}
+              {playing ? '정지' : paused ? '이어 듣기' : '다시 듣기'}
             </Button>
           )}
           <Button
             variant="outline"
-            onClick={onRetry}
+            onClick={() => {
+              resetPlayback()
+              onRetry()
+            }}
             className="flex h-[51px] items-center justify-center gap-2 rounded-full"
           >
             <RetryIcon />
