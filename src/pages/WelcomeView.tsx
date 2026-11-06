@@ -23,6 +23,7 @@ export function KakaoBubbleIcon() {
 function WelcomeView({
   invite,
   inviteRoomName,
+  inviterNickname,
   actions,
   note = (
     <>
@@ -36,6 +37,8 @@ function WelcomeView({
   invite: boolean
   /** 초대받은 방 이름 (불러오기 전이면 없음) */
   inviteRoomName?: string
+  /** 초대한 사람 이름 */
+  inviterNickname?: string | null
   /** 아래 버튼 영역 (카카오 로그인 / 입장하기 / 데모 역할 고르기) */
   actions: ReactNode
   note?: ReactNode
@@ -62,7 +65,11 @@ function WelcomeView({
       <footer className="flex flex-col items-center">
         {invite && (
           <p className="mb-[11px] min-h-6 rounded-full bg-[#f6e3ea] px-[18px] py-[3px] text-[12px] text-point">
-            {inviteRoomName ? `‘${inviteRoomName}’에 초대받았어요` : '모임방에 초대받았어요'}
+            {inviterNickname && inviteRoomName
+              ? `${inviterNickname}님이 ‘${inviteRoomName}’에 초대했어요`
+              : inviteRoomName
+                ? `‘${inviteRoomName}’에 초대받았어요`
+                : '모임방에 초대받았어요'}
           </p>
         )}
         <div className="w-full">{actions}</div>

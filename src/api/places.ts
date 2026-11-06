@@ -9,6 +9,8 @@ export interface Place {
   city: string
   latitude: number
   longitude: number
+  /** 카카오 장소 id (사진 장소 저장 때 같이 보낸다) */
+  placeId?: string | null
 }
 
 const MOCK_PLACES: Place[] = [
@@ -34,6 +36,12 @@ export function setPhotoLocation(photoId: string, place: Place) {
   if (USE_MOCK) return Promise.resolve()
   return request<unknown>(`/photos/${photoId}/location`, {
     method: 'PUT',
-    body: { placeName: place.placeName, address: place.address, latitude: place.latitude, longitude: place.longitude },
+    body: {
+      placeName: place.placeName,
+      address: place.address,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      placeId: place.placeId ?? undefined,
+    },
   })
 }

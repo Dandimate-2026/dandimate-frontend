@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import type { CityPin, MapPlaceItem } from '../api/recordMap'
+import { groupPlaces, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import { DAEGU_GYEONGBUK_RINGS } from '../lib/daeguGyeongbukShape'
 import Flower from './Flower'
@@ -77,7 +77,7 @@ function loadKakaoMaps(): Promise<KakaoMaps> {
 
 type Marker =
   | { key: string; kind: 'city'; pin: CityPin; el: HTMLElement }
-  | { key: string; kind: 'place'; pin: CityPin; place: MapPlaceItem; el: HTMLElement }
+  | { key: string; kind: 'place'; pin: CityPin; place: MapPlaceItem; count: number; el: HTMLElement }
 
 /**
  * 카카오 지도 위 기록 지도. 멀리서는 도시 핀, 확대하면 사진마다 고른 세부 장소 핀.
@@ -95,7 +95,7 @@ function KakaoRecordMap({
   activeCity?: string
   cityFlower: (city: string) => FlowerCode
   /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
-  onOpenCity: (pin: CityPin, placeName?: string) => void
+  onOpenCity: (pin: CityPin, place?: MapPlaceItem) => void
   onFail: () => void
   children?: ReactNode
 }) {
@@ -158,7 +158,14 @@ function KakaoRecordMap({
     const detail = level <= DETAIL_LEVEL
     const next: Marker[] = detail
       ? pins.flatMap((pin) =>
-          pin.places.map((place) => ({ key: place.photoId, kind: 'place' as const, pin, place, el: document.createElement('div') })),
+          groupPlaces(pin.places).map(({ place, count }) => ({
+            key: place.photoId,
+            kind: 'place' as const,
+            pin,
+            place,
+            count,
+            el: document.createElement('div'),
+          })),
         )
       : pins.map((pin) => ({ key: pin.city, kind: 'city' as const, pin, el: document.createElement('div') }))
     const overlays = next.map((m) => {
@@ -219,13 +226,14 @@ function KakaoRecordMap({
           ) : (
             <button
               type="button"
-              onClick={() => onOpenCity(m.pin, m.place.placeName)}
+              onClick={() => onOpenCity(m.pin, m.place)}
               aria-label={`${m.place.placeName} (${m.pin.city})`}
               className="flex flex-col items-center"
             >
               <span className="flex max-w-[140px] items-center gap-1 rounded-full bg-surface py-0.5 pr-2 pl-1 text-[11px] font-semibold text-ink shadow-[0_2px_8px_rgba(42,38,35,0.2)]">
                 <Flower code={(m.place.uploader?.flowerCode as FlowerCode | undefined) ?? cityFlower(m.pin.city)} size={14} />
                 <span className="truncate">{m.place.placeName}</span>
+                {m.count > 1 && <span className="shrink-0 text-point">{m.count}</span>}
               </span>
               <span className="mt-0.5 size-2 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
             </button>

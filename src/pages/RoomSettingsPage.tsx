@@ -8,7 +8,6 @@ import {
   leaveRoom,
   ROOM_CAPACITY,
   kickMember,
-  rotateInviteToken,
   transferHost,
   updateMyNickname,
   updateRoom,
@@ -19,6 +18,7 @@ import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { coverSrc, uploadRoomCover } from '../api/roomCovers'
 import { useInviteShare } from '../hooks/useInviteShare'
+import { useRoomInvite } from '../hooks/useRoomInvite'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
 import { objectParticle } from '../lib/plans'
@@ -81,18 +81,6 @@ const PILL_BUTTON_CLASS = 'h-[52px] rounded-full text-[15px] font-semibold activ
 const MAX_ROOM_NAME_LENGTH = 20
 const MAX_NICKNAME_LENGTH = 10
 
-/** 방 만든 시각 기준 24~72시간(그리고 지금 이후)을 날짜 입력칸 범위로 바꾼다. 만든 시각을 모르면 지금 이후만 */
-function deadlineRange(createdAt?: string) {
-  const now = Date.now()
-  if (!createdAt) return { min: toLocalDateTimeInput(new Date(now).toISOString()) }
-  const created = new Date(createdAt).getTime()
-  const hour = 60 * 60 * 1000
-  return {
-    min: toLocalDateTimeInput(new Date(Math.max(now, created + 24 * hour)).toISOString()),
-    max: toLocalDateTimeInput(new Date(created + 72 * hour).toISOString()),
-  }
-}
-
 type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname' | 'capacity'
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
@@ -108,7 +96,6 @@ function EditDialog({
   target,
   initialValue,
   minCapacity = 1,
-  deadlineRange,
   onCancel,
   onSave,
 }: {
@@ -116,8 +103,6 @@ function EditDialog({
   initialValue: string
   /** 인원 바꾸기: 지금 들어온 인원보다 적게는 줄일 수 없다 */
   minCapacity?: number
-  /** 첫 두루마리 시각으로 고를 수 있는 범위 (방을 만든 뒤 24~72시간, 지금 이후) */
-  deadlineRange?: { min: string; max?: string }
   onCancel: () => void
   onSave: (value: string) => Promise<void>
 }) {
@@ -207,8 +192,7 @@ function EditDialog({
             <input
               aria-label={title}
               type={target === 'deadlineAt' ? 'datetime-local' : 'date'}
-              min={target === 'deadlineAt' ? (deadlineRange?.min ?? toLocalDateTimeInput(new Date().toISOString())) : undefined}
-              max={target === 'deadlineAt' ? deadlineRange?.max : undefined}
+              min={target === 'deadlineAt' ? toLocalDateTimeInput(new Date().toISOString()) : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="h-[52px] w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
@@ -224,9 +208,9 @@ function EditDialog({
         )}
         {target === 'deadlineAt' && (
           <p className="mt-3 text-center text-[12px] leading-5 text-sub">
-            방을 만든 뒤 24~72시간 사이로 정할 수 있어요.
+            두루마리를 엮기 전까지 언제든 바꿀 수 있어요.
             <br />
-            시각은 <b className="font-semibold text-ink">한 번만</b> 바꿀 수 있어요.
+            지금보다 뒤의 시각으로 골라 주세요.
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
@@ -318,7 +302,7 @@ function ConfirmDialog({
   )
 }
 
-type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom' | { transferTo: Member } | { kick: Member }
+type ConfirmTarget = 'leave' | 'deleteRoom' | { transferTo: Member } | { kick: Member }
 
 /** 모임방 설정: 모임 정보, 초대 링크, 함께하는 사람, 약관, 나가기 */
 function RoomSettingsPage() {
@@ -329,8 +313,7 @@ function RoomSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<ConfirmTarget | null>(null)
   const [editing, setEditing] = useState<EditTarget | null>(null)
-  // 링크를 새로 만들면 화면의 링크도 바로 바꾼다
-  const [inviteToken, setInviteToken] = useState(session?.inviteToken)
+  const inviteToken = useRoomInvite(roomId)
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
   // 대표 사진은 서버 값(coverImageUrl)을 먼저 쓰고, 없으면 이 기기에 남겨 둔 미리보기를 쓴다
   const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
@@ -445,13 +428,6 @@ function RoomSettingsPage() {
     setConfirming(null)
   }
 
-  const handleRotateInvite = async () => {
-    const next = await rotateInviteToken(room.id, session.memberAccessToken)
-    saveRoomSession(room.id, { ...session, inviteToken: next })
-    setInviteToken(next)
-    setConfirming(null)
-  }
-
   const handleDeleteRoom = async () => {
     await deleteRoom(room.id, session.memberAccessToken)
     removeRoomSession(room.id)
@@ -500,16 +476,9 @@ function RoomSettingsPage() {
           </InfoRow>
           {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
           {canChangeDeadline && (
-            // 첫 두루마리 시각은 한 번만 바꿀 수 있어서, 이미 바꿨으면 변경 버튼 대신 안내를 둔다
-            <InfoRow
-              label="첫 두루마리"
-              editable={isHost && !room.deadlineChangedByHost}
-              onEdit={() => setEditing('deadlineAt')}
-            >
+            // 첫 두루마리 시각은 엮기 전까지 횟수 제한 없이 바꿀 수 있다
+            <InfoRow label="첫 두루마리" editable={isHost} onEdit={() => setEditing('deadlineAt')}>
               {formatDateTime(room.deadlineAt)}
-              {isHost && room.deadlineChangedByHost && (
-                <span className="ml-1 text-[11px] text-muted">· 이미 한 번 바꿨어요</span>
-              )}
             </InfoRow>
           )}
         </ul>
@@ -533,25 +502,8 @@ function RoomSettingsPage() {
         )}
       </Section>
 
-      {/* 원본 초대 토큰은 방장만 갖고 있어서, 방장에게만 초대 링크를 보여준다.
-          서버는 원본 토큰을 방을 만들 때·새로 만들 때만 주므로, 다른 기기에서 들어온 방장은 새로 만들어야 링크가 생긴다 */}
-      {isHost && !inviteToken && (
-        <Section title="초대 링크">
-          <p className="text-[13px] leading-5 text-sub">
-            이 기기에는 초대 링크가 저장돼 있지 않아요.
-            <br />
-            새로 만들면 이전 링크로는 더 들어올 수 없어요.
-          </p>
-          <button
-            type="button"
-            onClick={() => setConfirming('rotateInvite')}
-            className={`${SHARE_BUTTON_CLASS} mt-3 w-full`}
-          >
-            초대 링크 새로 만들기
-          </button>
-        </Section>
-      )}
-      {isHost && inviteToken && (
+      {/* 초대 링크는 고정이고 방 참가자 누구나 볼 수 있다 (이 기기에 없으면 서버에서 받아 온다) */}
+      {inviteToken && (
         <Section title="초대 링크">
           <p className="flex h-[52px] items-center truncate rounded-2xl bg-line px-3.5 text-[13px] text-sub">{link}</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -640,7 +592,7 @@ function RoomSettingsPage() {
                     : me.nickname
           }
           minCapacity={members.length}
-          deadlineRange={deadlineRange(room.createdAt)}
+
           onCancel={() => setEditing(null)}
           onSave={handleSave}
         />
@@ -688,21 +640,6 @@ function RoomSettingsPage() {
           confirmLabel="나가기"
           onCancel={() => setConfirming(null)}
           onConfirm={handleLeave}
-        />
-      )}
-      {confirming === 'rotateInvite' && (
-        <ConfirmDialog
-          title="초대 링크를 새로 만들까요?"
-          description={
-            <>
-              지금 링크로는 더 이상 들어올 수 없어요.
-              <br />
-              이미 들어온 친구는 그대로 남아 있어요.
-            </>
-          }
-          confirmLabel="새로 만들기"
-          onCancel={() => setConfirming(null)}
-          onConfirm={handleRotateInvite}
         />
       )}
       {confirming === 'deleteRoom' && (

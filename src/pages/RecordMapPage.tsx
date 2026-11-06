@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { getMyRecordMap, type CityPin, type MapPlaceItem } from '../api/recordMap'
+import { getMyRecordMap, groupPlaces, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import { getMe } from '../lib/auth'
 import recordMapImage from '../assets/record-map.webp'
@@ -127,9 +127,10 @@ function PlacePhotoCard({
   )
 }
 
-function CitySheet({ pin, placeName, onClose }: { pin: CityPin; placeName?: string; onClose: () => void }) {
+function CitySheet({ pin, place: focus, onClose }: { pin: CityPin; place?: MapPlaceItem; onClose: () => void }) {
+  const placeName = focus?.placeName
   // 세부 장소를 눌러 열었으면 그 장소에서 찍은 사진만 (AI 요약은 도시 단위라 보여주지 않는다)
-  const places = placeName ? pin.places.filter((p) => p.placeName === placeName) : pin.places
+  const places = focus ? pin.places.filter((p) => samePlace(p, focus)) : pin.places
   const navigate = useNavigate()
   const sheetDrag = useSheetDrag(onClose)
   // 내 사진에는 덧붙이기 대신 안내를 보여주려고 내 계정 id를 알아 둔다
@@ -226,7 +227,7 @@ function ZoomableMap({
   pins: CityPin[]
   activeCity?: string
   /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
-  onOpenCity: (pin: CityPin, placeName?: string) => void
+  onOpenCity: (pin: CityPin, place?: MapPlaceItem) => void
   children?: ReactNode
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -320,7 +321,7 @@ function ZoomableMap({
     return { left: (x / 100) * size.w * view.s + view.x, top: (y / 100) * size.h * view.s + view.y }
   }
   const detail = view.s >= DETAIL_SCALE
-  const places = detail ? pins.flatMap((pin) => pin.places.map((place) => ({ pin, place }))) : []
+  const places = detail ? pins.flatMap((pin) => groupPlaces(pin.places).map((g) => ({ pin, ...g }))) : []
 
   return (
     <div className="relative mx-3 mt-4">
@@ -384,13 +385,13 @@ function ZoomableMap({
           })}
 
         {/* 확대했을 때: 사진마다 검색으로 고른 세부 장소 핀 */}
-        {places.map(({ pin, place }) => {
+        {places.map(({ pin, place, count }) => {
           const pos = toScreen(place.latitude, place.longitude)
           return (
             <button
               key={place.photoId}
               type="button"
-              onClick={() => onOpenCity(pin, place.placeName)}
+              onClick={() => onOpenCity(pin, place)}
               aria-label={`${place.placeName} (${pin.city})`}
               style={pos}
               className="absolute flex -translate-x-1/2 -translate-y-full flex-col items-center"
@@ -398,6 +399,7 @@ function ZoomableMap({
               <span className="flex max-w-[120px] items-center gap-1 rounded-full bg-surface py-0.5 pr-2 pl-1 text-[11px] font-semibold shadow-[0_2px_8px_rgba(42,38,35,0.15)]">
                 <Flower code={(place.uploader?.flowerCode as FlowerCode | undefined) ?? cityFlower(pin.city)} size={14} />
                 <span className="truncate">{place.placeName}</span>
+                {count > 1 && <span className="shrink-0 text-point">{count}</span>}
               </span>
               <span className="mt-0.5 size-1.5 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
             </button>
@@ -540,10 +542,10 @@ function RecordMapPage() {
   const [error, setError] = useState(false)
   const [openCity, setOpenCity] = useState<CityPin | null>(null)
   // 확대해서 세부 장소 핀을 눌렀으면 그 장소 이름 (그 장소 사진만 보여준다)
-  const [openPlace, setOpenPlace] = useState<string | undefined>()
-  const openSheet = (pin: CityPin, placeName?: string) => {
+  const [openPlace, setOpenPlace] = useState<MapPlaceItem | undefined>()
+  const openSheet = (pin: CityPin, place?: MapPlaceItem) => {
     setOpenCity(pin)
-    setOpenPlace(placeName)
+    setOpenPlace(place)
   }
   const [roomId, setRoomId] = useState(ALL_ROOMS)
   // 카카오 지도를 못 불러오면(키·콘솔 설정 문제) 시안 그림 지도로 보여준다
@@ -623,7 +625,7 @@ function RecordMapPage() {
         도시를 누르면 AI가 그곳의 추억을 한 줄로 들려줘요
       </p>
 
-      {openCity && <CitySheet pin={openCity} placeName={openPlace} onClose={() => setOpenCity(null)} />}
+      {openCity && <CitySheet pin={openCity} place={openPlace} onClose={() => setOpenCity(null)} />}
       <BottomTabs />
     </main>
   )

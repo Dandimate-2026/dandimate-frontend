@@ -147,14 +147,10 @@ export function kickMember(roomId: string, memberId: string) {
   return request(`/rooms/${roomId}/members/${memberId}`, { method: 'DELETE' })
 }
 
-/** 방장이 초대 링크를 새로 만든다. 이전 링크로는 더 들어올 수 없다 */
-export async function rotateInviteToken(roomId: string, token: string) {
+/** 이 방의 고정 초대 토큰 (방 참가자 누구나). 초대 링크는 바뀌지 않는다 */
+export async function getRoomInvite(roomId: string) {
   if (USE_MOCK) return MOCK_INVITE_TOKEN
-  const { inviteToken } = await request<{ inviteToken: string }>(`/rooms/${roomId}/invite-token/rotate`, {
-    method: 'POST',
-    token,
-    idempotent: true,
-  })
+  const { inviteToken } = await request<{ inviteToken: string }>(`/rooms/${roomId}/invite`)
   return inviteToken
 }
 

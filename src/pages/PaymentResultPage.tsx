@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { clearPendingPayment, confirmPayment, getPendingPayment, type PaymentOrder } from '../api/payments'
-import { rotateInviteToken } from '../api/rooms'
+import { getRoomInvite } from '../api/rooms'
 import PaymentState from '../components/PaymentState'
 import { paymentErrorMessage } from '../lib/paymentErrors'
 import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
@@ -74,8 +74,8 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
       const roomId = order.roomId
       const plan = pending?.plan ?? order.targetPlan.toLowerCase()
       if (!pending?.roomId) {
-        // 새 방: 결제가 승인되면서 서버가 방을 만들었다. 초대 링크는 재발급 API로 받는다
-        const inviteToken = await rotateInviteToken(roomId, '').catch(() => undefined)
+        // 새 방: 결제가 승인되면서 서버가 방을 만들었다. 고정 초대 링크는 조회 API로 받는다
+        const inviteToken = await getRoomInvite(roomId).catch(() => undefined)
         const saved = getRoomSession(roomId)
         saveRoomSession(roomId, {
           ...saved,

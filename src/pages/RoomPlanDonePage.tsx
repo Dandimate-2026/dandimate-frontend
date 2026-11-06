@@ -11,6 +11,7 @@ import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 import { USE_MOCK } from '../api/mock'
 import { PAYMENT_DEMO } from '../api/plans'
+import { useRoomInvite } from '../hooks/useRoomInvite'
 
 /** 결제를 마친 뒤 바뀐 한도를 보여주고, 친구를 부르러 보낸다 */
 function RoomPlanDonePage() {
@@ -24,7 +25,8 @@ function RoomPlanDonePage() {
   const freePlan = plans.find((item) => item.id === 'free')!
   const [roomName, setRoomName] = useState(session?.roomName)
   const memberAccessToken = session?.memberAccessToken
-  const { share, copied } = useInviteShare(session?.inviteToken ?? '')
+  const inviteToken = useRoomInvite(roomId)
+  const { share, copied } = useInviteShare(inviteToken ?? '')
 
   useEffect(() => {
     if (!roomId || memberAccessToken === undefined || savedRoomName) return
@@ -77,7 +79,7 @@ function RoomPlanDonePage() {
         {/* 방을 막 만든 참이라 아직 친구가 없다. 바로 공유하거나 초대 링크 화면으로 간다 */}
         <button
           type="button"
-          onClick={() => session.inviteToken ? void share() : navigate(paths.roomSettings(roomId))}
+          onClick={() => inviteToken ? void share() : navigate(paths.roomSettings(roomId))}
           className="h-[52px] rounded-full bg-surface text-[15px] font-semibold active:opacity-80"
         >
           {copied ? '초대 링크가 복사됐어요' : '단톡방에 알리기'}

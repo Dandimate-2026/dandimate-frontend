@@ -42,6 +42,25 @@ export interface MapPlaceItem {
   uploader?: { userId: string; nickname: string; flowerCode: string } | null
   /** 그 사진의 첫 한마디 일부 */
   firstEntrySnippet?: string | null
+  /** 카카오 장소 id. 같은 장소인지 이름보다 정확하게 가린다 */
+  placeId?: string | null
+}
+
+/** 같은 장소에서 찍은 사진을 핀 하나로 묶는다 (사진 수 포함) */
+export function groupPlaces(places: MapPlaceItem[]) {
+  const groups: { place: MapPlaceItem; count: number }[] = []
+  for (const place of places) {
+    const found = groups.find((g) => samePlace(g.place, place))
+    if (found) found.count += 1
+    else groups.push({ place, count: 1 })
+  }
+  return groups
+}
+
+/** 같은 장소인지: 둘 다 카카오 장소 id가 있으면 id로, 아니면 이름으로 */
+export function samePlace(a: MapPlaceItem, b: MapPlaceItem) {
+  if (a.placeId && b.placeId) return a.placeId === b.placeId
+  return a.placeName === b.placeName
 }
 
 /** 기록 지도는 대구·경북만 보여준다. 서버가 주소에서 뽑은 도시 이름(시·군 이름) 기준 */
@@ -134,5 +153,6 @@ export function askDuru(message: string, conversationId: string) {
       ],
     })
   }
-  return request<ChatAnswer>('/chat/messages', { method: 'POST', body: { message, conversationId } })
+  // 같은 질문을 두 번 차감하지 않도록 Idempotency-Key를 보낸다 (서버가 이 키로 결과를 다시 돌려준다)
+  return request<ChatAnswer>('/chat/messages', { method: 'POST', body: { message, conversationId }, idempotent: true })
 }
