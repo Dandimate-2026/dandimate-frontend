@@ -102,7 +102,8 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     {scroll.paragraphs.map((paragraph) => {
       const rating = ratings[`${paragraph.id}:${paragraph.version}`] ?? getParagraphRating(home.room.id, home.me.id, paragraph.id, paragraph.version)
       const changes = reweaveResult?.paragraphId === paragraph.id && reweaveResult.version === paragraph.version ? reweaveResult : undefined
-      return <section className="memory-chapter" key={paragraph.id}>
+      // 챗봇에서 특정 문단으로 바로 올 때 이 id로 찾아 그 위치로 내린다
+      return <section className="memory-chapter" key={paragraph.id} id={`paragraph-${paragraph.id}`}>
       <PhotoSlot label={`${paragraph.photo.uploader.nickname}님의 사진`} src={paragraph.photo.imageUrl} />
       <p className="memory-chapter-meta">{paragraph.photo.uploader.nickname}님이 올린 사진</p>
       <div className={changes ? 'scroll-rewoven' : 'scroll-paragraph-story'}>

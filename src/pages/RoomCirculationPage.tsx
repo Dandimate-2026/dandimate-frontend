@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { createEntry, transcribe } from '../api/entries'
 import { getCirculation, passPhoto, recordMockAddon, undoPass } from '../api/memories'
 import type { CirculationCard, Entry, FlowerCode } from '../api/types'
@@ -47,6 +47,9 @@ function memoryPhoto(card: CirculationCard): MemoryPhoto {
 function RoomCirculationPage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
+  // 챗봇에서 특정 사진에 덧붙이러 왔으면 그 사진부터 연다
+  const [searchParams] = useSearchParams()
+  const startPhotoId = searchParams.get('photo')
   const session = getRoomSession(roomId)
   const token = session?.memberAccessToken ?? ''
   // 덧붙임 녹음 최대 길이는 플랜별(20/30/60초)이라 방 한도를 불러온다
@@ -69,11 +72,19 @@ function RoomCirculationPage() {
 
   useEffect(() => {
     let active = true
-    getCirculation(roomId, token).then((result) => { if (active) setCards(result.filter((card) => card.myResponse.status !== 'OWN_PHOTO')) })
+    getCirculation(roomId, token).then((result) => {
+      if (!active) return
+      const list = result.filter((card) => card.myResponse.status !== 'OWN_PHOTO')
+      setCards(list)
+      const start = startPhotoId ? list.findIndex((card) => card.photo.id === startPhotoId) : -1
+      if (start >= 0) setIndex(start)
+      // 내 사진이거나 아직 돌려보기에 없는 사진이면 덧붙일 수 없어서 첫 사진부터 보여주고 알린다
+      else if (startPhotoId) setError('그 사진에는 덧붙일 수 없어요. 내가 올린 사진에는 덧붙일 수 없어요')
+    })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '사진을 불러오지 못했어요.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [roomId, token])
+  }, [roomId, token, startPhotoId])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
 
