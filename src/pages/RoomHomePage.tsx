@@ -8,6 +8,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import { SparkleIcon } from '../components/entry/EntryIcons'
 import Flower, { EmptySlot } from '../components/Flower'
+import { TodayFlowers } from '../components/TodayFlowers'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { shareToKakao } from '../lib/kakao'
@@ -199,18 +200,7 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
         <section className="mt-3.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
           {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
-          <ul className="mt-2 flex flex-wrap items-center gap-[5px]">
-            {todayFlowers.map((f, i) => (
-              <li key={`${f.memberId}-${i}`}>
-                <Flower code={f.flowerCode} />
-              </li>
-            ))}
-            {Array.from({ length: Math.max(0, members.length - todayFlowers.length) }, (_, i) => (
-              <li key={`empty-${i}`}>
-                <EmptySlot />
-              </li>
-            ))}
-          </ul>
+          <TodayFlowers members={members} flowers={todayFlowers} />
           <p className="mt-2 text-[11px] text-sub">
             {todayFlowers.length > 0
               ? `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`
@@ -554,13 +544,7 @@ ${url}`).catch(() => {})
 
         <section className="mt-2.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
-          <ul className="mt-0.5 flex flex-wrap gap-0.5">
-            {todayFlowers.map((f, i) => (
-              <li key={`${f.memberId}-${i}`}>
-                <Flower code={f.flowerCode} />
-              </li>
-            ))}
-          </ul>
+          <TodayFlowers members={members} flowers={todayFlowers} />
           <p className="mt-1 text-[11px] text-sub">
             {allDone
               ? `이야기 ${todayFlowers.length}개가 모였어요`
