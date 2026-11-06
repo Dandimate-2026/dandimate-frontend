@@ -1,3 +1,6 @@
+// 카톡 카드에 들어갈 그림. 카카오가 가져갈 수 있게 우리 사이트 주소를 붙인 절대 주소로 보낸다
+import shareImage from '../assets/logo-scroll.webp'
+
 // 카카오톡 공유용 Kakao JS SDK. 앱 키가 있을 때만 처음 쓸 때 불러온다
 const SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js'
 const APP_KEY = import.meta.env.VITE_KAKAO_JS_KEY
@@ -7,10 +10,16 @@ interface KakaoSdk {
   init: (appKey: string) => void
   Share: {
     sendDefault: (settings: {
-      objectType: 'text'
-      text: string
-      link: { mobileWebUrl: string; webUrl: string }
-      buttonTitle?: string
+      objectType: 'feed'
+      content: {
+        title: string
+        description: string
+        imageUrl: string
+        imageWidth?: number
+        imageHeight?: number
+        link: { mobileWebUrl: string; webUrl: string }
+      }
+      buttons: { title: string; link: { mobileWebUrl: string; webUrl: string } }[]
     }) => void
   }
 }
@@ -47,16 +56,26 @@ function loadKakao(): Promise<KakaoSdk | null> {
   return loading
 }
 
-/** 카카오톡 공유창을 연다. SDK를 쓸 수 없으면 false */
-export async function shareToKakao(text: string, url: string) {
+/**
+ * 카카오톡 공유창을 연다. 글자만 있는 메시지가 아니라 그림·제목·버튼이 있는 카드(피드)로 보낸다.
+ * SDK를 쓸 수 없으면 false
+ */
+export async function shareToKakao(text: string, url: string, title = '두루두루') {
   const kakao = await loadKakao()
   if (!kakao) return false
+  const link = { mobileWebUrl: url, webUrl: url }
   try {
     kakao.Share.sendDefault({
-      objectType: 'text',
-      text,
-      link: { mobileWebUrl: url, webUrl: url },
-      buttonTitle: '모임방 들어가기',
+      objectType: 'feed',
+      content: {
+        title,
+        description: text,
+        imageUrl: new URL(shareImage, window.location.origin).href,
+        imageWidth: 960,
+        imageHeight: 600,
+        link,
+      },
+      buttons: [{ title: '모임방 들어가기', link }],
     })
     return true
   } catch {
