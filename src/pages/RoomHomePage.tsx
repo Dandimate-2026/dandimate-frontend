@@ -11,7 +11,7 @@ import Flower, { EmptySlot } from '../components/Flower'
 import { TodayFlowers } from '../components/TodayFlowers'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
-import { shareToKakao } from '../lib/kakao'
+import { shareWithDevice } from '../lib/share'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
@@ -493,9 +493,8 @@ function RoomHomePage() {
       return
     }
     const url = siteUrl(paths.roomHome(room.id))
-    if (await shareToKakao(text, url)) return
-    if (navigator.share) await navigator.share({ text, url }).catch(() => {})
-    else await navigator.clipboard?.writeText(`${text}
+    if (await shareWithDevice(text, url)) return
+    await navigator.clipboard?.writeText(`${text}
 ${url}`).catch(() => {})
   }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { shareToKakao } from '../lib/kakao'
+import { shareWithDevice } from '../lib/share'
 import { inviteUrl } from '../lib/session'
 
 export const DEFAULT_SHARE_MESSAGE = '두루두루 열었어! 사진 올리고 한마디 남겨줘'
@@ -17,13 +17,10 @@ ${link}`)
   }
 
   const share = async (text = DEFAULT_SHARE_MESSAGE) => {
-    // 카카오톡 공유창을 먼저 열고, 앱 키가 없거나 SDK를 못 불러오면 기기 공유 시트로 대체한다
-    if (await shareToKakao(text, link)) return
-    if (navigator.share) {
-      await navigator.share({ text, url: link }).catch(() => {})
-    } else {
-      await copy(text)
-    }
+    // 휴대폰: 기기 공유 시트(카톡 선택)로 글+링크를 그대로 보낸다. 복사해서 붙여넣는 것과 같아 링크가 항상 살아 있다
+    // 공유 시트가 없으면(PC 등) 글+링크를 복사한다
+    if (await shareWithDevice(text, link)) return
+    await copy(text)
   }
 
   return { link, copied, copy, share }
