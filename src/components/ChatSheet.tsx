@@ -274,6 +274,8 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
   const [input, setInput] = useState('')
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
+  // 새 대화 확인 창 (브라우저 기본 알림창 대신 시트 안에 띄운다)
+  const [confirmReset, setConfirmReset] = useState(false)
   const dragStart = useRef<number | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -283,11 +285,14 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      // 확인 창이 떠 있으면 그것만 닫는다
+      if (confirmReset) setConfirmReset(false)
+      else onClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, confirmReset])
 
   const send = (text: string) => {
     setInput('')
@@ -325,7 +330,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
         aria-label="두루에게 물어보기"
         onClick={(e) => e.stopPropagation()}
         style={{ transform: `translateY(${dragY}px)`, transition: dragging ? 'none' : 'transform 0.2s' }}
-        className="mx-auto flex h-[88dvh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-[28px] bg-bg text-ink"
+        className="relative mx-auto flex h-[88dvh] w-full max-w-[430px] flex-col overflow-hidden rounded-t-[28px] bg-bg text-ink"
       >
       <header
         onPointerDown={onDragStart}
@@ -348,9 +353,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => {
-                if (window.confirm('지금 대화를 지우고 새로 시작할까요?')) resetChat()
-              }}
+              onClick={() => setConfirmReset(true)}
               disabled={sending}
               className="rounded-full border border-line px-3 py-1.5 text-[12px] text-sub active:opacity-70 disabled:opacity-40"
             >
@@ -437,6 +440,50 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
           <ArrowIcon />
         </button>
       </form>
+        {confirmReset && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-ink/40 px-8"
+            onClick={() => setConfirmReset(false)}
+          >
+            <div
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="reset-title"
+              aria-describedby="reset-desc"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full rounded-[24px] bg-surface px-5 pt-6 pb-5 text-center"
+            >
+              <h3 id="reset-title" className="text-[16px] font-bold">
+                새 대화를 시작할까요?
+              </h3>
+              <p id="reset-desc" className="mt-2 text-[13px] leading-5 text-sub">
+                지금까지 나눈 대화는 지워져요.
+                <br />
+                모임방의 기록은 그대로 남아 있어요.
+              </p>
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={() => setConfirmReset(false)}
+                  className="h-12 rounded-full border border-line bg-surface text-[15px] font-semibold active:opacity-80"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetChat()
+                    setConfirmReset(false)
+                  }}
+                  className="h-12 rounded-full bg-ink text-[15px] font-semibold text-surface active:opacity-80"
+                >
+                  새로 시작
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   )
