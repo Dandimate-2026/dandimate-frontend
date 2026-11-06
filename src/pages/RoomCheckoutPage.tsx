@@ -130,8 +130,8 @@ function RoomCheckoutPage() {
         : 'idle',
   )
   const [failureReason, setFailureReason] = useState('카드 한도 초과')
-  // 결제 수단·쿠폰·약관·결제 버튼을 쓸 수 있는지 (mock 또는 결제 화면 시연 중)
-  const paymentOpen = USE_MOCK || PAYMENT_DEMO
+  // 결제 수단·쿠폰·약관·결제 버튼을 쓸 수 있는지 (mock, 결제 화면 시연, 토스 테스트 결제)
+  const paymentOpen = USE_MOCK || PAYMENT_DEMO || TOSS_ENABLED
 
   useEffect(() => {
     if (!roomId || !session) return
