@@ -11,6 +11,8 @@ import { getRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import WelcomeView from './WelcomeView'
 import { paths } from '../routes/paths'
+import { LengthNotice } from '../components/LengthNotice'
+import { clampText } from '../lib/textLimit'
 
 const MAX_NAME_LENGTH = 10
 
@@ -138,7 +140,7 @@ function InviteJoinPage() {
               id="nickname"
               value={name}
               maxLength={MAX_NAME_LENGTH}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setName(clampText(e.target.value, MAX_NAME_LENGTH))}
               placeholder="친구들이 부르는 이름"
               className="h-[52px] w-full rounded-full border border-line bg-surface pr-14 pl-4 text-[15px] outline-none placeholder:text-muted focus:border-sub"
             />
@@ -146,6 +148,7 @@ function InviteJoinPage() {
               {name.length}/{MAX_NAME_LENGTH}
             </span>
           </div>
+          <LengthNotice length={name.length} max={MAX_NAME_LENGTH} className="pl-1" />
           {!preview.canJoin && <p className="mt-2 text-[12px] text-point">지금은 이 방에 들어갈 수 없어요</p>}
           {submitError && <p className="mt-2 text-[12px] text-point">{submitError}</p>}
           <Button type="submit" disabled={!canJoin} className="mt-[18px] w-full">

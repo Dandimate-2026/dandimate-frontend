@@ -1,4 +1,5 @@
 import Button from '../../components/Button'
+import MoreMenu from '../../components/MoreMenu'
 import lock from '../../assets/memories/lock.svg'
 import skip from '../../assets/memories/skip.svg'
 import { MemoryCard, MemoryFlower, MemoryHeader, PhotoSlot, StoryCard, TextModeToggle } from './components'
@@ -27,12 +28,18 @@ export default function CirculationPage({ photo, position, total, response, lock
 }) {
   // 내가 남긴 이야기 아래에 [고치기 · 지우기]를 붙인다
   const withActions = (story: MemoryStory, key?: string) => (
-    <div key={key}>
+    <div key={key} className="relative">
       <StoryCard story={story} textOnly={textOnly} mine={story.mine} />
+      {/* 내가 남긴 이야기: 오른쪽 위 ⋮ 메뉴에서 고치기·지우기 */}
       {story.mine && story.id && (onEditStory || onDeleteStory) && (
-        <div className="mt-1 flex justify-end gap-3 px-1 text-[12px]">
-          {onEditStory && <button type="button" className="text-sub active:opacity-70" onClick={() => onEditStory(story)}>고치기</button>}
-          {onDeleteStory && <button type="button" className="text-point active:opacity-70" onClick={() => onDeleteStory(story)}>지우기</button>}
+        <div className="absolute top-1.5 right-1.5">
+          <MoreMenu
+            label="내 이야기 메뉴"
+            items={[
+              ...(onEditStory ? [{ label: '고치기', onSelect: () => onEditStory(story) }] : []),
+              ...(onDeleteStory ? [{ label: '지우기', onSelect: () => onDeleteStory(story), danger: true }] : []),
+            ]}
+          />
         </div>
       )}
     </div>
@@ -42,7 +49,7 @@ export default function CirculationPage({ photo, position, total, response, lock
     <MemoryHeader progress={`${position} / ${total}`} onBack={onBack} />
     <TextModeToggle value={textOnly} onChange={onTextMode} />
     <MemoryCard className="memory-photo-card">
-      <div className="memory-photo-owner"><span><MemoryFlower color={photo.flower} />{photo.mine ? '내가 올렸어요' : `${photo.owner} 님이 올렸어요`}</span><small>이야기 {1 + photo.friends.length}개{photo.mine && onDeletePhoto && <> · <button type="button" className="text-point" onClick={onDeletePhoto}>사진 지우기</button></>}</small></div>
+      <div className="memory-photo-owner"><span><MemoryFlower color={photo.flower} />{photo.mine ? '내가 올렸어요' : `${photo.owner} 님이 올렸어요`}</span><span className="flex items-center gap-1"><small>이야기 {1 + photo.friends.length}개</small>{photo.mine && onDeletePhoto && <MoreMenu label="내 사진 메뉴" items={[{ label: '사진 지우기', onSelect: onDeletePhoto, danger: true }]} />}</span></div>
       <PhotoSlot label={photo.location} date={photo.dateLabel} src={photo.photoUrl} icon />
       <div className="memory-stories" key={`${photo.id}-${textOnly}`}>
         {withActions(photo.firstStory)}

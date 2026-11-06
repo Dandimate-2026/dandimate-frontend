@@ -15,11 +15,12 @@ import '../features/memories/memories.css'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
+import { LengthNotice } from '../components/LengthNotice'
+import { clampText } from '../lib/textLimit'
 
+/** 꽃 색은 앱 공통 8색: 꽃 코드를 그대로 쓴다 */
 function flower(code: FlowerCode): FlowerColor {
-  if (code === 'FORGET_ME_NOT' || code === 'TEAL') return 'blue'
-  if (code === 'FORSYTHIA' || code === 'CANOLA') return 'orange'
-  return 'pink'
+  return code
 }
 
 function story(entry: Entry, myMemberId?: string) {
@@ -225,8 +226,9 @@ function RoomCirculationPage() {
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-6" onClick={() => setEditing(null)}>
         <div role="dialog" aria-modal="true" aria-labelledby="edit-story-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-[380px] rounded-[24px] bg-[#fffdf9] px-5 pt-6 pb-5 text-[#2a2623]">
           <h2 id="edit-story-title" className="text-center text-[16px] font-bold">이야기 고치기</h2>
-          <textarea value={editing.text} maxLength={300} onChange={(e) => setEditing({ ...editing, text: e.target.value })} rows={4} className="mt-4 w-full resize-none rounded-[16px] border border-[#e6ded2] bg-white px-4 py-3 text-[14px] leading-6 outline-none" />
+          <textarea value={editing.text} maxLength={300} onChange={(e) => setEditing({ ...editing, text: clampText(e.target.value, 300) })} rows={4} className="mt-4 w-full resize-none rounded-[16px] border border-[#e6ded2] bg-white px-4 py-3 text-[14px] leading-6 outline-none" />
           <p className="mt-1 text-right text-[11px] text-[#8a8178]">{editing.text.length}/300 · 말로 남긴 이야기는 글만 바뀌어요</p>
+          <LengthNotice length={editing.text.length} max={300} className="text-right" />
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setEditing(null)} className="h-12 rounded-full border border-[#e6ded2] text-[15px] font-semibold">취소</button>
             <button type="button" disabled={busy || !editing.text.trim()} onClick={() => void saveEdit()} className="h-12 rounded-full bg-[#2a2623] text-[15px] font-semibold text-white disabled:opacity-50">{busy ? '저장 중…' : '저장'}</button>
