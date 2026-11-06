@@ -15,9 +15,9 @@ export default defineConfig({
       includeAssets: ['fonts/Pretendard-LICENSE.txt'],
       manifest: {
         id: '/',
-        name: '단디메이트',
-        short_name: '단디메이트',
-        description: '단디메이트 모바일 웹앱',
+        name: '두루두루',
+        short_name: '두루두루',
+        description: '친구들과 사진과 이야기로 함께 채우는 두루마리',
         lang: 'ko',
         start_url: '/',
         scope: '/',
