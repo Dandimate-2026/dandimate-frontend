@@ -1,5 +1,7 @@
 # 배포 API 연결 및 확인
 
+2026-11-06 추가한 평가 숨김·템플릿·파일 다운로드·평가 후 재엮기는 [두루마리 기능 연결 및 검증](scroll-features.md)을 먼저 참고하세요. 최신 스웨거의 인증은 로그인 쿠키와 CSRF 토큰이며, 아래의 기존 방별 토큰 설명보다 새 문서의 두루마리 연결 기준이 우선합니다.
+
 기준: [Swagger UI](https://43-201-73-60.sslip.io/swagger-ui.html) / [OpenAPI 원문](https://43-201-73-60.sslip.io/openapi/public-api.yaml), Duruduru Public API 0.1.0.
 
 ## 연결된 화면
