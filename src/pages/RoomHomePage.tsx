@@ -18,6 +18,7 @@ import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
 import { useSheetDrag } from '../hooks/useSheetDrag'
+import { siteUrl } from '../lib/siteUrl'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
   COLLECTING: '모으는 중',
@@ -486,7 +487,7 @@ function RoomHomePage() {
       await shareInvite(text)
       return
     }
-    const url = `${window.location.origin}${paths.roomHome(room.id)}`
+    const url = siteUrl(paths.roomHome(room.id))
     if (await shareToKakao(text, url)) return
     if (navigator.share) await navigator.share({ text, url }).catch(() => {})
     else await navigator.clipboard?.writeText(`${text}
