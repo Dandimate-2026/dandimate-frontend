@@ -7,6 +7,8 @@ export const paths = {
   roomList: () => '/',
   /** 아래 탭: 내 사진 장소를 도시별로 모은 기록 지도 */
   recordMap: () => '/map',
+  /** 두루 챗봇 질문 크레딧 상점 */
+  store: () => '/store',
   roomCreate: () => '/rooms/new',
   /** 방 만들기 다음: 플랜 선택 → (유료면) 결제 → 방 생성 */
   roomCreatePlan: () => '/rooms/new/plan',

@@ -8,6 +8,7 @@ import PaymentResultPage from '../pages/PaymentResultPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import PolicyPage from '../pages/PolicyPage'
 import RecordMapPage from '../pages/RecordMapPage'
+import StorePage from '../pages/StorePage'
 import RoomCheckoutPage from '../pages/RoomCheckoutPage'
 import RoomCirculationPage from '../pages/RoomCirculationPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
@@ -36,6 +37,8 @@ function AppRoutes() {
         <Route path={paths.roomList()} element={<RoomListPage />} />
         {/* 아래 탭: 기록 지도 (두루 챗봇은 모임방 목록 위 바텀시트) */}
         <Route path={paths.recordMap()} element={<RecordMapPage />} />
+        {/* 두루 챗봇 크레딧 상점 (결제는 토스 결제창) */}
+        <Route path={paths.store()} element={<StorePage />} />
         {/* 모임방 만들기 */}
         <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
         {/* 방 만들기 다음: 플랜을 고르고(유료면 결제) 그 플랜으로 방을 만든다 */}

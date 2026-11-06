@@ -1,29 +1,8 @@
+import duruBot from '../assets/duru-bot.webp'
 
-// 두루 몸통: 흰 꽃잎 5장 (가운데 18.5, 꽃잎 중심까지 4.6)
-const BOT_PETALS = [
-  [15, 13.9],
-  [19.37, 17.08],
-  [17.7, 22.22],
-  [12.3, 22.22],
-  [10.63, 17.08],
-]
-
-/** 두루 얼굴: 안테나 + 흰 꽃 몸통 + 검은 화면에 민트색 눈 */
-export function BotIcon() {
-  return (
-    // 안테나 끝(2.5)~꽃잎 아래(26.6)를 원 가운데에 두되, 시안처럼 아주 살짝 위로 올리고 여백 없이 잘라 크게 보이게 한다
-    <svg width="36" height="36" viewBox="2.5 2.9 25 25" fill="none" aria-hidden="true">
-      <circle cx="15" cy="4.2" r="1.7" fill="white" />
-      <path d="M15 5.5v5" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
-      {BOT_PETALS.map(([cx, cy]) => (
-        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="4.4" fill="white" />
-      ))}
-      <circle cx="15" cy="18.5" r="5" fill="white" />
-      <rect x="10.1" y="14.7" width="9.8" height="5.2" rx="2.6" fill="#2a2623" />
-      <circle cx="13" cy="17.3" r="1.15" fill="#9be6d2" />
-      <circle cx="17" cy="17.3" r="1.15" fill="#9be6d2" />
-    </svg>
-  )
+/** 두루 캐릭터 그림 (꽃 모양 몸통의 로봇). size는 한 변 픽셀 */
+export function BotIcon({ size = 44 }: { size?: number }) {
+  return <img src={duruBot} alt="" width={size} height={size} draggable={false} className="select-none" aria-hidden="true" />
 }
 
 /** 모임방 목록 위에 떠 있는 두루 챗봇 버튼과 말풍선 */
@@ -42,11 +21,24 @@ function ChatFab({ onOpen }: { onOpen: () => void }) {
         type="button"
         aria-label="두루에게 물어보기"
         onClick={onOpen}
-        className="pointer-events-auto flex size-[58px] shrink-0 items-center justify-center rounded-full bg-point shadow-[0_6px_18px_rgba(160,60,100,0.35)] active:opacity-90"
+        className="pointer-events-auto flex size-[62px] shrink-0 items-center justify-center rounded-full bg-point shadow-[0_6px_18px_rgba(160,60,100,0.35)] active:opacity-90"
       >
-        <BotIcon />
+        {/* 안테나 때문에 아래로 처져 보여서 살짝 올린다 */}
+        <span className="-mt-1.5 flex">
+          <BotIcon size={44} />
+        </span>
       </button>
     </div>
+  )
+}
+
+/** 상점 아이콘: 쇼핑백 (선 아이콘) */
+export function StoreIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 8h14l-1 12H6L5 8Z" />
+      <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
+    </svg>
   )
 }
 

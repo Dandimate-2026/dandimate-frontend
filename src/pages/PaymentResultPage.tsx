@@ -59,6 +59,14 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
 
     const finish = async () => {
       const order = await confirm()
+      // 두루 챗봇 크레딧: 방과 상관없이 적립되고, 모임방 목록으로 돌아가 챗봇을 다시 연다
+      if (pending?.kind === 'credits') {
+        if (order.status === 'PROCESSING') throw new ApiError(503, 'PAYMENT_UNCERTAIN', '결제를 아직 확인하고 있어요. 잠시 후 다시 확인해 주세요')
+        if (order.status !== 'DONE') throw new ApiError(400, 'PAYMENT_FAILED', '결제가 완료되지 않았어요')
+        clearPendingPayment()
+        navigate(paths.roomList(), { replace: true, state: { openChat: true } })
+        return
+      }
       if (order.status !== 'DONE' || !order.roomId) {
         if (order.status === 'PROCESSING') throw new ApiError(503, 'PAYMENT_UNCERTAIN', '결제를 아직 확인하고 있어요. 잠시 후 다시 확인해 주세요')
         throw new ApiError(400, 'PAYMENT_FAILED', '결제가 완료되지 않았어요')
@@ -86,11 +94,13 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
       setUncertain(isUncertain(e) || !(e instanceof ApiError))
       setError(paymentErrorMessage(e))
     })
-  }, [kind, navigate, pending?.plan, pending?.roomId, pending?.roomName, orderId, paymentKey, amount, attempt])
+  }, [kind, navigate, pending?.plan, pending?.roomId, pending?.roomName, pending?.kind, orderId, paymentKey, amount, attempt])
 
   // 다시 결제하려면 결제 화면으로, 새 방이면 방 만들기에서 입력한 내용이 남아 있는 결제 화면으로 돌아간다
   const retryPath = pending
-    ? pending.roomId
+    ? pending.kind === 'credits'
+      ? paths.store()
+      : pending.roomId
       ? paths.roomCheckout(pending.roomId, pending.plan)
       : paths.roomCreateCheckout(pending.plan)
     : paths.roomList()
