@@ -1,17 +1,40 @@
 /**
- * 휴대폰 기기 공유 시트로 글과 링크를 보낸다 (카톡을 고르면 복사·붙여넣기와 똑같이 링크가 눌린다).
+ * 기기 공유 시트(휴대폰·Windows·macOS 공통)로 글과 링크를 보낸다.
+ * 카톡을 고르면 복사·붙여넣기와 똑같이 링크가 눌린다.
  * (그림 카드 대신 이 방식만 쓴다: 카드는 카카오 콘솔 도메인 등록 없이는 링크가 빠진다)
- * 터치 기기가 아니거나 공유 시트가 없으면 false. 사용자가 공유를 취소해도 true(다른 방법으로 다시 열지 않는다)
+ * 공유 시트가 없거나 열리지 않으면 false → 호출하는 쪽에서 복사로 대신한다. 사용자가 취소한 경우는 true
  */
 export async function shareWithDevice(text: string, url: string) {
-  const touch = window.matchMedia?.('(pointer: coarse)').matches
-  if (!touch || !navigator.share) return false
+  if (!navigator.share) return false
   try {
     // url을 따로 넘기면 일부 앱이 글을 버리므로 글 끝에 링크를 붙여 한 덩어리로 보낸다
-    await navigator.share({ text: `${text}
-${url}` })
-  } catch {
-    // 취소
+    await navigator.share({ text: `${text}\n${url}` })
+    return true
+  } catch (error) {
+    return error instanceof DOMException && error.name === 'AbortError'
   }
-  return true
+}
+
+/** 화면 아래에 잠깐 떴다 사라지는 안내 (어느 화면에서 불러도 된다) */
+export function showToast(message: string) {
+  const el = document.createElement('div')
+  el.textContent = message
+  el.setAttribute('role', 'status')
+  el.style.cssText =
+    'position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:9999;max-width:340px;padding:10px 16px;border-radius:999px;background:rgba(42,38,35,.92);color:#fff;font-size:13px;text-align:center;pointer-events:none'
+  document.body.appendChild(el)
+  setTimeout(() => el.remove(), 2400)
+}
+
+/**
+ * 공유 시트를 못 여는 곳(카톡 안 브라우저 등)에서는 글+링크를 복사하고, 복사했다고 꼭 알려 준다.
+ * 아무 반응이 없으면 버튼이 고장 난 것처럼 보이기 때문
+ */
+export async function copyForShare(text: string, url: string) {
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`)
+    showToast('링크를 복사했어요. 단톡방에 붙여넣어 주세요')
+  } catch {
+    showToast('복사하지 못했어요. 링크를 길게 눌러 복사해 주세요')
+  }
 }
