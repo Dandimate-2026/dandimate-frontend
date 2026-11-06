@@ -1,6 +1,7 @@
 // 기록 지도와 두루 챗봇 API
 import { request } from './client'
 import { USE_MOCK } from './mock'
+import type { FlowerCode } from './types'
 
 export interface MapRoomItem {
   roomId: string
@@ -54,17 +55,46 @@ export async function getMyRecordMap(): Promise<CityPin[]> {
   return res.cities
 }
 
+export interface ChatAuthor {
+  /** 계정 id. 내 사진인지 가릴 때 쓴다 */
+  userId?: string
+  nickname: string
+  flowerCode: FlowerCode
+}
+
+export interface ChatSource {
+  room: { roomId: string; name: string; meetingDate?: string | null } | null
+  photo: { photoId: string; imageUrl: string | null; uploader?: ChatAuthor | null } | null
+  /** 그 사진의 첫 한마디 */
+  firstEntry?: { text: string; author: ChatAuthor | null } | null
+}
+
+/** 답의 근거가 된 원문 한 조각 */
+export interface ChatCitation {
+  statementIndex: number
+  entryId: string | null
+  photoId: string | null
+  kind: string
+  quote: string
+  author: ChatAuthor | null
+}
+
 export interface ChatAnswer {
   answer: string
-  sources: { room: { roomId: string; name: string } | null }[]
+  sources: ChatSource[]
+  citations?: ChatCitation[]
 }
 
 /** 두루에게 묻기. conversationId가 같으면 이어서 대화한다 */
 export function askDuru(message: string, conversationId: string) {
   if (USE_MOCK) {
     return Promise.resolve<ChatAnswer>({
-      answer: `데모에서는 실제 기록을 찾아볼 수 없어요. "${message}"에 대한 답은 실제 서버에서 확인해 주세요.`,
-      sources: [],
+      answer: `첨성대 앞 단체 사진 얘기 같아요! 그런데 친구들 기억이 조금 달라요 😆 (데모 답이에요: "${message}")`,
+      sources: [{ room: { roomId: 'demo', name: '경주 1박2일' }, photo: { photoId: 'p1', imageUrl: null, uploader: { nickname: '서연', flowerCode: 'AZALEA' } }, firstEntry: { text: '첨성대 앞에서 다 같이 찍은 사진!', author: { nickname: '서연', flowerCode: 'AZALEA' } } }],
+      citations: [
+        { statementIndex: 0, entryId: 'e1', photoId: 'p1', kind: 'FIRST_ENTRY', quote: '민지가 계단에서 미끄러졌는데 다같이 빵 터짐', author: { nickname: '서연', flowerCode: 'AZALEA' } },
+        { statementIndex: 0, entryId: 'e2', photoId: 'p1', kind: 'ADDON', quote: '사실 일부러 앉은거임', author: { nickname: '민지', flowerCode: 'FORSYTHIA' } },
+      ],
     })
   }
   return request<ChatAnswer>('/chat/messages', { method: 'POST', body: { message, conversationId } })

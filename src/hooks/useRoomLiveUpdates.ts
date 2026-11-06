@@ -4,9 +4,8 @@ import { USE_MOCK } from '../api/mock'
 import { issueEventToken } from '../api/notifications'
 
 /**
- * 화면을 보고 있는 동안 이 간격으로 다시 불러온다.
- * 서버가 친구 입장을 이벤트로 알려 주지 않아서(2026-11 백엔드 기준 입장 이벤트 없음),
- * 들어온 친구가 바로 보이도록 짧게 확인한다. 화면이 가려져 있으면 확인하지 않는다
+ * 실시간 연결(SSE)이 끊겼을 때만 이 간격으로 다시 불러온다.
+ * 화면이 가려져 있으면 확인하지 않는다
  */
 const POLL_INTERVAL_MS = 2000
 
@@ -24,7 +23,8 @@ const ROOM_EVENT_NAMES = [
   'paragraph.updated',
   'notification.created',
   'askback.updated',
-  // 멤버가 나가거나, 이름·방장이 바뀌거나, 플랜이 바뀌면 온다
+  // 친구가 들어오거나 나가거나, 이름·방장이 바뀌거나, 방 설정·플랜이 바뀌면 온다
+  'member.joined',
   'member.left',
   'member.updated',
   'room.updated',
@@ -32,7 +32,7 @@ const ROOM_EVENT_NAMES = [
 
 /**
  * 방에 변화가 생기면 onChange를 부른다.
- * 서버 이벤트(SSE)에 붙고, 이벤트가 없는 변화(친구 입장 등)는 화면을 보는 동안 2초마다 확인한다.
+ * 서버 이벤트(SSE)로 바로 받고, 연결이 안 되거나 끊기면 화면을 보는 동안 2초마다 확인한다.
  * 앱으로 돌아오면 바로 한 번 확인한다
  */
 export function useRoomLiveUpdates(roomId: string, token: string | undefined, onChange: () => void) {
@@ -49,15 +49,14 @@ export function useRoomLiveUpdates(roomId: string, token: string | undefined, on
     let stopped = false
     const refresh = () => onChangeRef.current()
 
-    // 다른 앱·탭으로 가 있는 동안에는 서버에 묻지 않는다
-    timer = setInterval(() => {
-      if (document.visibilityState === 'visible') refresh()
-    }, POLL_INTERVAL_MS)
-
-    // SSE가 끊겨도 위의 짧은 확인이 계속 돌아서 연결만 정리한다
+    // 실시간 연결이 안 될 때만 짧게 확인한다. 다른 앱·탭으로 가 있는 동안에는 서버에 묻지 않는다
     const fallBackToPolling = () => {
       source?.close()
       source = null
+      if (stopped || timer) return
+      timer = setInterval(() => {
+        if (document.visibilityState === 'visible') refresh()
+      }, POLL_INTERVAL_MS)
     }
 
     issueEventToken(roomId, token)

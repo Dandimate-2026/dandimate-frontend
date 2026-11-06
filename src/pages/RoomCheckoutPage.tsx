@@ -11,6 +11,7 @@ import { usePlans } from '../hooks/usePlans'
 import { paymentErrorMessage } from '../lib/paymentErrors'
 import { formatWon } from '../lib/plans'
 import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
+import { attachDraftExtras } from '../lib/roomExtras'
 import { getRoomSession, saveRoomSession } from '../lib/session'
 import type { RoomHome, RoomPlanType } from '../api/types'
 import { paths } from '../routes/paths'
@@ -76,6 +77,7 @@ function RoomCheckoutPage() {
         const { room, inviteToken } = await createRoom({ ...draft, planType })
         saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
         clearRoomDraft()
+        attachDraftExtras(room.id)
         navigate(paths.roomPlanDone(room.id, plan.id), { replace: true })
       } else if (roomId) {
         navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })

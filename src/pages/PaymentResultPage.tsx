@@ -6,6 +6,7 @@ import { rotateInviteToken } from '../api/rooms'
 import PaymentState from '../components/PaymentState'
 import { paymentErrorMessage } from '../lib/paymentErrors'
 import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
+import { attachDraftExtras } from '../lib/roomExtras'
 import { getRoomSession, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 
@@ -75,6 +76,7 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
           roomName: pending?.roomName ?? getRoomDraft()?.name ?? saved?.roomName,
         })
         clearRoomDraft()
+        attachDraftExtras(roomId)
       }
       clearPendingPayment()
       navigate(paths.roomPlanDone(roomId, plan), { replace: true })

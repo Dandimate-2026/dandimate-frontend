@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { USE_MOCK } from '../api/mock'
@@ -44,6 +44,23 @@ function RoomWeavingPage() {
   const [pendingParagraph, setPendingParagraph] = useState<ScrollParagraph | null>(null)
   const [pendingContribution, setPendingContribution] = useState('')
   const [reweaveResult, setReweaveResult] = useState<ReweaveResult>()
+  // 챗봇에서 "이 문단에 답가 남기기"로 왔으면(?reply=사진id) 두루마리를 처음 불러왔을 때 그 사진 문단의 답가 창을 한 번 연다
+  const replyPhotoId = params.get('reply')
+  const replyOpened = useRef(false)
+  const showScroll = useCallback((result: Scroll) => {
+    setScroll(result)
+    if (!replyPhotoId || replyOpened.current) return
+    replyOpened.current = true
+    const paragraph = result.paragraphs.find((p) => p.photo.id === replyPhotoId)
+    if (paragraph) {
+      setReplyTarget(paragraph)
+      // 답가 창 뒤에도 그 사진 문단이 보이도록 두루마리를 그 위치로 내린다 (문단이 그려진 다음에)
+      window.setTimeout(() => {
+        document.getElementById(`paragraph-${paragraph.id}`)?.scrollIntoView({ block: 'start' })
+      }, 100)
+    }
+    else setReplyNotice('그 사진의 문단을 찾지 못했어요. 두루마리에서 직접 골라 주세요')
+  }, [replyPhotoId])
   useEffect(() => {
     if (!replyNotice || jobId) return
     const timer = window.setTimeout(() => setReplyNotice(''), 4500)
@@ -58,8 +75,8 @@ function RoomWeavingPage() {
 
   const refresh = useCallback(async () => {
     const result = await getScroll(roomId, token)
-    setScroll(result)
-  }, [roomId, token])
+    showScroll(result)
+  }, [roomId, token, showScroll])
 
   useEffect(() => {
     if (jobFailed) return
@@ -86,7 +103,7 @@ function RoomWeavingPage() {
         }
         const result = await getScroll(roomId, token)
         if (active) {
-          setScroll(result); setError(''); setFailedWeave(false)
+          showScroll(result); setError(''); setFailedWeave(false)
           if (jobId) {
             if (pendingParagraph) {
               const updated = result.paragraphs.find((paragraph) => paragraph.id === pendingParagraph.id)
@@ -109,7 +126,7 @@ function RoomWeavingPage() {
     void check()
     const interval = window.setInterval(() => void check(), 5000)
     return () => { active = false; window.clearInterval(interval) }
-  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam])
+  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   const backToHome = () => navigate(paths.roomHome(roomId))

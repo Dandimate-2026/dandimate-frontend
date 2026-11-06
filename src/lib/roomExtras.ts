@@ -74,3 +74,35 @@ export function shrinkImage(file: File, maxSize = 320): Promise<string> {
     img.src = url
   })
 }
+
+// 방을 만든 뒤에는 방마다 따로 기억한다 (서버에 칸이 생기면 서버 값으로 바꾼다)
+const roomKey = (roomId: string) => `duruduru:room-extras:${roomId}`
+
+export function getRoomPlaceCover(roomId: string): RoomExtras {
+  try {
+    const raw = localStorage.getItem(roomKey(roomId))
+    return raw ? (JSON.parse(raw) as RoomExtras) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveRoomPlaceCover(roomId: string, extras: RoomExtras) {
+  try {
+    localStorage.setItem(roomKey(roomId), JSON.stringify(extras))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 방 만들기에서 고른 장소·대표 사진을 새로 만든 방에 옮겨 둔다 */
+export function attachDraftExtras(roomId: string) {
+  const extras = getRoomExtras()
+  if (extras.place || extras.coverPhoto) saveRoomPlaceCover(roomId, extras)
+  try {
+    sessionStorage.removeItem(EXTRAS_KEY)
+  } catch {
+    // 무시
+  }
+}
