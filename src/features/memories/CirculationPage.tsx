@@ -38,7 +38,8 @@ export default function CirculationPage({ photo, position, total, response, lock
     </MemoryCard>
     {error && <p role="alert" className="memory-error">{error}</p>}
     <footer className="memory-actions">
-      <Button onClick={onAdd} disabled={busy || (locked !== undefined && response?.status === 'added')}>{response?.status === 'added' ? '덧붙임 완료' : response?.status === 'passed' ? '덧붙이기로 바꾸기' : '덧붙이기'}</Button>
+      {/* 덧붙임은 개수 제한 없이, 돌려보는 시간 안이면 몇 번이든 더 남길 수 있다 (시간이 끝나면 두루마리 답가로) */}
+      <Button onClick={onAdd} disabled={busy}>{response?.status === 'added' ? '더 덧붙이기' : response?.status === 'passed' ? '덧붙이기로 바꾸기' : '덧붙이기'}</Button>
       <Button variant="outline" disabled={busy} onClick={unlocked ? onNext : onPass}>{unlocked ? '다음 사진' : busy ? '처리 중…' : '패스'}</Button>
     </footer>
     {response?.status === 'passed' && onUndoPass && <button type="button" className="memory-text-link" disabled={busy} onClick={onUndoPass}>패스 취소</button>}
