@@ -3,11 +3,12 @@ import { searchPlaces, type Place } from '../api/places'
 import Button from './Button'
 
 const SEARCH_DELAY_MS = 300
+const OTHER_REGION = '다른 지역'
 
 const PLACE_GROUPS: { region: string; cities: string[] }[] = [
   { region: '대구', cities: ['대구'] },
   { region: '경북', cities: ['경주', '포항', '구미', '안동', '경산', '문경', '영주', '김천', '상주', '영천', '칠곡', '울릉'] },
-  { region: '그 밖에', cities: ['다른 지역'] },
+  { region: '그 밖에', cities: [OTHER_REGION] },
 ]
 
 /** 받침이 없거나 ㄹ 받침이면 '로', 그 밖의 받침이면 '으로' */
@@ -19,8 +20,16 @@ function withRo(word: string) {
 }
 
 /** 검색 탭: 장소명·주소로 서버(카카오 장소 검색)에 물어본다 */
-function PlaceSearch({ selected, onPick }: { selected: Place | null; onPick: (place: Place) => void }) {
-  const [query, setQuery] = useState('')
+function PlaceSearch({
+  initialQuery,
+  selected,
+  onPick,
+}: {
+  initialQuery: string
+  selected: Place | null
+  onPick: (place: Place) => void
+}) {
+  const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<Place[]>([])
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
 
@@ -102,7 +111,8 @@ function PlaceSheet({
   /** detail은 검색 탭에서 고른 경우에만 있다 */
   onSelect: (place: string, detail?: Place) => void
 }) {
-  const [selected, setSelected] = useState(initial ?? '')
+  // 목록에서 고른 도시 → 검색 탭에서 그 도시의 실제 장소(주소·좌표)를 고른다
+  const [city, setCity] = useState(initial ?? '')
   const [picked, setPicked] = useState<Place | null>(null)
   const [tab, setTab] = useState<'list' | 'search'>('list')
   const [query, setQuery] = useState('')
@@ -120,20 +130,20 @@ function PlaceSheet({
     (g) => g.cities.length > 0,
   )
 
-  const chip = (city: string) => (
+  const chip = (name: string) => (
     <button
-      key={city}
+      key={name}
       type="button"
       onClick={() => {
-        setSelected(city)
+        setCity(name)
         setPicked(null)
       }}
-      aria-pressed={selected === city}
+      aria-pressed={city === name}
       className={`h-11 rounded-[14px] border text-[14px] ${
-        selected === city ? 'border-ink bg-ink font-semibold text-surface' : 'border-line bg-surface'
+        city === name ? 'border-ink bg-ink font-semibold text-surface' : 'border-line bg-surface'
       }`}
     >
-      {city}
+      {name}
     </button>
   )
 
@@ -150,6 +160,7 @@ function PlaceSheet({
         <h2 id="place-sheet-title" className="mt-4 text-[20px] font-bold">
           어디서 놀았나요?
         </h2>
+        <p className="mt-1 text-[12px] text-sub">고른 장소는 기록 지도에 꽃으로 피어요</p>
 
         <div className="mt-4 grid grid-cols-2 rounded-[16px] bg-bg p-1 text-[14px]" role="tablist">
           {(['list', 'search'] as const).map((t) => (
@@ -169,11 +180,11 @@ function PlaceSheet({
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
           {tab === 'search' ? (
             <PlaceSearch
+              // 도시를 바꾸면 검색어를 그 도시로 다시 채운다
+              key={city}
+              initialQuery={city && city !== OTHER_REGION ? `${city} ` : ''}
               selected={picked}
-              onPick={(p) => {
-                setPicked(p)
-                setSelected(p.placeName)
-              }}
+              onPick={setPicked}
             />
           ) : (
             <>
@@ -187,17 +198,17 @@ function PlaceSheet({
               {recent.length > 0 && !keyword && (
                 <div className="mt-4 flex items-center gap-2 text-[12px]">
                   <span className="text-sub">최근</span>
-                  {recent.map((city) => (
+                  {recent.map((name) => (
                     <button
-                      key={city}
+                      key={name}
                       type="button"
                       onClick={() => {
-                        setSelected(city)
+                        setCity(name)
                         setPicked(null)
                       }}
                       className="rounded-full bg-point/15 px-3 py-1.5 font-semibold text-point"
                     >
-                      {city}
+                      {name}
                     </button>
                   ))}
                 </div>
@@ -215,9 +226,23 @@ function PlaceSheet({
           )}
         </div>
 
-        <Button type="button" disabled={!selected} onClick={() => onSelect(selected, picked ?? undefined)} className="mt-4 w-full">
-          {selected ? `${selected}${withRo(selected)} 정하기` : '장소를 골라 주세요'}
-        </Button>
+        {tab === 'list' ? (
+          <Button type="button" disabled={!city} onClick={() => setTab('search')} className="mt-4 w-full">
+            {city ? (city === OTHER_REGION ? '다음 · 장소 찾기' : `다음 · ${city}에서 장소 찾기`) : '도시를 골라 주세요'}
+          </Button>
+        ) : (
+          <>
+            <Button type="button" disabled={!picked} onClick={() => picked && onSelect(picked.placeName, picked)} className="mt-4 w-full">
+              {picked ? `${picked.placeName}${withRo(picked.placeName)} 정하기` : '장소를 골라 주세요'}
+            </Button>
+            {/* 장소가 검색되지 않거나 기억나지 않으면 도시까지만 정할 수 있다 */}
+            {city && city !== OTHER_REGION && !picked && (
+              <button type="button" onClick={() => onSelect(city)} className="mt-2.5 text-center text-[12px] text-sub underline">
+                {city}{withRo(city)}만 정하기
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

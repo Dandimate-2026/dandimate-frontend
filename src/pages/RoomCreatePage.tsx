@@ -407,7 +407,7 @@ function RoomCreatePage() {
 
       {placeSheetOpen && (
         <PlaceSheet
-          initial={place}
+          initial={placeDetail?.city ?? place}
           recent={recentPlaces}
           onClose={() => setPlaceSheetOpen(false)}
           onSelect={(next, detail) => {
