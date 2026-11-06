@@ -220,11 +220,11 @@ function RoomWeavingPage() {
     {reweaveLimitOpen && (
       <PlanLimitSheet
         kind="reweave"
-        title={<>이번 방의 재엮기를<br />모두 사용했어요</>}
-        description={<>답가는 계속 남길 수 있고 원문으로 보관돼요.<br />두루마리 본문에는 플랜을 바꾸면 엮여요.</>}
+        title="재엮기를 모두 사용했어요"
+        description={<>답가는 계속 남길 수 있고 원문으로 보관돼요.<br />두루마리 본문에는 플랜을 바꾸면 엮여요</>}
         usage={home?.room.quota?.regenerationLimit ? {
           label: '재엮기',
-          value: `${home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit}회 / ${home.room.quota.regenerationLimit}회`,
+          value: `${home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit}/${home.room.quota.regenerationLimit}회`,
           ratio: (home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit) / home.room.quota.regenerationLimit,
         } : undefined}
         currentPlan={home?.room.planType}

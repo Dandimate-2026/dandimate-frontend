@@ -59,7 +59,7 @@ export function usePlanLimitAction(
 
   const action = isHost
     ? {
-        label: '플랜 보기',
+        label: '플랜보기',
         onClick: () => navigate(paths.roomPlan(roomId), { state: { fromLimit: true } }),
       }
     : {
