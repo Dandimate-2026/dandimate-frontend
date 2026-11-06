@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { createRoom, getRoomHome } from '../api/rooms'
+import type { RoomHome } from '../api/types'
 import Button from '../components/Button'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import Flower from '../components/Flower'
@@ -20,29 +21,29 @@ function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean;
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`w-full rounded-[20px] border px-[15px] pt-3 pb-3.5 text-left transition-colors ${
-        selected ? 'border-point bg-[#fbf3f6]' : 'border-line bg-surface'
+      className={`w-full rounded-[18px] border bg-surface px-[26px] py-[13px] text-left shadow-[0_1px_2px_#2a26230d] transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-point ${
+        selected ? 'border-[#c7bbae]' : 'border-line'
       }`}
     >
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2">
-          <span className="text-[17px] leading-5 font-bold">{plan.name}</span>
+          <span className="text-[17px] leading-6 font-bold">{plan.name}</span>
           {plan.price === 0 && (
             <span className="rounded-full bg-[#efe9df] px-2 py-0.5 text-[10px] text-sub">지금</span>
           )}
           {plan.id === RECOMMENDED_PLAN_ID && plan.available && (
-            <span className="rounded-full bg-point px-2 py-0.5 text-[10px] font-semibold text-surface">추천</span>
+            <span className="rounded-full bg-[#f7dce8] px-[9px] py-0.5 text-[10px] text-point">추천</span>
           )}
           {!plan.available && (
             <span className="rounded-full bg-[#efe9df] px-2 py-0.5 text-[10px] text-sub">결제 준비 중</span>
           )}
         </span>
-        <span className="text-[16px] font-bold">
+        <span className="shrink-0 text-[17px] leading-6 font-bold">
           {formatWon(plan.price)}
-          {plan.price > 0 && <span className="text-[11px] font-normal text-sub"> / 방</span>}
+          {plan.price > 0 && <span className="text-[11px] font-normal text-sub"> /방</span>}
         </span>
       </div>
-      <div className="mt-1 text-[12px] leading-[18px] text-sub">
+      <div className="mt-0.5 text-[11px] leading-[18px] break-keep text-sub">
         {plan.summary.map((line) => (
           <p key={line}>{line}</p>
         ))}
@@ -65,15 +66,17 @@ function RoomPlanPage() {
   const [draft] = useState(getRoomDraft)
   const session = roomId ? getRoomSession(roomId) : null
   const plans = usePlans()
-  const [selectedId, setSelectedId] = useState<PlanId>(RECOMMENDED_PLAN_ID)
-  const [memberCount, setMemberCount] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<PlanId>(() =>
+    (location.state as { selectedPlan?: PlanId } | null)?.selectedPlan ?? RECOMMENDED_PLAN_ID,
+  )
+  const [home, setHome] = useState<RoomHome | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!roomId || !session) return
     getRoomHome(roomId, session.memberAccessToken)
-      .then((home) => setMemberCount(home.members.length))
+      .then(setHome)
       .catch(() => {
         // 인원 수는 안내용이라 불러오지 못해도 플랜은 고를 수 있다
       })
@@ -85,7 +88,8 @@ function RoomPlanPage() {
   if (!isNewRoom && !session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
 
   const plan = plans.find((p) => p.id === selectedId) ?? plans[0]
-  const roomName = isNewRoom ? draft?.name : session?.roomName
+  const roomName = isNewRoom ? draft?.name : home?.room.name ?? session?.roomName ?? '모임방'
+  const capacity = isNewRoom ? draft?.capacity : home?.room.capacity
 
   const handleNext = async () => {
     if (!plan.available) return
@@ -130,26 +134,24 @@ function RoomPlanPage() {
       : `${plan.name}로 결제하기 · ${formatWon(plan.price)}`
 
   return (
-    <main className="flex min-h-dvh flex-col bg-bg px-5 pt-16 pb-8 text-ink">
-      <header className="px-1">
-        <button type="button" onClick={handleBack} className="flex items-center gap-2 text-[16px] font-bold">
+    <main className="flex min-h-dvh flex-1 flex-col bg-bg px-[22px] pt-[66px] pb-10 text-ink">
+      <header>
+        <button type="button" onClick={handleBack} className="flex min-h-6 items-center gap-1 text-[15px] font-bold">
           <ChevronLeftIcon />
-          플랜 선택
+          플랜
         </button>
       </header>
 
-      <h1 className="mt-7 px-1 text-[22px] leading-[30px] font-bold">이 방의 플랜을 골라주세요</h1>
-      <p className="mt-2 px-1 text-[13px] leading-[19px] break-keep text-sub">
-        방장이 한 번 결제하면 방에 있는 친구 모두가
-        <br />
-        함께 써요. 정기 결제가 아니에요.
+      <h1 className="mt-[19px] text-[24px] leading-7 font-bold tracking-[-0.6px]">이 방의 플랜을 골라주세요</h1>
+      <p className="mt-1 text-[13px] leading-5 break-keep text-sub">
+        방장이 한 번 결제하면 방 친구 모두 함께 써요
       </p>
 
-      <div className="mt-[18px] flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-3 text-[13px]">
-        <Flower code="AZALEA" size={18} />
-        <span className="font-bold">{roomName}</span>
-        {isNewRoom && draft && <span className="text-sub">· 최대 {draft.capacity}명</span>}
-        {memberCount !== null && <span className="text-sub">· 참여 {memberCount}명</span>}
+      <div className="mt-[18px] flex min-h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-[13px]">
+        <span className="shrink-0"><Flower code="AZALEA" size={20} /></span>
+        <span className="min-w-0 truncate font-bold">{roomName}</span>
+        {capacity != null ? <span className="shrink-0 text-sub">· 최대 {capacity}명</span>
+          : home && <span className="shrink-0 text-sub">· 참여 {home.members.length}명</span>}
       </div>
 
       <div className="mt-3 flex flex-col gap-3">
@@ -158,7 +160,7 @@ function RoomPlanPage() {
         ))}
       </div>
 
-      <footer className="mt-auto pt-8">
+      <footer className="mx-[6px] mt-auto pt-8">
         {/* 서버가 결제를 아직 받지 않는 플랜(roomCreationAvailable=false)은 고를 수만 있고 넘어가지 않는다 */}
         {!plan.available && (
           <p className="text-center text-[12px] text-point">유료 플랜 결제가 아직 준비되지 않았어요. 지금은 Free로 시작할 수 있어요.</p>
@@ -169,7 +171,7 @@ function RoomPlanPage() {
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
-        <Button onClick={() => void handleNext()} disabled={!plan.available || creating} className="mt-3 w-full">
+        <Button onClick={() => void handleNext()} disabled={!plan.available || creating} className="mt-3 w-full text-[16px] font-bold">
           {buttonLabel}
         </Button>
       </footer>
