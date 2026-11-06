@@ -12,3 +12,10 @@ export const FLOWER_COLOR: Record<FlowerCode, string> = {
   TEAL: '#2A9D8F',
   PURPLE: '#7A4FC2',
 }
+
+/** 기억 화면에서 기존 SVG 꽃 에셋에 사용하는 색상 매핑. */
+export function memoryFlowerColor(code: FlowerCode): 'pink' | 'blue' | 'orange' {
+  if (code === 'FORGET_ME_NOT' || code === 'TEAL') return 'blue'
+  if (code === 'FORSYTHIA' || code === 'CANOLA') return 'orange'
+  return 'pink'
+}

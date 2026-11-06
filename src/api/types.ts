@@ -36,6 +36,13 @@ export interface RoomSummary {
   meetingDate?: string
   status: RoomStatus
   deadlineAt: string
+  planType?: 'FREE' | 'LITE' | 'PRO'
+  quota?: {
+    regenerationsRemaining?: number
+    regenerationCount?: number
+    regenerationLimit?: number
+    otherMaxSeconds?: number
+  }
 }
 
 export interface InvitePreview {
