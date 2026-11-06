@@ -38,8 +38,8 @@ import type {
 
 /** 방 정원 최댓값 (방장 포함). 방마다 1~8명 중 고를 수 있다 */
 export const ROOM_CAPACITY = 8
-/** 방 만들 때 고를 수 있는 최소 인원 */
-export const MIN_ROOM_CAPACITY = 2
+/** 방 만들 때 고를 수 있는 최소 인원. 혼자 다녀온 여행도 남길 수 있게 1명부터 (서버도 1~8명을 받는다) */
+export const MIN_ROOM_CAPACITY = 1
 // TODO: 백엔드와 약관 버전 값 확정 필요
 export const CONSENT: Consent = {
   version: '2026-10',
@@ -112,7 +112,8 @@ export function closeRoom(roomId: string, token: string) {
 /** 방장이 모임방 이름·모임 날짜·첫 두루마리 시각을 바꾼다 */
 export function updateRoom(
   roomId: string,
-  body: { name?: string; meetingDate?: string; deadlineAt?: string },
+  /** capacity: 방장이 인원을 바꾼다 (지금 들어온 인원 이상 ~ 8명). 백엔드 반영 전에는 서버가 무시하거나 거절할 수 있다 */
+  body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number },
   token: string,
 ) {
   if (USE_MOCK) return Promise.resolve()
