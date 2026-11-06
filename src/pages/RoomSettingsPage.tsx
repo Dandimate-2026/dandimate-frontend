@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import {
@@ -13,10 +13,12 @@ import {
 import type { Member, RoomHome } from '../api/types'
 import Card from '../components/Card'
 import Flower from '../components/Flower'
+import PlaceSheet from '../components/PlaceSheet'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
 import { objectParticle } from '../lib/plans'
+import { addRecentPlace, getRecentPlaces, getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
@@ -36,6 +38,35 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <div className="mt-2.5">{children}</div>
     </Card>
   )
+}
+
+/** 모임 정보 한 줄: 왼쪽 항목 이름, 가운데 값, 바꿀 수 있으면 오른쪽에 변경 버튼 */
+function InfoRow({
+  label,
+  editable,
+  onEdit,
+  children,
+}: {
+  label: string
+  editable: boolean
+  onEdit: () => void
+  children: ReactNode
+}) {
+  return (
+    <li className="flex min-h-[52px] items-center gap-2 px-1 py-2">
+      <span className="w-[76px] shrink-0 text-[12px] text-sub">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-[14px]">{children}</span>
+      {editable && (
+        <button type="button" onClick={onEdit} aria-label={`${label} 변경`} className={EDIT_BUTTON_CLASS}>
+          변경
+        </button>
+      )}
+    </li>
+  )
+}
+
+function Empty({ children }: { children: ReactNode }) {
+  return <span className="text-muted">{children}</span>
 }
 
 const SHARE_BUTTON_CLASS =
@@ -85,7 +116,10 @@ function EditDialog({
       setError(
         err instanceof ApiError && err.status === 409 && target === 'nickname'
           ? '이 방에 같은 이름이 있어요. 다른 이름을 써 주세요'
-          : '바꾸지 못했어요. 잠시 후 다시 시도해 주세요',
+          : // 첫 두루마리 시각은 서버가 범위·횟수를 확인하고 이유를 알려 준다 (예: 한 번만 바꿀 수 있어요)
+            err instanceof ApiError && target === 'deadlineAt' && err.status < 500 && err.message
+            ? err.message
+            : '바꾸지 못했어요. 잠시 후 다시 시도해 주세요',
       )
       setSaving(false)
     }
@@ -130,6 +164,13 @@ function EditDialog({
             />
           )}
         </div>
+        {target === 'deadlineAt' && (
+          <p className="mt-3 text-center text-[12px] leading-5 text-sub">
+            방을 만든 뒤 24~72시간 사이로 정할 수 있어요.
+            <br />
+            시각은 <b className="font-semibold text-ink">한 번만</b> 바꿀 수 있어요.
+          </p>
+        )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button type="button" onClick={onCancel} className={`${PILL_BUTTON_CLASS} border border-line bg-surface`}>
@@ -229,6 +270,29 @@ function RoomSettingsPage() {
   // 링크를 새로 만들면 화면의 링크도 바로 바꾼다
   const [inviteToken, setInviteToken] = useState(session?.inviteToken)
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
+  // 장소·대표 사진은 서버에 칸이 없어 이 기기에 방마다 저장해 둔 값을 쓴다
+  const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
+  const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
+  const [photoError, setPhotoError] = useState('')
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const updatePlaceCover = (next: typeof placeCover) => {
+    if (!saveRoomPlaceCover(roomId, next)) {
+      setPhotoError('사진이 너무 커서 저장하지 못했어요. 다른 사진을 골라 주세요')
+      return
+    }
+    setPhotoError('')
+    setPlaceCover(next)
+  }
+
+  const handleCoverPhoto = async (file?: File) => {
+    if (!file) return
+    try {
+      updatePlaceCover({ ...placeCover, coverPhoto: await shrinkImage(file) })
+    } catch {
+      setPhotoError('사진을 열 수 없어요. 다른 사진을 골라 주세요')
+    }
+  }
 
   useEffect(() => {
     if (!session) return
@@ -317,35 +381,52 @@ function RoomSettingsPage() {
       </header>
 
       <Section title="모임 정보">
-        {/* 모임 이름과 날짜는 방장만 바꿀 수 있다 */}
-        <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-[15px] font-bold">{room.name}</p>
-          {isHost && (
-            <button type="button" onClick={() => setEditing('roomName')} className={EDIT_BUTTON_CLASS}>
-              변경
-            </button>
+        {/* 항목 이름을 왼쪽에 두고, 방장은 줄 전체를 눌러 바꾼다 */}
+        <ul className="-mx-1 divide-y divide-line">
+          <InfoRow label="모임 이름" editable={isHost} onEdit={() => setEditing('roomName')}>
+            <span className="font-bold">{room.name}</span>
+          </InfoRow>
+          <InfoRow label="모임 날짜" editable={isHost} onEdit={() => setEditing('meetingDate')}>
+            {room.meetingDate ? formatDateSpaced(room.meetingDate) : <Empty>정하지 않았어요</Empty>}
+          </InfoRow>
+          <InfoRow label="장소" editable={isHost} onEdit={() => setPlaceSheetOpen(true)}>
+            {placeCover.place ? `📍 ${placeCover.place}` : <Empty>정하지 않았어요</Empty>}
+          </InfoRow>
+          <InfoRow label="대표 사진" editable={isHost} onEdit={() => photoInputRef.current?.click()}>
+            {/* 대표 사진은 줄 안에서 작은 썸네일로 바로 보여준다 */}
+            <span className="flex items-center gap-2">
+              {placeCover.coverPhoto ? (
+                <img src={placeCover.coverPhoto} alt="대표 사진" className="size-9 shrink-0 rounded-[10px] object-cover" />
+              ) : (
+                <span className="size-9 shrink-0 rounded-[10px] border border-dashed border-line bg-bg" aria-hidden="true" />
+              )}
+              {!placeCover.coverPhoto && <Empty>없어요</Empty>}
+            </span>
+          </InfoRow>
+          {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
+          {canChangeDeadline && (
+            <InfoRow label="첫 두루마리" editable={isHost} onEdit={() => setEditing('deadlineAt')}>
+              {formatDateTime(room.deadlineAt)}
+            </InfoRow>
           )}
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-[13px] text-sub">
-            {room.meetingDate ? formatDateSpaced(room.meetingDate) : '날짜를 정하지 않았어요'}
+        </ul>
+        {isHost && (
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            aria-label="대표 사진 고르기"
+            onChange={(e) => {
+              void handleCoverPhoto(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
+        )}
+        {photoError && (
+          <p className="mt-2 text-[11px] text-point" role="alert">
+            {photoError}
           </p>
-          {isHost && (
-            <button type="button" onClick={() => setEditing('meetingDate')} className={EDIT_BUTTON_CLASS}>
-              변경
-            </button>
-          )}
-        </div>
-        {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
-        {canChangeDeadline && (
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <p className="text-[13px] text-sub">첫 두루마리 {formatDateTime(room.deadlineAt)}</p>
-            {isHost && (
-              <button type="button" onClick={() => setEditing('deadlineAt')} className={EDIT_BUTTON_CLASS}>
-                변경
-              </button>
-            )}
-          </div>
         )}
       </Section>
 
@@ -510,6 +591,27 @@ function RoomSettingsPage() {
           confirmLabel="삭제하기"
           onCancel={() => setConfirming(null)}
           onConfirm={handleDeleteRoom}
+        />
+      )}
+      {placeSheetOpen && (
+        <PlaceSheet
+          initial={placeCover.placeDetail?.city ?? placeCover.place}
+          recent={getRecentPlaces()}
+          onClose={() => setPlaceSheetOpen(false)}
+          onSelect={(place, detail) => {
+            updatePlaceCover({
+              ...placeCover,
+              place,
+              placeDetail: detail && {
+                address: detail.address,
+                city: detail.city,
+                latitude: detail.latitude,
+                longitude: detail.longitude,
+              },
+            })
+            addRecentPlace(detail?.city ?? place)
+            setPlaceSheetOpen(false)
+          }}
         />
       )}
     </main>

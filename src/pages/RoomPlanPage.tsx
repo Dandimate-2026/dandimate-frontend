@@ -8,6 +8,7 @@ import Flower from '../components/Flower'
 import { usePlans } from '../hooks/usePlans'
 import { formatWon, RECOMMENDED_PLAN_ID, type Plan, type PlanId } from '../lib/plans'
 import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
+import { attachDraftExtras } from '../lib/roomExtras'
 import { getRoomSession, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
@@ -109,6 +110,7 @@ function RoomPlanPage() {
       const { room, inviteToken } = await createRoom({ ...draft, planType: 'FREE' })
       saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
       clearRoomDraft()
+      attachDraftExtras(room.id)
       navigate(paths.roomShare(room.id), { replace: true })
     } catch {
       setError('모임방을 만들지 못했어요. 다시 시도해 주세요')

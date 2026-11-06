@@ -8,6 +8,7 @@ import ChatFab from '../components/ChatFab'
 import Flower from '../components/Flower'
 import { formatDateSpaced } from '../lib/date'
 import { logout } from '../lib/auth'
+import { getRoomPlaceCover } from '../lib/roomExtras'
 import { getRoomSession, listSavedRoomIds, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 
@@ -66,14 +67,19 @@ function todoLine(home: RoomHome): { text: string; todo: boolean } | null {
 function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
   const { room } = home
   const line = todoLine(home)
+  const cover = getRoomPlaceCover(room.id).coverPhoto
   return (
     <li>
       <Link
         to={paths.roomHome(room.id)}
         className="flex gap-[7px] rounded-[20px] border border-line bg-surface px-3 pt-[14px] pb-[13px] active:opacity-80"
       >
-        {/* TODO: 대표 사진이 홈 응답에 없어서 빈 칸으로 둔다 */}
-        <div className="size-14 shrink-0 rounded-2xl bg-bg" aria-hidden="true" />
+        {/* 대표 사진은 서버 응답에 없어서, 이 기기에서 고른 사진이 있으면 보여준다 */}
+        {cover ? (
+          <img src={cover} alt="" className="size-14 shrink-0 rounded-2xl object-cover" />
+        ) : (
+          <div className="size-14 shrink-0 rounded-2xl bg-bg" aria-hidden="true" />
+        )}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span
