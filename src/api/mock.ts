@@ -15,6 +15,21 @@ import type {
 
 export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
 
+let mockReweavesUsed = 0
+export function consumeMockReweave() { mockReweavesUsed++ }
+export function withMockQuota(home: RoomHome): RoomHome {
+  const quota = home.room.quota
+  if (!quota) return home
+  return { ...home, room: { ...home.room, quota: {
+    ...quota,
+    regenerationCount: (quota.regenerationCount ?? 0) + mockReweavesUsed,
+    regenerationsRemaining: quota.regenerationsRemaining === undefined ? undefined : Math.max(0, quota.regenerationsRemaining - mockReweavesUsed),
+  } } }
+}
+
+/** 두루마리 기능 검증 전용 방. 기존 데모 방의 플랜·한도는 유지한다. */
+export const MOCK_SCROLL_PREVIEW_ROOM_ID = 'scroll-review'
+
 export const MOCK_ROOM_ID = 'demo'
 /** 방 만들기로 막 연 방. 친구를 기다리는 화면을 확인할 때 쓴다 */
 export const MOCK_NEW_ROOM_ID = 'gathering'

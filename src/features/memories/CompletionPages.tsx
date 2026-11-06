@@ -17,17 +17,20 @@ export function CirculationComplete({ addedCount = 3, photoCount = 4, onBack, on
 }
 
 // UI 확인용 타이머. 실제 서비스에서는 서버의 엮기 완료 상태로 onReady를 호출한다.
-export function WeavingPage({ onBack, onReady, durationMs = 30000, autoReady = true, title = '경주 1박2일', error, onRetry }: { onBack: () => void; onReady: () => void; durationMs?: number; autoReady?: boolean; title?: string; error?: string; onRetry?: () => void }) {
+export function WeavingPage({ onBack, onReady, durationMs = 30000, autoReady = true, title = '경주 1박2일', error, onRetry, reweavingCount, remaining, limit, photoCount, participantDetail }: { onBack: () => void; onReady: () => void; durationMs?: number; autoReady?: boolean; title?: string; error?: string; onRetry?: () => void; reweavingCount?: number; remaining?: number; limit?: number; photoCount?: number; participantDetail?: string }) {
   useEffect(() => { if (!autoReady) return; const timer = window.setTimeout(onReady, durationMs); return () => window.clearTimeout(timer) }, [autoReady, durationMs, onReady])
-  return <main className="memory-page memory-weaving">
+  return <main className={`memory-page memory-weaving ${reweavingCount ? 'memory-reweaving' : ''}`}>
     <MemoryHeader title={title} onBack={onBack} />
     <div className="memory-weaving-main" role="status" aria-live="polite">
       <img className="memory-scroll-flower" src={scrollFlower} width={97} height={116} alt="꽃이 담긴 두루마리" />
-      <h1>{error ? '두루마리를 엮지 못했어요' : '이야기를 엮고 있어요'}</h1>
-      <p>{error || <>서로 다른 기억이 모여<br />하나의 두루마리가 되고 있어요</>}</p>
+      <h1>{error ? '두루마리를 엮지 못했어요' : reweavingCount ? `이야기 ${reweavingCount}개를 다시 엮고 있어요` : '이야기를 엮고 있어요'}</h1>
+      <p>{error || (reweavingCount ? <>아까는 잘 안 엮였어요.<br />한 번 더 꼼꼼하게 엮어 볼게요</> : <>서로 다른 기억이 모여<br />하나의 두루마리가 되고 있어요</>)}</p>
       <div className="memory-loading" aria-hidden="true"><span /><span /><span /></div>
       {error && onRetry && <Button onClick={onRetry}>다시 엮기</Button>}
     </div>
-    <footer className="memory-weaving-footer"><p>완료되면 두루마리가 열려요</p><ShareMemoryButton roomName={title} label="기다리는 동안 단톡방에 알리기" /></footer>
+    <footer className="memory-weaving-footer">{reweavingCount ? <p>
+      {photoCount !== undefined && <>사진 {photoCount}장 · </>}{participantDetail && <>참여 {participantDetail} · </>}
+      {remaining !== undefined && <strong>재엮기 {remaining}{limit !== undefined ? `/${limit}` : ''}회 남음 · </strong>}완료되면 두루마리가 열려요
+    </p> : <><p>완료되면 두루마리가 열려요</p><ShareMemoryButton roomName={title} label="기다리는 동안 단톡방에 알리기" /></>}</footer>
   </main>
 }

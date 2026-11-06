@@ -91,7 +91,7 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     } finally { if (mounted.current) setSaving(false) }
   }
 
-  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={onClose}>
+  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>
     <blockquote>{quote}</blockquote>
     <h3>{kind === 'reply' ? '여기에 빠진 이야기가 있나요?' : '이 장면, 당신은 어떻게 기억해요?'}</h3>
     <p className="memory-sheet-hint">{kind === 'reply' ? '당신이 기억하는 장면을 보태주세요' : '한 두 문장이면 충분해요'}</p>
