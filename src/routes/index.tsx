@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router'
 import AskbackPage from '../pages/AskbackPage'
+import ChatPage from '../pages/ChatPage'
 import FirstEntryPage from '../pages/FirstEntryPage'
 import InviteJoinPage from '../pages/InviteJoinPage'
 import LoginPage from '../pages/LoginPage'
@@ -7,6 +8,7 @@ import NotFoundPage from '../pages/NotFoundPage'
 import PaymentResultPage from '../pages/PaymentResultPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import PolicyPage from '../pages/PolicyPage'
+import RecordMapPage from '../pages/RecordMapPage'
 import RoomCheckoutPage from '../pages/RoomCheckoutPage'
 import RoomCirculationPage from '../pages/RoomCirculationPage'
 import RoomCreatePage from '../pages/RoomCreatePage'
@@ -33,6 +35,9 @@ function AppRoutes() {
       <Route element={<RequireLogin />}>
         {/* 내 모임방 목록 */}
         <Route path={paths.roomList()} element={<RoomListPage />} />
+        {/* 아래 탭: 기록 지도 / 떠 있는 버튼: 두루 챗봇 */}
+        <Route path={paths.recordMap()} element={<RecordMapPage />} />
+        <Route path={paths.chat()} element={<ChatPage />} />
         {/* 모임방 만들기 */}
         <Route path={paths.roomCreate()} element={<RoomCreatePage />} />
         {/* 방 만들기 다음: 플랜을 고르고(유료면 결제) 그 플랜으로 방을 만든다 */}

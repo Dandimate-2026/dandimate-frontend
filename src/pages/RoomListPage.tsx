@@ -3,7 +3,8 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import { getMockRole, USE_MOCK } from '../api/mock'
 import { getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomStatus } from '../api/types'
-import Button from '../components/Button'
+import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
+import ChatFab from '../components/ChatFab'
 import Flower from '../components/Flower'
 import { formatDateSpaced } from '../lib/date'
 import { logout } from '../lib/auth'
@@ -142,7 +143,7 @@ function RoomListPage() {
     .sort((a, b) => (b.room.meetingDate ?? '').localeCompare(a.room.meetingDate ?? ''))
 
   return (
-    <main className="flex min-h-dvh flex-col bg-bg text-ink">
+    <main className={`flex min-h-dvh flex-col bg-bg text-ink ${BOTTOM_TABS_SPACE}`}>
       <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
         <div className="flex items-center justify-between px-[13px]">
           <p className="flex items-center gap-2 text-[16px] font-bold">
@@ -154,14 +155,23 @@ function RoomListPage() {
               </span>
             )}
           </p>
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="text-[11px] text-sub active:opacity-80"
-          >
-            로그아웃
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="text-[11px] text-sub active:opacity-80"
+            >
+              로그아웃
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(paths.roomCreate())}
+              className="rounded-full bg-ink px-4 py-2 text-[13px] font-bold text-surface active:opacity-80"
+            >
+              + 새 모임방
+            </button>
+          </div>
         </div>
 
         <section className="mt-[clamp(28px,6dvh,48px)]">
@@ -188,11 +198,10 @@ function RoomListPage() {
         )}
       </div>
 
-      <footer className="mt-auto px-5 pt-3 pb-8">
-        <Button onClick={() => navigate(paths.roomCreate())} className="w-full">
-          새 모임방 만들기
-        </Button>
-      </footer>
+      {/* 챗봇 버튼이 마지막 카드를 가리지 않게 아래에 여유를 둔다 */}
+      <div className="h-24" aria-hidden="true" />
+      <ChatFab />
+      <BottomTabs />
     </main>
   )
 }
