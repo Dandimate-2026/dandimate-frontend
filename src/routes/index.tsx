@@ -4,6 +4,7 @@ import FirstEntryPage from '../pages/FirstEntryPage'
 import InviteJoinPage from '../pages/InviteJoinPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
+import PaymentResultPage from '../pages/PaymentResultPage'
 import PhotoUploadPage from '../pages/PhotoUploadPage'
 import PolicyPage from '../pages/PolicyPage'
 import RoomCheckoutPage from '../pages/RoomCheckoutPage'
@@ -47,6 +48,9 @@ function AppRoutes() {
         <Route path={paths.roomPlan(':roomId')} element={<RoomPlanPage />} />
         <Route path={paths.roomCheckout(':roomId')} element={<RoomCheckoutPage />} />
         <Route path={paths.roomPlanDone(':roomId')} element={<RoomPlanDonePage />} />
+        {/* 토스 결제창에서 돌아오는 화면: 성공이면 서버 승인, 실패·취소면 이유 안내 */}
+        <Route path={paths.paymentSuccess()} element={<PaymentResultPage kind="success" />} />
+        <Route path={paths.paymentFail()} element={<PaymentResultPage kind="fail" />} />
         {/* 플랜을 고른 뒤: 초대 링크 공유 */}
         <Route path={paths.roomShare(':roomId')} element={<RoomSharePage />} />
         {/* 이야기를 남길 사진 고르기 */}

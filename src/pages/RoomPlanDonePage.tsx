@@ -19,7 +19,6 @@ function RoomPlanDonePage() {
   const { share } = useInviteShare(session?.inviteToken ?? '')
 
   if (!session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
-  if (!USE_MOCK && !PAYMENT_DEMO) return <NotFoundPage message="결제 완료 정보를 확인할 수 없어요" />
   if (!plan) return <NotFoundPage message="플랜을 찾을 수 없어요" />
 
   const changes = [

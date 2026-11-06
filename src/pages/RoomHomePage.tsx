@@ -174,7 +174,6 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
 }
 
 // 친구를 기다리는 동안 보여줄 빈 자리 수
-const EMPTY_TODAY_SLOTS = 5
 const EMPTY_MEMBER_SLOTS = 2
 
 const SHARE_BUTTON_CLASS =
@@ -195,18 +194,18 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
 
         <section className="mt-3.5 px-1.5">
           <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
-          <ul className="mt-2 flex flex-wrap gap-[5px]">
-            {todayFlowers.length > 0
-              ? todayFlowers.map((f, i) => (
-                  <li key={`${f.memberId}-${i}`}>
-                    <Flower code={f.flowerCode} />
-                  </li>
-                ))
-              : Array.from({ length: EMPTY_TODAY_SLOTS }, (_, i) => (
-                  <li key={i}>
-                    <EmptySlot />
-                  </li>
-                ))}
+          {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
+          <ul className="mt-2 flex flex-wrap items-center gap-[5px]">
+            {todayFlowers.map((f, i) => (
+              <li key={`${f.memberId}-${i}`}>
+                <Flower code={f.flowerCode} />
+              </li>
+            ))}
+            {Array.from({ length: Math.max(0, members.length - todayFlowers.length) }, (_, i) => (
+              <li key={`empty-${i}`}>
+                <EmptySlot />
+              </li>
+            ))}
           </ul>
           <p className="mt-2 text-[11px] text-sub">
             {todayFlowers.length > 0

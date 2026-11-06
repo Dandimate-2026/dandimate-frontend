@@ -16,6 +16,9 @@ export const paths = {
   roomCheckout: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/checkout${plan ? `?plan=${plan}` : ''}`,
   roomPlanDone: (roomId: string, plan?: string) => `/rooms/${roomId}/plan/done${plan ? `?plan=${plan}` : ''}`,
   roomShare: (roomId: string) => `/rooms/${roomId}/share`,
+  /** 토스 결제창에서 돌아오는 주소 (api/payments.ts의 successUrl·failUrl과 같아야 한다) */
+  paymentSuccess: () => '/payments/success',
+  paymentFail: () => '/payments/fail',
   roomSettings: (roomId: string) => `/rooms/${roomId}/settings`,
   roomNotifications: (roomId: string) => `/rooms/${roomId}/notifications`,
   inviteJoin: (inviteToken: string) => `/invite/${inviteToken}`,
