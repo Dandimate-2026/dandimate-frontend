@@ -3,13 +3,12 @@ import { devProxyUrl } from '../api/client'
 import { USE_MOCK } from '../api/mock'
 import { issueEventToken } from '../api/notifications'
 
-/** SSE를 쓸 수 없을 때 다시 불러오는 간격 (명세: 5초) */
-const POLL_INTERVAL_MS = 5000
 /**
- * SSE가 연결돼 있어도 이 간격으로 한 번씩 다시 불러온다.
- * 서버가 친구 입장처럼 이벤트로 알려 주지 않는 변화가 있어서다 (2026-11 백엔드 기준 입장 이벤트 없음)
+ * 화면을 보고 있는 동안 이 간격으로 다시 불러온다.
+ * 서버가 친구 입장을 이벤트로 알려 주지 않아서(2026-11 백엔드 기준 입장 이벤트 없음),
+ * 들어온 친구가 바로 보이도록 짧게 확인한다. 화면이 가려져 있으면 확인하지 않는다
  */
-const SAFETY_POLL_INTERVAL_MS = 10000
+const POLL_INTERVAL_MS = 2000
 
 /**
  * 서버가 보내는 이름 붙은 SSE 이벤트 (백엔드 RoomEvents 기준).
@@ -24,12 +23,17 @@ const ROOM_EVENT_NAMES = [
   'scroll.ready',
   'paragraph.updated',
   'notification.created',
+  'askback.updated',
+  // 멤버가 나가거나, 이름·방장이 바뀌거나, 플랜이 바뀌면 온다
+  'member.left',
+  'member.updated',
+  'room.updated',
 ]
 
 /**
  * 방에 변화가 생기면 onChange를 부른다.
- * 서버 이벤트(SSE)에 붙고, 이벤트가 없는 변화(친구 입장 등)는 10초마다 확인한다.
- * SSE에 붙지 못하거나 끊기면 명세대로 5초마다 확인한다. 앱으로 돌아오면 바로 한 번 확인한다
+ * 서버 이벤트(SSE)에 붙고, 이벤트가 없는 변화(친구 입장 등)는 화면을 보는 동안 2초마다 확인한다.
+ * 앱으로 돌아오면 바로 한 번 확인한다
  */
 export function useRoomLiveUpdates(roomId: string, token: string | undefined, onChange: () => void) {
   // 매 렌더마다 바뀌는 콜백을 다시 연결하지 않도록 최신 값만 기억해 둔다
@@ -45,19 +49,16 @@ export function useRoomLiveUpdates(roomId: string, token: string | undefined, on
     let stopped = false
     const refresh = () => onChangeRef.current()
 
-    const poll = (intervalMs: number) => {
-      if (timer) clearInterval(timer)
-      timer = setInterval(refresh, intervalMs)
-    }
+    // 다른 앱·탭으로 가 있는 동안에는 서버에 묻지 않는다
+    timer = setInterval(() => {
+      if (document.visibilityState === 'visible') refresh()
+    }, POLL_INTERVAL_MS)
 
+    // SSE가 끊겨도 위의 짧은 확인이 계속 돌아서 연결만 정리한다
     const fallBackToPolling = () => {
       source?.close()
       source = null
-      if (!stopped) poll(POLL_INTERVAL_MS)
     }
-
-    // 연결되기 전에도 바뀐 걸 놓치지 않도록 우선 확인을 시작한다
-    poll(SAFETY_POLL_INTERVAL_MS)
 
     issueEventToken(roomId, token)
       .then(({ eventsUrl }) => {
