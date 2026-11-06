@@ -2,6 +2,7 @@
 // 인증은 카카오 로그인 세션 쿠키로 하므로, 이 정보가 없어도 서버에서는 방에 들어갈 수 있다
 import { MOCK_INVITE_TOKEN, MOCK_ROOM_IDS, MOCK_SCROLL_PREVIEW_ROOM_ID, USE_MOCK } from '../api/mock'
 import { paths } from '../routes/paths'
+import { siteUrl } from './siteUrl'
 
 const KEY_PREFIX = 'duruduru:room:'
 const key = (roomId: string) => `${KEY_PREFIX}${roomId}`
@@ -63,5 +64,5 @@ export function listSavedRoomIds(): string[] {
 }
 
 export function inviteUrl(inviteToken: string) {
-  return `${window.location.origin}${paths.inviteJoin(inviteToken)}`
+  return siteUrl(paths.inviteJoin(inviteToken))
 }

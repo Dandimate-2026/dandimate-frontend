@@ -12,6 +12,7 @@ import TemplatePicker from './TemplatePicker'
 import { canUseTemplate, getTemplate, readTemplate, saveTemplate, templateStyle, type ScrollTemplateId } from './templates'
 import type { DownloadResult } from './scrollDownload'
 import type { ReweaveResult } from './types'
+import { siteUrl } from '../../lib/siteUrl'
 
 export default function LiveScrollPage({ scroll, home, token, onBack, onReply, onRefresh, onReweave, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion, onAddStory }: {
   scroll: Scroll
@@ -38,7 +39,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   const [downloading, setDownloading] = useState(false)
   const [notice, setNotice] = useState('')
   const savedDownload = useRef<DownloadResult | null>(null)
-  const shareUrl = `${window.location.origin}${window.location.pathname}`
+  const shareUrl = siteUrl(window.location.pathname)
   const templateId = canUseTemplate(selectedTemplate, home.room.planType) ? selectedTemplate : 'minimal'
   const template = getTemplate(templateId)
   const storyCount = new Set(scroll.paragraphs.flatMap((paragraph) => paragraph.sources.map((source) => source.entryId))).size
