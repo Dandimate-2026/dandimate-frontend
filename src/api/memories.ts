@@ -1,12 +1,15 @@
 import { request } from './client'
-import { mockTranscribe, USE_MOCK } from './mock'
+import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK } from './mock'
 import type { CirculationResponse, Entry, Job, Member, Scroll, TranscriptionDraft } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
 const mockStatuses = new Map<string, 'ADDON' | 'PASSED'>()
 const mockReactionCounts = new Map<string, number>()
 const mockReplyCounts = new Map<string, number>()
+const mockRewoven = new Map<string, { body: string; version: number; quote: string }>()
+const mockJobs = new Map<string, number>()
 const mockMember: Member = { id: 'mock-member', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA' }
+const mockParagraphId = (roomId: string, index: number) => `${roomId === MOCK_SCROLL_PREVIEW_ROOM_ID ? `${roomId}:` : ''}paragraph-${index}`
 
 function mockPhotoCards(): CirculationResponse['cards'] {
   return MEMORY_PHOTOS.slice(0, 2).map((item) => {
@@ -53,20 +56,24 @@ export function undoPass(photoId: string, token: string) {
 }
 
 export function getScroll(roomId: string, token: string) {
+  const previewHome = asMockRole(roomId === MOCK_DONE_ROOM_ID || roomId === MOCK_SCROLL_PREVIEW_ROOM_ID ? mockDoneRoomHome : mockRoomHome)
   if (USE_MOCK) return Promise.resolve<Scroll>({
-    id: 'mock-scroll', version: 1, participantCount: 3, memberCount: 3,
+    id: 'mock-scroll', version: 1, participantCount: previewHome.members.length, memberCount: previewHome.members.length,
     paragraphs: mockPhotoCards().map((card, index) => ({
-      id: `paragraph-${index}`, photo: card.photo, body: MEMORY_PHOTOS[index].firstStory.text,
-      version: 1, sources: [{ entryId: `first-${index}`, member: card.photo.uploader, quote: MEMORY_PHOTOS[index].firstStory.text }],
-      replyCount: mockReplyCounts.get(`paragraph-${index}`) ?? 0,
-      ahMatdaCount: mockReactionCounts.get(`paragraph-${index}`) ?? 0, aiGenerated: true,
+      id: mockParagraphId(roomId, index), photo: card.photo, body: mockRewoven.get(mockParagraphId(roomId, index))?.body ?? MEMORY_PHOTOS[index].firstStory.text,
+      version: mockRewoven.get(mockParagraphId(roomId, index))?.version ?? 1, sources: [
+        { entryId: `first-${index}`, member: card.photo.uploader, quote: MEMORY_PHOTOS[index].firstStory.text },
+        ...(mockRewoven.has(mockParagraphId(roomId, index)) ? [{ entryId: `reply-${index}`, member: previewHome.me, quote: mockRewoven.get(mockParagraphId(roomId, index))!.quote }] : []),
+      ],
+      replyCount: mockReplyCounts.get(mockParagraphId(roomId, index)) ?? 0,
+      ahMatdaCount: mockReactionCounts.get(mockParagraphId(roomId, index)) ?? 0, aiGenerated: true,
     })),
   })
   return request<Scroll>(`/rooms/${roomId}/scroll`, { token })
 }
 
 export function getJob(jobId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve<Job>({ id: jobId, type: 'WEAVE_SCROLL', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+  if (USE_MOCK) return Promise.resolve<Job>({ id: jobId, type: mockJobs.has(jobId) ? 'REPLY_REWEAVE' : 'WEAVE_SCROLL', status: Date.now() < (mockJobs.get(jobId) ?? 0) ? 'RUNNING' : 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
   return request<Job>(`/jobs/${jobId}`, { token })
 }
 
@@ -78,7 +85,14 @@ export function retryWeave(roomId: string, token: string) {
 export function createReply(paragraphId: string, token: string, body: { inputMode: 'TEXT' | 'VOICE'; transcript: string; transcriptionId?: string }) {
   if (USE_MOCK) {
     mockReplyCounts.set(paragraphId, (mockReplyCounts.get(paragraphId) ?? 0) + 1)
-    return Promise.resolve<{ job: Job }>({ job: { id: 'mock-reply-job', type: 'REPLY_REWEAVE', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
+    if (!paragraphId.startsWith(`${MOCK_SCROLL_PREVIEW_ROOM_ID}:`)) return Promise.resolve<{ job: Job }>({ job: { id: 'mock-reply-job', type: 'REPLY_REWEAVE', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
+    consumeMockReweave()
+    const previous = mockRewoven.get(paragraphId)
+    const original = MEMORY_PHOTOS[Number(paragraphId.split('-').at(-1))]?.firstStory.text ?? ''
+    mockRewoven.set(paragraphId, { body: `${previous?.body ?? original}\n${body.transcript}`, quote: body.transcript, version: (previous?.version ?? 1) + 1 })
+    const id = `mock-reply-${crypto.randomUUID()}`
+    mockJobs.set(id, Date.now() + 1500)
+    return Promise.resolve<{ job: Job }>({ job: { id, type: 'REPLY_REWEAVE', status: 'QUEUED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
   }
   return request<{ job: Job }>(`/paragraphs/${paragraphId}/replies`, { method: 'POST', body, token, idempotent: true })
 }

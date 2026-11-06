@@ -1,3 +1,12 @@
+import type { Member, ScrollParagraph } from '../../api/types'
+
+export interface ReweaveResult {
+  paragraphId: string
+  version: number
+  previous: ScrollParagraph
+  reply: { member: Member; text: string }
+}
+
 export type FlowerColor = 'pink' | 'blue' | 'orange'
 export type PreviewScreen = 'screens' | 's6-1' | 's6-2' | 's6-3' | 's6-4' | 's6-5' | 's8' | 's9' | 's10'
 

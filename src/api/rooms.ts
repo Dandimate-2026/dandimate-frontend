@@ -3,6 +3,8 @@ import {
   asMockRole,
   withMockActivity,
   MOCK_DONE_ROOM_ID,
+  MOCK_SCROLL_PREVIEW_ROOM_ID,
+  withMockQuota,
   MOCK_INVITE_TOKEN,
   MOCK_NEW_ROOM_ID,
   MOCK_READY_ROOM_ID,
@@ -72,6 +74,13 @@ export function joinRoom(inviteToken: string, nickname: string) {
 }
 
 export function getRoomHome(roomId: string, token: string) {
+  if (USE_MOCK && roomId === MOCK_SCROLL_PREVIEW_ROOM_ID) {
+    const preview = { ...mockDoneRoomHome, room: { ...mockDoneRoomHome.room,
+      id: MOCK_SCROLL_PREVIEW_ROOM_ID, name: '경주 1박2일', planType: 'PRO' as const,
+      quota: { ...mockDoneRoomHome.room.quota, regenerationLimit: 12, regenerationCount: 0, regenerationsRemaining: 12 },
+    } }
+    return Promise.resolve(withMockQuota(withMockActivity(asMockRole(preview))))
+  }
   // 역할을 먼저 정하고, 그 '나'에게 이 기기에서 남긴 사진·한마디를 반영한다
   if (USE_MOCK) return Promise.resolve(withMockActivity(asMockRole(mockRoomHomeById(roomId))))
   return request<RoomHome>(`/rooms/${roomId}`, { token })
