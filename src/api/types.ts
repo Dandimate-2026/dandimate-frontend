@@ -62,6 +62,10 @@ export interface RoomQuota {
 }
 
 export interface InvitePreview {
+  /** 초대 링크가 가리키는 방 */
+  roomId: string
+  /** 지금 로그인한 계정이 이미 이 방에 있는지 (방장 포함). 로그인 전에는 false */
+  alreadyJoined: boolean
   roomName: string
   meetingDate?: string
   status: RoomStatus

@@ -37,6 +37,8 @@ export const MOCK_ROOM_IDS = [
 export const MOCK_INVITE_TOKEN = 'demo'
 
 export const mockInvitePreview: InvitePreview = {
+  roomId: MOCK_ROOM_ID,
+  alreadyJoined: false,
   roomName: '경주 1박2일',
   meetingDate: '2026-10-17',
   status: 'COLLECTING',

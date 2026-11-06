@@ -25,13 +25,25 @@ function InviteJoinPage() {
 
   useEffect(() => {
     getInvitePreview(inviteToken)
-      .then(setPreview)
+      .then((value) => {
+        // 이미 이 방에 있는 계정(방장 포함)이면 이름을 다시 묻지 않고 방으로 보낸다. 정원이 다 찼어도 들어갈 수 있다
+        if (value.alreadyJoined) {
+          saveRoomSession(value.roomId, {
+            ...getRoomSession(value.roomId),
+            memberAccessToken: '',
+            roomName: value.roomName,
+          })
+          navigate(paths.roomHome(value.roomId), { replace: true })
+          return
+        }
+        setPreview(value)
+      })
       .catch((e: unknown) =>
         setLoadError(
           e instanceof ApiError && e.status === 404 ? '만료되었거나 없는 초대 링크예요' : '방 정보를 불러오지 못했어요',
         ),
       )
-  }, [inviteToken])
+  }, [inviteToken, navigate])
 
   if (loadError) return <NotFoundPage message={loadError} />
   if (!preview) return <main className="flex-1 bg-bg" aria-busy="true" />

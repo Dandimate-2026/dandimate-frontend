@@ -1,7 +1,16 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { deleteRoom, getRoomHome, rotateInviteToken, updateMyNickname, updateRoom } from '../api/rooms'
-import type { RoomHome } from '../api/types'
+import { ApiError } from '../api/client'
+import {
+  deleteRoom,
+  getRoomHome,
+  leaveRoom,
+  rotateInviteToken,
+  transferHost,
+  updateMyNickname,
+  updateRoom,
+} from '../api/rooms'
+import type { Member, RoomHome } from '../api/types'
 import Card from '../components/Card'
 import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
@@ -72,9 +81,12 @@ function EditDialog({
     setError(null)
     try {
       await onSave(trimmed)
-    } catch {
-      // 백엔드에 API가 생기기 전까지는 여기로 온다
-      setError('아직 바꿀 수 없어요. 조금만 기다려 주세요')
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 409 && target === 'nickname'
+          ? '이 방에 같은 이름이 있어요. 다른 이름을 써 주세요'
+          : '바꾸지 못했어요. 잠시 후 다시 시도해 주세요',
+      )
       setSaving(false)
     }
   }
@@ -160,8 +172,13 @@ function ConfirmDialog({
     setError(null)
     try {
       await onConfirm()
-    } catch {
-      setError('잠시 후 다시 시도해 주세요')
+    } catch (err) {
+      // 409: 결제가 진행 중이면 서버가 방 삭제·방장 넘기기를 잠시 막는다
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? '결제가 처리 중이에요. 잠시 후 다시 시도해 주세요'
+          : '잠시 후 다시 시도해 주세요',
+      )
       setBusy(false)
     }
   }
@@ -198,7 +215,7 @@ function ConfirmDialog({
   )
 }
 
-type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom'
+type ConfirmTarget = 'leave' | 'rotateInvite' | 'deleteRoom' | { transferTo: Member }
 
 /** 모임방 설정: 모임 정보, 초대 링크, 함께하는 사람, 약관, 나가기 */
 function RoomSettingsPage() {
@@ -252,10 +269,22 @@ function RoomSettingsPage() {
     setEditing(null)
   }
 
-  const handleLeave = () => {
-    // TODO(백엔드 미지원): 방 나가기 API가 없어서, 지금은 이 기기에 저장된 방 정보만 지운다
+  const handleLeave = async () => {
+    await leaveRoom(room.id)
     removeRoomSession(room.id)
     navigate(paths.roomList(), { replace: true })
+  }
+
+  const handleTransferHost = async (target: Member) => {
+    await transferHost(room.id, target.id)
+    setHome({
+      ...home,
+      me: { ...me, role: 'MEMBER' },
+      members: members.map((m) =>
+        m.id === target.id ? { ...m, role: 'HOST' } : m.id === me.id ? { ...m, role: 'MEMBER' } : m,
+      ),
+    })
+    setConfirming(null)
   }
 
   const handleRotateInvite = async () => {
@@ -375,6 +404,16 @@ function RoomSettingsPage() {
                     이름 변경
                   </button>
                 )}
+                {/* 방장만 다른 멤버에게 방장을 넘길 수 있다 */}
+                {isHost && m.id !== me.id && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirming({ transferTo: m })}
+                    className={EDIT_BUTTON_CLASS}
+                  >
+                    방장 넘기기
+                  </button>
+                )}
               </span>
             </li>
           ))}
@@ -413,14 +452,29 @@ function RoomSettingsPage() {
           onSave={handleSave}
         />
       )}
+      {typeof confirming === 'object' && confirming !== null && (
+        <ConfirmDialog
+          title={`${confirming.transferTo.nickname}님에게 방장을 넘길까요?`}
+          description={
+            <>
+              넘기면 나는 일반 멤버가 돼요.
+              <br />
+              방 설정·초대 링크·방 삭제는 새 방장만 할 수 있어요.
+            </>
+          }
+          confirmLabel="넘기기"
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => handleTransferHost(confirming.transferTo)}
+        />
+      )}
       {confirming === 'leave' && (
         <ConfirmDialog
           title={`${room.name}에서 나갈까요?`}
           description={
             <>
-              나가면 이 기기의 모임방 목록에서 사라져요.
+              내가 남긴 사진과 이야기는 방에 그대로 남아요.
               <br />
-              다시 들어오려면 초대 링크가 필요해요.
+              같은 초대 링크로 다시 들어올 수 있어요.
             </>
           }
           confirmLabel="나가기"

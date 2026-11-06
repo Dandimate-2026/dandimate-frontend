@@ -107,13 +107,25 @@ export function updateRoom(
   return request(`/rooms/${roomId}`, { method: 'PATCH', body, token })
 }
 
-/**
- * 이 방에서 쓰는 내 닉네임을 바꾼다
- * TODO(백엔드 미지원): 공개 API 0.1.0에 닉네임 변경이 없다. 주소·요청 모양은 가정한 값이라 실제 모드에서는 실패한다
- */
+/** 이 방에서 쓰는 내 닉네임을 바꾼다. 방 안에 같은 이름이 있으면 409(NICKNAME_TAKEN) */
 export function updateMyNickname(roomId: string, nickname: string, token: string) {
   if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/members/me`, { method: 'PATCH', body: { nickname }, token })
+}
+
+/**
+ * 일반 멤버가 방에서 나간다. 내가 남긴 사진·이야기는 방에 그대로 남는다.
+ * 같은 초대 링크로 다시 들어오면 예전 이름·기록을 이어 쓴다. 방장은 나갈 수 없다(403)
+ */
+export function leaveRoom(roomId: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}/members/me`, { method: 'DELETE' })
+}
+
+/** 방장이 같은 방의 다른 멤버에게 방장을 넘긴다. 나는 일반 멤버가 된다 */
+export function transferHost(roomId: string, memberId: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request(`/rooms/${roomId}/host-transfer`, { method: 'POST', body: { memberId }, idempotent: true })
 }
 
 /** 방장이 초대 링크를 새로 만든다. 이전 링크로는 더 들어올 수 없다 */
@@ -134,8 +146,8 @@ export function deleteRoom(roomId: string, token: string) {
 }
 
 /**
- * 멤버가 방장에게 플랜을 바꿔 달라고 요청한다. 방장의 방 알림(🔔)에 PLAN_UPGRADE_REQUESTED로 들어간다
- * TODO(백엔드 미지원): 공개 API에 아직 없다. 주소·요청 모양은 가정한 값이라 실제 모드에서는 실패한다
+ * 멤버가 방장에게 플랜을 바꿔 달라고 요청한다. 방장의 방 알림(🔔)에 PLAN_UPGRADE_REQUESTED로 들어간다.
+ * Free 방의 일반 멤버만 보낼 수 있다 (방장이거나 Lite·Pro 방이면 403)
  */
 export function requestPlanUpgrade(roomId: string, reason: PlanRequestReason) {
   if (USE_MOCK) return Promise.resolve()
