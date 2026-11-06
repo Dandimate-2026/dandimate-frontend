@@ -46,6 +46,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 웹 푸시 알림 받기·누르기 처리 (public/push-sw.js)
+        importScripts: ['push-sw.js'],
         skipWaiting: true,
         clientsClaim: false,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],

@@ -2,9 +2,9 @@ import Button from '../../components/Button'
 import lock from '../../assets/memories/lock.svg'
 import skip from '../../assets/memories/skip.svg'
 import { MemoryCard, MemoryFlower, MemoryHeader, PhotoSlot, StoryCard, TextModeToggle } from './components'
-import type { MemoryPhoto, MemoryResponse } from './types'
+import type { MemoryPhoto, MemoryResponse, MemoryStory } from './types'
 
-export default function CirculationPage({ photo, position, total, response, locked, busy = false, error, textOnly, onTextMode, onBack, onAdd, onPass, onUndoPass, onNext }: {
+export default function CirculationPage({ photo, position, total, response, locked, busy = false, error, textOnly, onTextMode, onBack, onAdd, onPass, onUndoPass, onNext, onDeletePhoto, onEditStory, onDeleteStory }: {
   photo: MemoryPhoto
   position: number
   total: number
@@ -19,18 +19,35 @@ export default function CirculationPage({ photo, position, total, response, lock
   onPass: () => void
   onUndoPass?: () => void
   onNext: () => void
+  /** 내 사진 지우기 */
+  onDeletePhoto?: () => void
+  /** 내가 남긴 이야기 고치기·지우기 */
+  onEditStory?: (story: MemoryStory) => void
+  onDeleteStory?: (story: MemoryStory) => void
 }) {
+  // 내가 남긴 이야기 아래에 [고치기 · 지우기]를 붙인다
+  const withActions = (story: MemoryStory, key?: string) => (
+    <div key={key}>
+      <StoryCard story={story} textOnly={textOnly} mine={story.mine} />
+      {story.mine && story.id && (onEditStory || onDeleteStory) && (
+        <div className="mt-1 flex justify-end gap-3 px-1 text-[12px]">
+          {onEditStory && <button type="button" className="text-sub active:opacity-70" onClick={() => onEditStory(story)}>고치기</button>}
+          {onDeleteStory && <button type="button" className="text-point active:opacity-70" onClick={() => onDeleteStory(story)}>지우기</button>}
+        </div>
+      )}
+    </div>
+  )
   const unlocked = locked === undefined ? Boolean(response) : !locked
   return <main className="memory-page memory-circulation">
     <MemoryHeader progress={`${position} / ${total}`} onBack={onBack} />
     <TextModeToggle value={textOnly} onChange={onTextMode} />
     <MemoryCard className="memory-photo-card">
-      <div className="memory-photo-owner"><span><MemoryFlower color={photo.flower} />{photo.owner} 님이 올렸어요</span><small>이야기 {1 + photo.friends.length}개</small></div>
+      <div className="memory-photo-owner"><span><MemoryFlower color={photo.flower} />{photo.mine ? '내가 올렸어요' : `${photo.owner} 님이 올렸어요`}</span><small>이야기 {1 + photo.friends.length}개{photo.mine && onDeletePhoto && <> · <button type="button" className="text-point" onClick={onDeletePhoto}>사진 지우기</button></>}</small></div>
       <PhotoSlot label={photo.location} date={photo.dateLabel} src={photo.photoUrl} icon />
       <div className="memory-stories" key={`${photo.id}-${textOnly}`}>
-        <StoryCard story={photo.firstStory} textOnly={textOnly} />
+        {withActions(photo.firstStory)}
         {unlocked ? <>
-          {photo.friends.map((story) => <StoryCard key={story.author} story={story} textOnly={textOnly} />)}
+          {photo.friends.map((story, i) => withActions(story, story.id ?? `${story.author}-${i}`))}
           {response?.status === 'added' && (response.contribution ? <StoryCard mine textOnly={textOnly} story={{ ...response.contribution, author: '나', flower: 'orange', kind: response.contribution.audioUrl ? '말로 남김' : '글로 남김' }} /> : <p className="memory-passed">내 덧붙임을 남겼어요</p>)}
           {response?.status === 'passed' && <p className="memory-passed"><img src={skip} width={14} height={14} alt="" />이 사진은 패스했어요</p>}
         </> : <div className="memory-locked"><img src={lock} width={21} height={21} alt="" /><p>내 기억부터 남기면 열려요</p><small>친구 이야기 {photo.friends.length}개가 기다리고 있어요</small></div>}

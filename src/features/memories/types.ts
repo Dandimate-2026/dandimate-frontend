@@ -19,6 +19,10 @@ export interface MemoryContribution {
 }
 
 export interface MemoryStory extends MemoryContribution {
+  /** 서버 이야기 id (고치기·지우기에 쓴다) */
+  id?: string
+  /** 내가 남긴 이야기라 고치거나 지울 수 있는지 */
+  mine?: boolean
   author: string
   flower?: FlowerColor
   kind: string
@@ -32,6 +36,8 @@ export interface MemoryPhoto {
   location: string
   dateLabel: string
   photoUrl?: string
+  /** 내가 올린 사진이라 지울 수 있는지 */
+  mine?: boolean
   firstStory: MemoryStory
   friends: MemoryStory[]
 }

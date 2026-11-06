@@ -231,7 +231,14 @@ function EditDialog({
   )
 }
 
-const EDIT_BUTTON_CLASS = 'shrink-0 rounded-full border border-line px-3 py-1 text-[11px] text-sub active:opacity-80'
+// 버튼 종류마다 색을 달리해 무엇을 하는 버튼인지 한눈에 보이게 한다
+const PILL_BASE = 'shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold active:opacity-80'
+/** 변경·이름 변경: 차분한 회갈색 */
+const EDIT_BUTTON_CLASS = `${PILL_BASE} bg-[#efe9df] text-[#6b5f53]`
+/** 방장 넘기기: 파랑 */
+const TRANSFER_BUTTON_CLASS = `${PILL_BASE} bg-[#e8eefb] text-[#3d64b8]`
+/** 내보내기: 분홍(되돌리기 어려운 동작) */
+const KICK_BUTTON_CLASS = `${PILL_BASE} bg-[#fbe9f0] text-point`
 
 /** 나가기·링크 재발급·방 삭제 전에 한 번 더 묻는 창 */
 function ConfirmDialog({
@@ -540,7 +547,7 @@ function RoomSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setConfirming({ transferTo: m })}
-                    className={EDIT_BUTTON_CLASS}
+                    className={TRANSFER_BUTTON_CLASS}
                   >
                     방장 넘기기
                   </button>
@@ -550,7 +557,7 @@ function RoomSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setConfirming({ kick: m })}
-                    className={`${EDIT_BUTTON_CLASS} text-point`}
+                    className={KICK_BUTTON_CLASS}
                   >
                     내보내기
                   </button>

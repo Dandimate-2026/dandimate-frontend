@@ -69,7 +69,8 @@ export async function shareToKakao(text: string, url: string, title = '두루두
       objectType: 'feed',
       content: {
         title,
-        description: text,
+        // 링크 글자도 같이 넣어서, 버튼이 안 보이는 환경(PC 카톡 등)에서도 주소를 눌러 들어올 수 있게 한다
+        description: [text, url].join('\n'),
         imageUrl: new URL(shareImage, window.location.origin).href,
         imageWidth: 960,
         imageHeight: 600,
