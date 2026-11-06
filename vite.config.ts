@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // 실행 중인 화면은 유지하고 모든 앱 창을 닫은 뒤 새 버전을 활성화합니다.
+      // 실행 중인 화면을 다시 불러오지 않고, 다음 탐색부터 최신 버전을 사용합니다.
       registerType: 'prompt',
       injectRegister: 'script-defer',
       includeAssets: ['fonts/Pretendard-LICENSE.txt'],
@@ -46,6 +46,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: false,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
         navigateFallback: 'index.html',
         // 아래 주소는 저장해 둔 앱 화면(index.html)으로 바꾸지 않고 반드시 백엔드 서버로 보낸다
@@ -57,6 +59,8 @@ export default defineConfig({
           /^\/swagger-ui(?:\.html|\/|$)/,
           /^\/openapi(?:\/|$)/,
           /^\/webjars(?:\/|$)/,
+          // 결제 복귀는 최신 HTML로 열어, 구버전 앱의 라우트가 없는 화면으로 돌아가지 않게 한다.
+          /^\/payments(?:\/|$)/,
         ],
         runtimeCaching: [
           {
