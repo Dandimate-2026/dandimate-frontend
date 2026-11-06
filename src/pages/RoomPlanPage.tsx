@@ -23,7 +23,7 @@ function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean;
       onClick={onSelect}
       aria-pressed={selected}
       className={`w-full rounded-[18px] border bg-surface px-[26px] py-[13px] text-left shadow-[0_1px_2px_#2a26230d] transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-point ${
-        selected ? 'border-[#c7bbae]' : 'border-line'
+        selected ? 'border-point bg-[#fbe9f0]' : 'border-line'
       }`}
     >
       <div className="flex items-center justify-between">
