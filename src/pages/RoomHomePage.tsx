@@ -12,6 +12,7 @@ import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { shareToKakao } from '../lib/kakao'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
+import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
@@ -510,6 +511,9 @@ ${url}`).catch(() => {})
               : `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`}
           </p>
         </section>
+
+        {/* 돌려보는 동안: 친구들이 올린 사진을 한 줄씩, 여러 장이면 옆으로 넘긴다 */}
+        {room.status === 'CIRCULATING' && <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} />}
 
         {!allDone && myTodo.topAskback && (
           <section className="mt-4 rounded-xl bg-[#f6e3ea] px-3.5 pt-3.5 pb-4">
