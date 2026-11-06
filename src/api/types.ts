@@ -78,6 +78,10 @@ export interface InvitePreview {
   capacity: number
   flowers: FlowerCode[]
   canJoin: boolean
+  /** 초대한 사람 (지금 방장 이름) */
+  inviterNickname?: string | null
+  /** 로그인 없이 볼 수 있는 대표 사진 주소 (없으면 null) */
+  coverImageUrl?: string | null
 }
 
 export interface JoinRoomResult {

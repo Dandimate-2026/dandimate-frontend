@@ -20,12 +20,16 @@ function LoginPage() {
   // 초대 링크(/invite/{코드})에서 넘어왔으면 초대받은 사람 전용 로그인 화면을 보여준다
   const inviteToken = redirect.match(/^\/invite\/([^/?#]+)/)?.[1]
   const [inviteRoomName, setInviteRoomName] = useState<string>()
+  const [inviterNickname, setInviterNickname] = useState<string | null>()
 
   // 초대 정보는 로그인 없이 볼 수 있어서 로그인 전에 방 이름을 보여준다. 못 불러오면 방 이름 없이 보여준다
   useEffect(() => {
     if (!inviteToken) return
     getInvitePreview(inviteToken)
-      .then((preview) => setInviteRoomName(preview.roomName))
+      .then((preview) => {
+        setInviteRoomName(preview.roomName)
+        setInviterNickname(preview.inviterNickname)
+      })
       .catch(() => {})
   }, [inviteToken])
 
@@ -52,6 +56,7 @@ function LoginPage() {
       <WelcomeView
         invite
         inviteRoomName={inviteRoomName}
+        inviterNickname={inviterNickname}
         actions={<KakaoButton disabled={loggingIn} onClick={() => handleLogin('MEMBER')} />}
       />
     )

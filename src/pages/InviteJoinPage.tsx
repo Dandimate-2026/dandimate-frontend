@@ -57,6 +57,7 @@ function InviteJoinPage() {
       <WelcomeView
         invite
         inviteRoomName={preview.roomName}
+        inviterNickname={preview.inviterNickname}
         actions={
           <Button onClick={() => setEntered(true)} disabled={!preview.canJoin} className="w-full">
             {preview.canJoin ? '입장하기' : '지금은 들어갈 수 없어요'}
@@ -102,8 +103,13 @@ function InviteJoinPage() {
   return (
     <main className="flex flex-1 flex-col bg-bg px-5 text-ink pt-[clamp(32px,12dvh,124px)] pb-12">
       <section className="mb-12 px-2">
-        {/* TODO: 초대한 사람 이름이 InvitePreview API에 없어 백엔드 추가 요청 필요 */}
-        <p className="text-[13px] text-sub">친구가 초대했어요</p>
+        <p className="text-[13px] text-sub">
+          {preview.inviterNickname ? `${preview.inviterNickname}님이 초대했어요` : '친구가 초대했어요'}
+        </p>
+        {/* 대표 사진이 있으면 어떤 모임인지 바로 알 수 있게 보여준다 */}
+        {preview.coverImageUrl && (
+          <img src={preview.coverImageUrl} alt="" className="mt-4 aspect-[4/3] w-full rounded-[18px] object-cover" />
+        )}
         <h1 className="mt-3 text-[20px] font-bold">{preview.roomName}</h1>
         {preview.meetingDate && <p className="mt-3 text-[12px] text-sub">{formatDate(preview.meetingDate)}</p>}
 
