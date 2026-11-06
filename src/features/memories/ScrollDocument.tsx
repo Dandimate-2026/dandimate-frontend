@@ -1,16 +1,30 @@
 import type { ReactNode } from 'react'
 import type { RoomHome, Scroll, ScrollParagraph } from '../../api/types'
 import { memoryFlowerColor } from '../../lib/flower'
+import { highlightTextChanges } from '../../lib/textChanges'
 import { MemoryFlower, PhotoSlot } from './components'
 import { getTemplate, templateStyle, type ScrollTemplateId } from './templates'
+import type { ReweaveResult } from './types'
 
-export function ParagraphStory({ paragraph }: { paragraph: ScrollParagraph }) {
+export function ParagraphStory({ paragraph, changes }: { paragraph: ScrollParagraph; changes?: ReweaveResult }) {
+  const reply = changes?.reply
+  const hasReplySource = reply && paragraph.sources.some((source) => source.member.id === reply.member.id && source.quote === reply.text)
   return <>
-    <p className="memory-narrative">{paragraph.body}</p>
-    <div className="memory-quotes">{paragraph.sources.map((source) => <blockquote className="memory-quote" key={source.entryId}>
-      <cite><MemoryFlower color={memoryFlowerColor(source.member.flowerCode)} size={18} />{source.member.nickname}</cite>
-      <p>“{source.quote}”</p>
-    </blockquote>)}</div>
+    <p className="memory-narrative">{changes ? highlightTextChanges(changes.previous.body, paragraph.body).map((part, index) => part.changed
+      ? <mark className="memory-text-highlight" key={index}>{part.text}</mark>
+      : part.text) : paragraph.body}</p>
+    <div className="memory-quotes">{paragraph.sources.map((source) => {
+      const isReply = reply?.member.id === source.member.id && reply.text === source.quote
+      return <blockquote className="memory-quote" key={source.entryId}>
+        <cite><MemoryFlower color={memoryFlowerColor(source.member.flowerCode)} size={18} />{source.member.nickname}{isReply && ' · 답가'}</cite>
+        <p>“{isReply ? <mark className="memory-text-highlight">{source.quote}</mark> : source.quote}”</p>
+      </blockquote>
+    })}
+      {reply && !hasReplySource && <blockquote className="memory-quote">
+        <cite><MemoryFlower color={memoryFlowerColor(reply.member.flowerCode)} size={18} />{reply.member.nickname} · 답가</cite>
+        <p>“<mark className="memory-text-highlight">{reply.text}</mark>”</p>
+      </blockquote>}
+    </div>
   </>
 }
 

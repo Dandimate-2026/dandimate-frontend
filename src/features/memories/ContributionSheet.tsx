@@ -5,7 +5,7 @@ import { formatDuration, useVoiceRecorder } from '../../hooks/useVoiceRecorder'
 import { BottomSheet } from './components'
 import type { MemoryContribution } from './types'
 
-export default function ContributionSheet({ kind, quote, initial, startWithText = false, onSave, onClose, onTranscribe, maxLength = 500 }: {
+export default function ContributionSheet({ kind, quote, initial, startWithText = false, onSave, onClose, onTranscribe, maxLength = 500, maxVoiceSeconds }: {
   kind: 'addition' | 'reply'
   quote: string
   initial?: MemoryContribution
@@ -14,6 +14,7 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
   onClose: () => void
   onTranscribe?: (audio: Blob) => Promise<{ transcript: string; transcriptionId: string }>
   maxLength?: number
+  maxVoiceSeconds?: number
 }) {
   const [mode, setMode] = useState<'voice' | 'text'>(startWithText || initial ? 'text' : 'voice')
   const [text, setText] = useState(initial?.text ?? '')
@@ -26,7 +27,7 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
   const ownedUrls = useRef<string[]>([])
   const savedUrl = useRef<string | undefined>(undefined)
   const mounted = useRef(false)
-  const maxMs = kind === 'reply' ? 60000 : 30000
+  const maxMs = (maxVoiceSeconds ?? (kind === 'reply' ? 60 : 30)) * 1000
   const recorder = useVoiceRecorder({ maxMs, onFinish: (recording) => {
     if (!mounted.current) return
     const url = URL.createObjectURL(recording.blob)
@@ -87,14 +88,14 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     } finally { if (mounted.current) setSaving(false) }
   }
 
-  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={onClose}>
+  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>
     <blockquote>{quote}</blockquote>
     <h3>{kind === 'reply' ? '여기에 빠진 이야기가 있나요?' : '이 장면, 당신은 어떻게 기억해요?'}</h3>
     <p className="memory-sheet-hint">{kind === 'reply' ? '당신이 기억하는 장면을 보태주세요' : '한 두 문장이면 충분해요'}</p>
     {mode === 'voice' ? <div className="memory-recorder">
       {audio ? <><audio controls src={audio.url} aria-label="녹음 미리 듣기" /><p>녹음 {formatDuration(audio.durationMs)}</p><button type="button" className="memory-text-link" onClick={() => void start()}>다시 녹음하기</button></> : <>
         <RecordButton recording={recorder.recording} disabled={starting} onStart={() => void start()} onStop={recorder.stop} />
-        {recorder.recording ? <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={maxMs} /> : <p>{starting ? '마이크 연결 중…' : `눌러서 ${kind === 'reply' ? '한두 문장만 ' : ''}말해 주세요 · 최대 ${kind === 'reply' ? '1분' : '30초'}`}</p>}
+        {recorder.recording ? <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={maxMs} /> : <p>{starting ? '마이크 연결 중…' : `눌러서 ${kind === 'reply' ? '한두 문장만 ' : ''}말해 주세요 · 최대 ${maxMs / 1000}초`}</p>}
       </>}
     </div> : <div className="memory-write-field">
       <label htmlFor="memory-contribution">내 이야기</label>

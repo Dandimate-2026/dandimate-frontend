@@ -115,7 +115,7 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-added-reply { margin-top: 12px; }
 .memory-app .memory-rating { padding: 18px 19px 13px; margin-top: 0; }
 .memory-app .memory-chapter-actions + .memory-rating { margin-top: 10px; }
-.memory-app .scroll-paragraph-story + .memory-rating { margin-top: 10px; }
+.memory-app .scroll-paragraph-story + .memory-rating, .memory-app .scroll-rewoven + .memory-rating { margin-top: 10px; }
 .memory-rating h2 { font-size: 16px; font-weight: 650; }
 .memory-rating > p { font-size: 12px; color: var(--color-sub); margin-top: 3px; }
 .memory-rating-options { display: flex; justify-content: space-around; margin: 9px 10px 4px; }
@@ -189,7 +189,13 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-live > .scroll-template-hero { margin: -64px -20px 20px; width: calc(100% + 40px); max-width: none; }
 .has-template .memory-photo { border: 4px solid #fffdf9; box-shadow: 0 3px 6px #2a262310; background: var(--scroll-photo); }
 .has-template .memory-chapter { border-left: 2px solid var(--scroll-accent); padding-left: 14px; }
+.scroll-rewoven-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; color: var(--color-point); font-size: 13px; }
+.scroll-rewoven-heading > button { flex-shrink: 0; color: var(--color-sub); text-decoration: underline; }
+.memory-text-highlight { color: inherit; background: #fae7ef; box-shadow: inset 0 -2px 0 #edbdd0; border-radius: 3px; padding: 1px 0 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .memory-narrative { white-space: pre-wrap; overflow-wrap: anywhere; }
+.scroll-rewoven { border: 1px solid var(--color-point); border-radius: 20px; padding: 14px; margin-top: 12px; background: var(--color-surface); }
+.scroll-rewoven .scroll-rewoven-heading { margin-top: 0; }
+.scroll-reweave-button { width: 100%; padding: 12px; margin-top: 12px; }
 .scroll-complete-footer { text-align: center; padding: 24px 0; }
 .scroll-end-flowers { display: flex; justify-content: center; gap: 4px; margin-bottom: 10px; }
 .scroll-complete-footer h2 { font-size: 18px; font-weight: 700; }
@@ -203,6 +209,10 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-toast-anchor { position: relative; z-index: 25; height: 0; }
 .scroll-toast-inline { position: absolute; top: 6px; left: 0; transform: none; width: 100%; min-height: 48px; padding: 12px 14px; font-size: 12px; box-shadow: none; }
 .scroll-toast-inline > span { min-width: 0; overflow-wrap: anywhere; }
+.memory-reweaving .memory-weaving-main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 40px; }
+.memory-reweaving .memory-weaving-footer { padding-top: 32px; padding-bottom: 30px; }
+.memory-reweaving .memory-weaving-footer strong { color: var(--color-point); font-weight: 650; }
+.memory-reweaving .memory-loading span:nth-child(n+2) { background: var(--color-line); }
 .memory-sheet:has(.download-options) { background: var(--color-surface); }
 .memory-sheet:has(.download-options) .memory-sheet-body { padding-top: 30px; }
 .template-picker > h1 { font-size: 28px; font-weight: 750; line-height: 1.4; margin: 8px 0; }

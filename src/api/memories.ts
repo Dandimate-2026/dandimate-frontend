@@ -1,11 +1,13 @@
 import { request } from './client'
-import { mockTranscribe, USE_MOCK } from './mock'
+import { consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK } from './mock'
 import type { CirculationResponse, Entry, Job, Member, Scroll, TranscriptionDraft } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
 const mockStatuses = new Map<string, 'ADDON' | 'PASSED'>()
 const mockReactionCounts = new Map<string, number>()
 const mockReplyCounts = new Map<string, number>()
+const mockRewoven = new Map<string, { body: string; version: number; quote: string }>()
+const mockJobs = new Map<string, number>()
 const mockMember: Member = { id: 'mock-member', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA' }
 
 function mockPhotoCards(): CirculationResponse['cards'] {
@@ -53,11 +55,15 @@ export function undoPass(photoId: string, token: string) {
 }
 
 export function getScroll(roomId: string, token: string) {
+  const previewHome = roomId === MOCK_DONE_ROOM_ID || roomId === MOCK_SCROLL_PREVIEW_ROOM_ID ? mockDoneRoomHome : mockRoomHome
   if (USE_MOCK) return Promise.resolve<Scroll>({
-    id: 'mock-scroll', version: 1, participantCount: 3, memberCount: 3,
+    id: 'mock-scroll', version: 1, participantCount: previewHome.members.length, memberCount: previewHome.members.length,
     paragraphs: mockPhotoCards().map((card, index) => ({
-      id: `paragraph-${index}`, photo: card.photo, body: MEMORY_PHOTOS[index].firstStory.text,
-      version: 1, sources: [{ entryId: `first-${index}`, member: card.photo.uploader, quote: MEMORY_PHOTOS[index].firstStory.text }],
+      id: `paragraph-${index}`, photo: card.photo, body: mockRewoven.get(`paragraph-${index}`)?.body ?? MEMORY_PHOTOS[index].firstStory.text,
+      version: mockRewoven.get(`paragraph-${index}`)?.version ?? 1, sources: [
+        { entryId: `first-${index}`, member: card.photo.uploader, quote: MEMORY_PHOTOS[index].firstStory.text },
+        ...(mockRewoven.has(`paragraph-${index}`) ? [{ entryId: `reply-${index}`, member: previewHome.me, quote: mockRewoven.get(`paragraph-${index}`)!.quote }] : []),
+      ],
       replyCount: mockReplyCounts.get(`paragraph-${index}`) ?? 0,
       ahMatdaCount: mockReactionCounts.get(`paragraph-${index}`) ?? 0, aiGenerated: true,
     })),
@@ -66,7 +72,7 @@ export function getScroll(roomId: string, token: string) {
 }
 
 export function getJob(jobId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve<Job>({ id: jobId, type: 'WEAVE_SCROLL', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+  if (USE_MOCK) return Promise.resolve<Job>({ id: jobId, type: mockJobs.has(jobId) ? 'REPLY_REWEAVE' : 'WEAVE_SCROLL', status: Date.now() < (mockJobs.get(jobId) ?? 0) ? 'RUNNING' : 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
   return request<Job>(`/jobs/${jobId}`, { token })
 }
 
@@ -77,8 +83,14 @@ export function retryWeave(roomId: string, token: string) {
 
 export function createReply(paragraphId: string, token: string, body: { inputMode: 'TEXT' | 'VOICE'; transcript: string; transcriptionId?: string }) {
   if (USE_MOCK) {
+    consumeMockReweave()
     mockReplyCounts.set(paragraphId, (mockReplyCounts.get(paragraphId) ?? 0) + 1)
-    return Promise.resolve<{ job: Job }>({ job: { id: 'mock-reply-job', type: 'REPLY_REWEAVE', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
+    const previous = mockRewoven.get(paragraphId)
+    const original = MEMORY_PHOTOS[Number(paragraphId.split('-').at(-1))]?.firstStory.text ?? ''
+    mockRewoven.set(paragraphId, { body: `${previous?.body ?? original}\n${body.transcript}`, quote: body.transcript, version: (previous?.version ?? 1) + 1 })
+    const id = `mock-reply-${crypto.randomUUID()}`
+    mockJobs.set(id, Date.now() + 1500)
+    return Promise.resolve<{ job: Job }>({ job: { id, type: 'REPLY_REWEAVE', status: 'QUEUED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
   }
   return request<{ job: Job }>(`/paragraphs/${paragraphId}/replies`, { method: 'POST', body, token, idempotent: true })
 }
@@ -87,7 +99,7 @@ export function transcribeReply(paragraphId: string, token: string, audio: Blob)
   if (USE_MOCK) return mockTranscribe('함께 웃었던 그 장면이 아직 기억나요.')
   const form = new FormData()
   form.append('file', audio, `voice.${audio.type.includes('mp4') ? 'm4a' : 'webm'}`)
-  return request<TranscriptionDraft>(`/paragraphs/${paragraphId}/transcriptions`, { method: 'POST', body: form, token })
+  return request<TranscriptionDraft>(`/paragraphs/${paragraphId}/transcriptions`, { method: 'POST', body: form, token, idempotent: true })
 }
 
 export function setAhMatda(paragraphId: string, token: string, active: boolean) {

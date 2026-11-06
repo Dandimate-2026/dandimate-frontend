@@ -3,6 +3,7 @@ import {
   MOCK_DONE_ROOM_ID,
   MOCK_NEW_ROOM_ID,
   MOCK_READY_ROOM_ID,
+  MOCK_SCROLL_PREVIEW_ROOM_ID,
   mockCloseRoom,
   mockCreateRoom,
   mockDoneRoomHome,
@@ -12,6 +13,7 @@ import {
   mockReadyRoomHome,
   mockRoomHome,
   USE_MOCK,
+  withMockQuota,
 } from './mock'
 import type {
   CloseRoomResult,
@@ -55,8 +57,9 @@ export function joinRoom(inviteToken: string, nickname: string) {
 
 export function getRoomHome(roomId: string, token: string) {
   if (USE_MOCK) {
+    if (roomId === MOCK_SCROLL_PREVIEW_ROOM_ID) return Promise.resolve(withMockQuota({ ...mockDoneRoomHome, room: { ...mockDoneRoomHome.room, id: MOCK_SCROLL_PREVIEW_ROOM_ID, name: '경주 1박2일' } }))
     if (roomId === MOCK_NEW_ROOM_ID) return Promise.resolve(mockNewRoomHome)
-    if (roomId === MOCK_DONE_ROOM_ID) return Promise.resolve(mockDoneRoomHome)
+    if (roomId === MOCK_DONE_ROOM_ID) return Promise.resolve(withMockQuota(mockDoneRoomHome))
     if (roomId === MOCK_READY_ROOM_ID) return Promise.resolve(mockReadyRoomHome)
     return Promise.resolve(mockRoomHome)
   }

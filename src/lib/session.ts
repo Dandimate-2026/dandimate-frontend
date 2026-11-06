@@ -1,5 +1,5 @@
 // 계정 없이 방에 들어오므로, 방마다 받은 토큰을 기기에 저장해 둔다
-import { MOCK_INVITE_TOKEN, MOCK_READY_ROOM_ID, MOCK_ROOM_IDS, USE_MOCK } from '../api/mock'
+import { MOCK_INVITE_TOKEN, MOCK_READY_ROOM_ID, MOCK_ROOM_IDS, MOCK_SCROLL_PREVIEW_ROOM_ID, USE_MOCK } from '../api/mock'
 import { paths } from '../routes/paths'
 
 const KEY_PREFIX = 'duruduru:room:'
@@ -28,7 +28,7 @@ export function getRoomSession(roomId: string): RoomSession | null {
     // 저장소를 쓸 수 없으면 아래로 넘어간다
   }
   // mock 모드에서는 방을 만들거나 입장하지 않고 바로 들어와도 화면을 볼 수 있게 한다
-  if (USE_MOCK && (MOCK_ROOM_IDS.includes(roomId) || roomId === MOCK_READY_ROOM_ID)) {
+  if (USE_MOCK && (MOCK_ROOM_IDS.includes(roomId) || roomId === MOCK_READY_ROOM_ID || roomId === MOCK_SCROLL_PREVIEW_ROOM_ID)) {
     return { memberAccessToken: 'mock-token', inviteToken: MOCK_INVITE_TOKEN, roomName: '경주 1박2일' }
   }
   return null

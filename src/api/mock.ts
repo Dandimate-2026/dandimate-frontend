@@ -14,11 +14,25 @@ import type {
 
 export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
 
+let mockReweavesUsed = 0
+export function consumeMockReweave() { mockReweavesUsed++ }
+export function withMockQuota(home: RoomHome): RoomHome {
+  const quota = home.room.quota
+  if (!quota) return home
+  return { ...home, room: { ...home.room, quota: {
+    ...quota,
+    regenerationCount: (quota.regenerationCount ?? 0) + mockReweavesUsed,
+    regenerationsRemaining: quota.regenerationsRemaining === undefined ? undefined : Math.max(0, quota.regenerationsRemaining - mockReweavesUsed),
+  } } }
+}
+
 export const MOCK_ROOM_ID = 'demo'
 /** 방 만들기로 막 연 방. 친구를 기다리는 화면을 확인할 때 쓴다 */
 export const MOCK_NEW_ROOM_ID = 'gathering'
 /** 두루마리가 완성된 방. 방 목록의 완성된 두루마리를 확인할 때 쓴다 */
 export const MOCK_DONE_ROOM_ID = 'done'
+/** 이번 두루마리 기능을 평가 전 상태부터 확인하는 전용 미리보기 방. */
+export const MOCK_SCROLL_PREVIEW_ROOM_ID = 'scroll-review'
 export const MOCK_ROOM_IDS = [MOCK_ROOM_ID, MOCK_NEW_ROOM_ID, MOCK_DONE_ROOM_ID]
 /** 모두 다 봐서 엮을 수 있는 방. 방 목록에는 넣지 않고 주소로만 확인한다 */
 export const MOCK_READY_ROOM_ID = 'ready'
@@ -147,6 +161,8 @@ const mockDoneMembers: RoomHome['members'] = [
 export const mockDoneRoomHome: RoomHome = {
   room: {
     id: MOCK_DONE_ROOM_ID,
+    planType: 'PRO',
+    quota: { regenerationsRemaining: 12, regenerationCount: 0, regenerationLimit: 12 },
     name: '여름 부산 바다',
     meetingDate: '2026-08-14',
     status: 'GROWING',
