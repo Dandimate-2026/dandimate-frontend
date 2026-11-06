@@ -165,7 +165,15 @@ function RecentPhotosCarousel({
                 }`}
               >
                 <span className="relative shrink-0">
-                  <img src={card.photo.imageUrl} alt={`${uploader.nickname}님의 사진`} className="size-14 rounded-[12px] bg-bg object-cover" />
+                  <img
+                    src={card.photo.imageUrl}
+                    alt=""
+                    // 사진을 못 불러오면 깨진 아이콘 대신 빈 칸으로 둔다
+                    onError={(e) => {
+                      e.currentTarget.style.visibility = 'hidden'
+                    }}
+                    className="size-14 rounded-[12px] bg-[#efe9df] object-cover"
+                  />
                   {fresh > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-point px-1.5 text-[10px] font-bold text-surface ring-2 ring-surface">
                       N{fresh > 1 ? ` ${fresh}` : ''}
