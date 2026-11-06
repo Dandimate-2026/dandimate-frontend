@@ -26,6 +26,16 @@ export interface CityPin {
   /** 그 도시의 가장 최근 두루마리 요약 (AI가 기억하는 한 줄) */
   summary: string | null
   rooms: MapRoomItem[]
+  /** 이 도시에서 사진마다 고른 장소 (검색으로 고른 장소명) */
+  places: MapPlaceItem[]
+}
+
+export interface MapPlaceItem {
+  photoId: string
+  roomId: string
+  placeName: string
+  latitude: number
+  longitude: number
 }
 
 const MOCK_MAP: CityPin[] = [
@@ -41,11 +51,16 @@ const MOCK_MAP: CityPin[] = [
       { roomId: 'demo', name: '경주 1박2일', meetingDate: '2026-10-17', status: 'GROWING', scrollReady: true, photoCount: 6, recordCount: 9, summary: null },
       { roomId: 'demo2', name: '칩셋 가을 MT', meetingDate: '2026-11-01', status: 'CIRCULATING', scrollReady: false, photoCount: 3, recordCount: 3, summary: null },
     ],
+    places: [
+      { photoId: 'p1', roomId: 'demo', placeName: '첨성대', latitude: 35.8347, longitude: 129.219 },
+      { photoId: 'p2', roomId: 'demo', placeName: '황리단길', latitude: 35.8381, longitude: 129.2097 },
+      { photoId: 'p3', roomId: 'demo2', placeName: '보문호수', latitude: 35.8455, longitude: 129.2836 },
+    ],
   },
-  { city: '포항', latitude: 36.04, longitude: 129.36, photoCount: 6, recordCount: 9, bloomed: true, summary: '영일대에서 해 뜨는 걸 기다렸던 새벽.', rooms: [] },
-  { city: '대구', latitude: 35.87, longitude: 128.6, photoCount: 5, recordCount: 7, bloomed: false, summary: null, rooms: [] },
-  { city: '구미', latitude: 36.12, longitude: 128.34, photoCount: 4, recordCount: 5, bloomed: false, summary: null, rooms: [] },
-  { city: '안동', latitude: 36.57, longitude: 128.73, photoCount: 2, recordCount: 3, bloomed: false, summary: null, rooms: [] },
+  { city: '포항', latitude: 36.04, longitude: 129.36, photoCount: 6, recordCount: 9, bloomed: true, summary: '영일대에서 해 뜨는 걸 기다렸던 새벽.', rooms: [{ roomId: 'demo2', name: '칩셋 가을 MT', meetingDate: '2026-11-01', status: 'CIRCULATING', scrollReady: false, photoCount: 1, recordCount: 2, summary: null }], places: [{ photoId: 'p4', roomId: 'demo2', placeName: '영일대 해수욕장', latitude: 36.0568, longitude: 129.378 }] },
+  { city: '대구', latitude: 35.87, longitude: 128.6, photoCount: 5, recordCount: 7, bloomed: false, summary: null, rooms: [], places: [] },
+  { city: '구미', latitude: 36.12, longitude: 128.34, photoCount: 4, recordCount: 5, bloomed: false, summary: null, rooms: [], places: [] },
+  { city: '안동', latitude: 36.57, longitude: 128.73, photoCount: 2, recordCount: 3, bloomed: false, summary: null, rooms: [], places: [] },
 ]
 
 /** 내가 참여 중인 방의 사진 장소를 도시별로 묶은 지도 */

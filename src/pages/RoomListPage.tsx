@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { getMockRole, USE_MOCK } from '../api/mock'
+import { getMyRecordMap } from '../api/recordMap'
 import { getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomStatus } from '../api/types'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
@@ -65,7 +66,7 @@ function todoLine(home: RoomHome): { text: string; todo: boolean } | null {
   return { text: '친구들의 이야기를 기다리는 중이에요', todo: false }
 }
 
-function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
+function RoomCard({ home, meta, places = [] }: { home: RoomHome; meta: string; places?: string[] }) {
   const { room } = home
   const line = todoLine(home)
   const cover = getRoomPlaceCover(room.id).coverPhoto
@@ -97,6 +98,13 @@ function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
           </div>
           <p className="mt-[5px] truncate text-[16px] leading-5 font-semibold">{room.name}</p>
           <p className="mt-0.5 text-[11px] leading-4 text-sub">{meta}</p>
+          {/* 사진마다 검색으로 고른 장소들 */}
+          {places.length > 0 && (
+            <p className="mt-0.5 truncate text-[11px] leading-4 text-sub">
+              📍 {places.slice(0, 2).join(' · ')}
+              {places.length > 2 && ` 외 ${places.length - 2}곳`}
+            </p>
+          )}
           {line && <p className={`mt-[3px] text-[11px] leading-4 ${line.todo ? 'text-point' : 'text-sub'}`}>{line.text}</p>}
         </div>
       </Link>
@@ -108,6 +116,22 @@ function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
 function RoomListPage() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<RoomHome[] | null>(null)
+  // 방마다 사진에 붙인 장소 이름 (기록 지도 응답에서 방별로 모은다)
+  const [placesByRoom, setPlacesByRoom] = useState<Record<string, string[]>>({})
+  useEffect(() => {
+    getMyRecordMap()
+      .then((cities) => {
+        const byRoom: Record<string, string[]> = {}
+        cities.forEach((c) =>
+          c.places.forEach((p) => {
+            const list = (byRoom[p.roomId] ??= [])
+            if (!list.includes(p.placeName)) list.push(p.placeName)
+          }),
+        )
+        setPlacesByRoom(byRoom)
+      })
+      .catch(() => {})
+  }, [])
   const [loggingOut, setLoggingOut] = useState(false)
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
   const [chatOpen, setChatOpen] = useState(false)
@@ -189,7 +213,7 @@ function RoomListPage() {
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
               {ongoing.map((h) => (
-                <RoomCard key={h.room.id} home={h} meta={ongoingMeta(h)} />
+                <RoomCard key={h.room.id} home={h} meta={ongoingMeta(h)} places={placesByRoom[h.room.id]} />
               ))}
             </ul>
           )}
@@ -200,7 +224,7 @@ function RoomListPage() {
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             <ul className="mt-3 flex flex-col gap-[11px]">
               {done.map((h) => (
-                <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} />
+                <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} places={placesByRoom[h.room.id]} />
               ))}
             </ul>
           </section>
