@@ -188,9 +188,9 @@ const SHARE_BUTTON_CLASS =
   'flex h-[57px] items-center justify-center gap-1.5 rounded-[20px] border border-line bg-surface text-[13px] text-sub active:opacity-80'
 
 /** 방이 열리고 친구들이 다 모이기 전: 초대 링크 공유와 내 첫 사진 올리기 */
-function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null }) {
+function GatheringHome({ home, inviteToken, datePrompt, roomCards, token }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null; token: string }) {
   const navigate = useNavigate()
-  const { room, members, myTodo } = home
+  const { room, members, myTodo, me } = home
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
@@ -232,6 +232,10 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
             <p className="ml-[7px] text-[11px] text-sub">{memberNames}</p>
           </div>
         </Card>
+        {/* 사진을 먼저 올린 뒤 친구를 기다리는 방에서도 장소를 나중에 붙일 수 있다. */}
+        {roomCards?.some((card) => card.myResponse.status === 'OWN_PHOTO') && (
+          <RecentPhotosCarousel roomId={room.id} token={token} version={home} myMemberId={me.id} />
+        )}
       </div>
 
       {/* 긴 화면(노트북 등)에서는 아래에 붙이지 않고 내용 바로 아래에 둔다 */}
@@ -514,7 +518,7 @@ function RoomHomePage() {
   if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
     return (
       <>
-        <GatheringHome home={home} roomCards={roomCards} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
+        <GatheringHome home={home} roomCards={roomCards} token={token ?? ''} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
         {timeUpSheet}
       </>
     )
@@ -540,8 +544,10 @@ function RoomHomePage() {
           </p>
         </section>
 
-        {/* 돌려보는 동안: 친구들이 올린 사진을 한 줄씩, 여러 장이면 옆으로 넘긴다 */}
-        {room.status === 'CIRCULATING' && <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} myMemberId={me.id} />}
+        {/* 사진을 올린 방이면 상태와 관계없이 내 사진의 장소를 기록 지도에 붙일 수 있다. */}
+        {roomCards?.some((card) => card.myResponse.status === 'OWN_PHOTO') && (
+          <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} myMemberId={me.id} />
+        )}
 
         {!allDone && myTodo.topAskback && (
           <section className="mt-4 rounded-xl bg-[#f6e3ea] px-3.5 pt-3.5 pb-4">
