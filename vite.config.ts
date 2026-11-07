@@ -9,8 +9,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // 실행 중인 화면을 다시 불러오지 않고, 다음 탐색부터 최신 버전을 사용합니다.
-      registerType: 'prompt',
+      // 배포 뒤 이전 지도 코드가 오래 남지 않도록 새 서비스 워커를 바로 활성화한다.
+      // 사용자가 새로고침했을 때 최신 번들을 확실히 받는다.
+      registerType: 'autoUpdate',
       injectRegister: 'script-defer',
       includeAssets: ['fonts/Pretendard-LICENSE.txt'],
       manifest: {
@@ -49,7 +50,7 @@ export default defineConfig({
         // 웹 푸시 알림 받기·누르기 처리 (public/push-sw.js)
         importScripts: ['push-sw.js'],
         skipWaiting: true,
-        clientsClaim: false,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,webmanifest}'],
         navigateFallback: 'index.html',
         // 아래 주소는 저장해 둔 앱 화면(index.html)으로 바꾸지 않고 반드시 백엔드 서버로 보낸다
