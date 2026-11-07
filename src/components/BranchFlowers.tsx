@@ -8,12 +8,12 @@ import Flower from './Flower'
 
 const W = 340 // 가지 그림 가로 (viewBox)
 const H = 84 // 가지 영역 높이(px)
-const SLOTS = 8 // 방 최대 인원. 꽃 자리는 인원과 상관없이 8칸에 고정한다
+const SLOTS = 8 // 방 최대 인원
 
 /** 가지가 지나가는 높이: 왼쪽에서 오른쪽으로 살짝 올라가는 완만한 물결 */
 const branchY = (t: number) => H / 2 + 4 - t * 6 + 5 * Math.sin(t * Math.PI * 1.6)
-/** i번째 꽃의 고정 자리 (0~1) */
-const slotT = (i: number) => (i + 0.5) / SLOTS
+/** 핀 꽃 n송이 중 i번째 자리 (0~1): 가지 전체에 고르게 퍼뜨린다 */
+const slotT = (i: number, n: number) => (i + 0.5) / n
 
 /** 활동 수에 따른 꽃 크기: 많을수록 조금씩 크게 */
 const sizeFor = (count: number) => (count >= 8 ? 30 : count >= 5 ? 28 : count >= 3 ? 25 : 22)
@@ -22,19 +22,20 @@ type Person = { id: string | number; nickname: string; flowerCode: FlowerCode; p
 
 /**
  * 핀 꽃: 한 줄짜리 가지에 사진이나 이야기를 남긴 사람마다 꽃 한 송이.
- * 자리는 들어온 순서대로 고정(1번째는 맨 왼쪽 칸…)이고, 아직 아무것도 남기지 않은 사람 자리는 비워 둔다.
+ * 핀 꽃끼리 들어온 순서대로 가지 전체에 고르게 퍼진다. 아직 아무것도 남기지 않은 사람은 빠진다.
  * 꽃의 숫자는 그 사람이 한 모든 활동(사진 + 이야기). 꽃을 누르면 참여한 사진별로 그 활동을 모아 넘겨 본다.
  */
 export default function BranchFlowers({ roomId, members, cards }: { roomId: string; members: Person[]; cards: CirculationCard[] | null }) {
   const [open, setOpen] = useState<Person | null>(null)
 
   // 꽃의 숫자 = 그 사람이 한 모든 활동(올린 사진 + 남긴 이야기). 꽃을 누르면 그 활동들을 사진별로 모아 넘겨 본다
-  const people = members.slice(0, SLOTS).map((m) => ({ ...m, count: (m.photoCount ?? 0) + (m.storyCount ?? 0) }))
+  // 아직 아무것도 안 남긴 사람은 빼고, 핀 꽃끼리 들어온 순서대로 고르게 놓는다
+  const people = members.slice(0, SLOTS).map((m) => ({ ...m, count: (m.photoCount ?? 0) + (m.storyCount ?? 0) })).filter((p) => p.count > 0)
   const pts = Array.from({ length: 41 }, (_, k) => `${((k / 40) * W).toFixed(1)},${branchY(k / 40).toFixed(1)}`).join(' ')
 
   return (
     <>
-      <div className="relative mt-1 w-full" style={{ height: H }} aria-label={`핀 꽃 ${people.filter((p) => p.count > 0).length}송이`}>
+      <div className="relative mt-1 w-full" style={{ height: H }} aria-label={`핀 꽃 ${people.length}송이`}>
         <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
           <polyline points={pts} fill="none" stroke="#7a553f" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
           <polyline points={pts} fill="none" stroke="#b08a6c" strokeWidth="1" strokeLinecap="round" opacity=".45" transform="translate(0 -1)" />
@@ -42,9 +43,8 @@ export default function BranchFlowers({ roomId, members, cards }: { roomId: stri
           <path d={`M18 ${branchY(18 / W)} q 8 10 18 8 q -6 -9 -18 -8`} fill="#a9c083" />
           <path d={`M${W - 14} ${branchY(1 - 14 / W)} q -6 -13 -18 -12 q 5 10 18 12`} fill="#93ad6c" />
           {people.map((p, i) => {
-            if (p.count === 0) return null
-            const x = slotT(i) * W
-            const by = branchY(slotT(i))
+            const x = slotT(i, people.length) * W
+            const by = branchY(slotT(i, people.length))
             const up = i % 2 === 0
             const tip = up ? by - 12 : by + 12
             return <path key={p.id} d={`M${x} ${by} Q ${x + (up ? 3 : -3)} ${(by + tip) / 2} ${x} ${tip}`} stroke="#6f8a52" strokeWidth="1.6" fill="none" strokeLinecap="round" />
@@ -52,8 +52,7 @@ export default function BranchFlowers({ roomId, members, cards }: { roomId: stri
         </svg>
 
         {people.map((p, i) => {
-          if (p.count === 0) return null
-          const t = slotT(i)
+          const t = slotT(i, people.length)
           const by = branchY(t)
           const up = i % 2 === 0
           const size = sizeFor(p.count)

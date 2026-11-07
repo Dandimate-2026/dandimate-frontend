@@ -443,7 +443,7 @@ export const livelyMembers: RoomHome['members'] = [
   { id: 'l7', nickname: '수아', role: 'MEMBER', flowerCode: 'TEAL', photoCount: 2, storyCount: 3, responseRate: 0.6 },
   { id: 'l8', nickname: '시우', role: 'MEMBER', flowerCode: 'PURPLE', photoCount: 1, storyCount: 2, responseRate: 0.5 },
 ]
-const livelyPattern = [0, 1, 2, 0, 3, 4, 1, 5, 0, 2, 1, 3, 0, 4, 2, 5, 1, 3, 0] // 수아·시우는 아직 오늘 이야기가 없다 (봉오리)
+const livelyPattern = [0, 1, 2, 0, 3, 4, 1, 5, 0, 2, 1, 3, 0, 4, 2, 5, 1, 3, 0] // 오늘 이야기 목록용 (수아·시우는 오늘 아직 없음)
 
 export const mockLivelyRoomHome: RoomHome = {
   ...mockRoomHome,
