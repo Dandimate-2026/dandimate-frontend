@@ -83,12 +83,12 @@ export function StoryCard({ story, mine = false, textOnly = false }: { story: Me
   </article>
 }
 
-export function TripHeading({ onBack, title = '경주 1박2일', detail = '2026. 10. 17–18 · 참여 3/3 · 사진 6장', members, actions, notice }: { onBack: () => void; title?: string; detail?: string; members?: { name: string; color: FlowerColor }[]; actions?: ReactNode; notice?: ReactNode }) {
+export function TripHeading({ onBack, title = '경주 1박2일', detail = '2026. 10. 17–18 · 참여 3/3 · 사진 6장', members, actions, notice, separateTitle = false, cover = false }: { onBack: () => void; title?: string; detail?: string; members?: { name: string; color: FlowerColor }[]; actions?: ReactNode; notice?: ReactNode; separateTitle?: boolean; cover?: boolean }) {
   return <header className="memory-trip-heading">
-    <div className="memory-trip-topline"><button type="button" className="memory-back" onClick={onBack} aria-label={`${title} · 뒤로 가기`}><ChevronLeftIcon /><h1>{title}</h1></button>{actions}</div>
+    <div className="memory-trip-topline">{separateTitle ? <>{!cover && <button type="button" className="memory-back" onClick={onBack} aria-label="뒤로 가기"><ChevronLeftIcon /></button>}<h1>{title}</h1></> : <button type="button" className="memory-back" onClick={onBack} aria-label={`${title} · 뒤로 가기`}><ChevronLeftIcon /><h1>{title}</h1></button>}{actions}</div>
     <p>{detail}</p>
     {notice && <div className="memory-toast-anchor">{notice}</div>}
-    <ul className="memory-members">{(members ?? [{ name: '서연', color: 'pink' }, { name: '지수', color: 'blue' }, { name: '민지', color: 'orange' }]).map(({ name, color }) => <li key={name}><MemoryFlower color={color} size={25} />{name}</li>)}</ul>
+    <ul className="memory-members">{(members ?? [{ name: '서연', color: 'pink' }, { name: '지수', color: 'blue' }, { name: '민지', color: 'orange' }]).map(({ name, color }) => <li key={name}><MemoryFlower color={color} size={25} /><span className="memory-member-name">{name}</span></li>)}</ul>
   </header>
 }
 

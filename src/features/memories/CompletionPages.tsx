@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import Button from '../../components/Button'
-import scrollFlower from '../../assets/memories/scroll-flower.svg'
+import Flower from '../../components/Flower'
 import { MemoryCard, MemoryFlower, MemoryHeader, ShareMemoryButton } from './components'
 
 export function CirculationComplete({ addedCount = 3, photoCount = 4, onBack, onHome, roomName }: { addedCount?: number; photoCount?: number; onBack: () => void; onHome: () => void; roomName?: string }) {
@@ -22,7 +22,11 @@ export function WeavingPage({ onBack, onReady, durationMs = 30000, autoReady = t
   return <main className={`memory-page memory-weaving ${reweavingCount ? 'memory-reweaving' : ''}`}>
     <MemoryHeader title={title} onBack={onBack} />
     <div className="memory-weaving-main" role="status" aria-live="polite">
-      <img className="memory-scroll-flower" src={scrollFlower} width={97} height={116} alt="꽃이 담긴 두루마리" />
+      <div className="weave-anim" role="img" aria-label="두루마리를 엮는 중">
+        <span className="weave-rod weave-rod-top" />
+        <span className="weave-paper"><span className="weave-flower"><Flower code="AZALEA" size={44} /></span></span>
+        <span className="weave-rod weave-rod-bottom" />
+      </div>
       <h1>{error ? '두루마리를 엮지 못했어요' : reweavingCount ? `이야기 ${reweavingCount}개를 다시 엮고 있어요` : '이야기를 엮고 있어요'}</h1>
       <p>{error || (reweavingCount ? <>아까는 잘 안 엮였어요.<br />한 번 더 꼼꼼하게 엮어 볼게요</> : <>서로 다른 기억이 모여<br />하나의 두루마리가 되고 있어요</>)}</p>
       <div className="memory-loading" aria-hidden="true"><span /><span /><span /></div>

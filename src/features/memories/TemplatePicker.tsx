@@ -1,40 +1,93 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
+import { askHost } from '../../hooks/useRoomQuota'
+import { paths } from '../../routes/paths'
 import type { RoomHome, Scroll } from '../../api/types'
 import Button from '../../components/Button'
 import { MemoryHeader } from './components'
 import ScrollDocument from './ScrollDocument'
-import { canUseTemplate, getTemplate, SCROLL_TEMPLATES, type ScrollTemplateId } from './templates'
+import { canUseTemplate, getTemplate, SCROLL_TEMPLATES, type RoomPlan, type ScrollTemplateId } from './templates'
+
+const PLAN_LABEL: Record<RoomPlan, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
+const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : '특별 꾸미기')
+
+/** 방 이름에 지역 이름이 들어 있으면 그 지역 템플릿을 추천한다 (예: "경주 1박 2일" → 경주) */
+function recommendFor(roomName: string): ScrollTemplateId | null {
+  const region = SCROLL_TEMPLATES.find((item) => item.plan === 'LITE' && roomName.includes(item.name))
+  return region?.id ?? null
+}
 
 export default function TemplatePicker({ scroll, home, value, onSelect, onClose }: {
   scroll: Scroll; home: RoomHome; value: ScrollTemplateId; onSelect: (id: ScrollTemplateId) => void; onClose: () => void
 }) {
-  const [selected, setSelected] = useState(value)
+  const recommended = recommendFor(home.room.name)
+  const [selected, setSelected] = useState<ScrollTemplateId>(value === 'minimal' && recommended ? recommended : value)
   const [preview, setPreview] = useState(false)
+  const [asked, setAsked] = useState(false)
+  const navigate = useNavigate()
+  const isHost = home.me.role === 'HOST'
   const template = getTemplate(selected)
-  const allowed = canUseTemplate(selected, home.room.planType)
+  const plan = (home.room.planType ?? 'FREE') as RoomPlan
+  const allowed = canUseTemplate(selected, plan)
   const storyCount = new Set(scroll.paragraphs.flatMap((paragraph) => paragraph.sources.map((source) => source.entryId))).size
-  return <main className="memory-page template-picker">
-    <MemoryHeader title={preview ? '미리보기' : home.room.name} onBack={preview ? () => setPreview(false) : onClose} />
-    {preview ? <>
+  const lockNote = allowed ? null : `${template.name} 템플릿은 ${PLAN_LABEL[template.plan]} 이상 플랜에서 쓸 수 있어요 · 지금은 ${PLAN_LABEL[plan]}`
+  const featured = getTemplate(recommended ?? selected)
+
+  const tile = (item: (typeof SCROLL_TEMPLATES)[number]) => (
+    <button className="tp-tile" type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)}>
+      <span className="tp-tile-art">
+        <img src={item.art} width={360} height={240} alt="" />
+        <span className={`tp-badge ${item.plan.toLowerCase()}`}>{planBadge(item.plan)}</span>
+      </span>
+      <span className="tp-tile-name">{item.name}</span>
+    </button>
+  )
+
+  if (preview) {
+    return <main className="memory-page template-picker">
+      <MemoryHeader title="미리보기" onBack={() => setPreview(false)} />
       <div className="template-document-preview"><ScrollDocument scroll={scroll} home={home} template={selected} /></div>
-      <div className="template-chips" aria-label="템플릿 바꿔 보기">{SCROLL_TEMPLATES.map((item) => <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)}><span style={{ background: item.accent }} />{item.name}</button>)}</div>
-      <p className="template-note">이 기기에서 선택한 템플릿으로 보여요.{!allowed && ` ${template.plan === 'PRO' ? 'Pro' : 'Lite'} 플랜부터 사용할 수 있어요.`}</p>
-      <Button disabled={!allowed} onClick={() => onSelect(selected)}>이걸로 펼치기</Button>
-    </> : <>
-      <p className="template-eyebrow">✓ 이야기 {storyCount}개가 엮였어요</p>
-      <h1>어떤 두루마리로<br />펼쳐 볼까요?</h1><p className="template-subtitle">언제든 다시 바꿀 수 있어요</p>
-      <div className="template-featured"><img src={template.art} width={360} height={180} alt="" /><div><h2>{template.name}</h2><p>{template.description}</p><span>{template.plan === 'FREE' ? '무료' : template.plan}</span></div></div>
-      <div className="template-group-title"><h2>지역 템플릿</h2><span>Lite부터</span></div>
-      <div className="template-grid" aria-label="지역 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan === 'LITE').map((item) => <button className="template-tile" type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)}>
-        <img src={item.art} width={360} height={180} alt="" /><span className="template-plan lite">{item.plan}</span><strong>{item.name}</strong>
-      </button>)}</div>
-      <div className="template-group-title"><h2>기본 · 특별</h2><span>기본 무료 · 특별 Pro</span></div>
-      <div className="template-grid" aria-label="기본 · 특별 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan !== 'LITE').map((item) => <button className="template-tile" type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)}>
-        <img src={item.art} width={360} height={180} alt="" /><span className={`template-plan ${item.plan.toLowerCase()}`}>{item.plan === 'FREE' ? '무료' : item.plan}</span><strong>{item.name}</strong>
-      </button>)}</div>
-      <p className="template-note">기본 미니멀은 무료 · 지역 템플릿은 Lite부터 · 화전놀이는 Pro</p>
-      <Button onClick={() => { setPreview(true); window.scrollTo(0, 0) }}>{template.name} 미리보기</Button>
-      <button type="button" className="memory-text-link template-later" onClick={onClose}>나중에</button>
-    </>}
+      <div className="template-chips" aria-label="템플릿 바꿔 보기">{SCROLL_TEMPLATES.map((item) => <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)}><img src={item.art} alt="" />{item.name}</button>)}</div>
+      <p className="template-note">이 기기에서 고른 템플릿으로 보여요{template.plan !== 'FREE' && ` · ${template.name}는 ${PLAN_LABEL[template.plan]} 이상`}</p>
+      {allowed ? <Button onClick={() => onSelect(selected)}>이걸로 펼치기</Button>
+        : isHost ? <Button onClick={() => navigate(paths.roomPlan(home.room.id))}>{PLAN_LABEL[template.plan]} 플랜 보기</Button>
+        : <Button onClick={() => { void askHost(`방장님, ${home.room.name} 두루마리를 ${template.name} 템플릿으로 펼쳐 보고 싶어요. ${PLAN_LABEL[template.plan]} 플랜으로 바꿔 줄 수 있을까요?`); setAsked(true) }}>{asked ? '방장에게 부탁했어요' : '방장에게 플랜 부탁하기'}</Button>}
+    </main>
+  }
+
+  return <main className="memory-page template-picker tp">
+    <div className="template-picker-top">
+      <MemoryHeader title={home.room.name} onBack={onClose} />
+      <button type="button" className="template-later" onClick={onClose}>나중에</button>
+    </div>
+    <p className="tp-eyebrow">✓ 이야기 {storyCount}개가 엮였어요</p>
+    <h1 className="tp-title">어떤 두루마리로<br />펼쳐 볼까요?</h1>
+    <p className="tp-sub">언제든 다시 바꿀 수 있어요</p>
+
+    <button type="button" className="tp-featured" aria-pressed={selected === featured.id} onClick={() => setSelected(featured.id)}>
+      <span className="tp-featured-art">
+        <img src={featured.art} width={360} height={240} alt="" />
+        {recommended && <span className="tp-reco">추천</span>}
+      </span>
+      <span className="tp-featured-body">
+        <span className="tp-featured-name">{featured.name}<span className={`tp-badge inline ${featured.plan.toLowerCase()}`}>{planBadge(featured.plan)}</span></span>
+        <span className="tp-featured-desc">{featured.description}</span>
+        {recommended && <span className="tp-featured-why">장소가 {featured.name}라서 추천해요</span>}
+      </span>
+    </button>
+
+    <section className="tp-section">
+      <div className="tp-section-head"><h2>지역 템플릿</h2><span>Lite 이상</span></div>
+      <div className="tp-row" aria-label="지역 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan === 'LITE').map(tile)}</div>
+    </section>
+    <section className="tp-section">
+      <div className="tp-section-head"><h2>기본 · 특별</h2><span>기본 무료 · 특별 Pro</span></div>
+      <div className="tp-row" aria-label="기본 · 특별 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan !== 'LITE').map(tile)}</div>
+    </section>
+
+    <div className="tp-footer">
+      <p className="tp-note">{lockNote ?? `${template.name} 템플릿으로 펼쳐요`}</p>
+      <Button onClick={() => { setPreview(true); window.scrollTo(0, 0) }}>{template.name}로 펼치기</Button>
+    </div>
   </main>
 }
