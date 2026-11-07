@@ -350,8 +350,22 @@ function ZoomableMap({
     detailEntered.current = true
     const imageX = (-view.x + size.w / 2) / view.s
     const imageY = (-view.y + size.h / 2) / view.s
-    onEnterDetail(unproject(imageX * (MAP_W / size.w), imageY * (MAP_H / size.h)))
-  }, [onEnterDetail, size.h, size.w, view.s, view.x, view.y])
+    const viewportCenter = unproject(imageX * (MAP_W / size.w), imageY * (MAP_H / size.h))
+
+    // 상세 지도는 빈 지도의 중심이 아니라, 지금 보고 있던 꽃 핀을 중심으로 연다.
+    // 선택한 도시가 있으면 그것을 우선하고, 아니면 화면 중앙에 가장 가까운 도시를 고른다.
+    const target =
+      pins.find((pin) => pin.city === activeCity) ??
+      pins.reduce<CityPin | null>((closest, pin) => {
+        if (!closest) return pin
+        const distance = (pin.latitude - viewportCenter.lat) ** 2 + (pin.longitude - viewportCenter.lng) ** 2
+        const closestDistance =
+          (closest.latitude - viewportCenter.lat) ** 2 + (closest.longitude - viewportCenter.lng) ** 2
+        return distance < closestDistance ? pin : closest
+      }, null)
+
+    onEnterDetail(target ? { lat: target.latitude, lng: target.longitude } : viewportCenter)
+  }, [activeCity, onEnterDetail, pins, size.h, size.w, view.s, view.x, view.y])
 
   return (
     <div className="relative mx-3 mt-4">
