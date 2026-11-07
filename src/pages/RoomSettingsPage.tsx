@@ -89,7 +89,7 @@ type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname' | 'capa
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
   roomName: { title: '모임 이름 바꾸기', maxLength: MAX_ROOM_NAME_LENGTH },
   meetingDate: { title: '모임 날짜 바꾸기' },
-  deadlineAt: { title: '첫 두루마리 시각 바꾸기' },
+  deadlineAt: { title: '첫 두루마리 날 바꾸기' },
   nickname: { title: '내 이름 바꾸기', maxLength: MAX_NICKNAME_LENGTH },
   capacity: { title: '함께할 인원 바꾸기' },
 }

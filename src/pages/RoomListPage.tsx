@@ -54,9 +54,9 @@ function hasTodo({ myTodo }: RoomHome) {
 
 /** 진행 중인 방의 남은 시간 · 참여 인원 */
 function ongoingMeta({ room, members }: RoomHome) {
-  if (!room.deadlineAt) return `엮을 날 미정 · 참여 ${members.length}명`
-  const hours = Math.ceil((new Date(room.deadlineAt).getTime() - Date.now()) / (60 * 60 * 1000))
-  return `${hours > 0 ? `${hours}시간 남음` : '곧 마감'} · 참여 ${members.length}명`
+  if (!room.deadlineAt || !room.deadlineChangedByHost) return `참여 ${members.length}명`
+  const d = new Date(room.deadlineAt)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일에 엮어요 · 참여 ${members.length}명`
 }
 
 /** 완성된 방의 모임 날짜 · 사진 수 · 인원 */

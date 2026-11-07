@@ -36,7 +36,7 @@ function RoomSharePage() {
         <br />방이 열렸어요
       </h1>
       <p className="mt-[18px] px-2 text-[15px] leading-[19px] text-sub">
-        48시간 뒤 첫 두루마리가 나와요.
+        친구들이 사진과 한마디를 남기면 두루마리로 엮어요.
         <br />
         지금 단톡방에 링크를 보내 주세요.
       </p>

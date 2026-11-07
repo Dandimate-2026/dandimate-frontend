@@ -31,17 +31,12 @@ const STATUS_LABEL: Record<RoomStatus, string> = {
 }
 
 /** 마감까지 남은 시간 안내 문구 */
-function deadlineText(deadlineAt: string | null) {
-  if (!deadlineAt) return '엮을 날을 정하면 알려드릴게요'
-  const hours = hoursLeft(deadlineAt)
-  return hours > 0 ? `첫 두루마리까지 ${hours}시간` : '곧 첫 두루마리가 나와요'
+function deadlineText(room: { deadlineAt: string | null; deadlineChangedByHost?: boolean }) {
+  if (!room.deadlineAt || !room.deadlineChangedByHost) return ''
+  const d = new Date(room.deadlineAt)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일에 엮어요`
 }
 
-/** 마감까지 남은 시간(시간 단위, 올림) */
-function hoursLeft(deadlineAt: string | null) {
-  if (!deadlineAt) return Infinity
-  return Math.ceil((new Date(deadlineAt).getTime() - Date.now()) / (60 * 60 * 1000))
-}
 
 function ChevronLeftIcon() {
   return (
@@ -175,7 +170,7 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
         >
           {STATUS_LABEL[room.status]}
         </span>
-        <span className="text-[11px] text-sub">{deadlineText(room.deadlineAt)}</span>
+        {deadlineText(room) && <span className="text-[11px] text-sub">{deadlineText(room)}</span>}
       </div>
     </header>
   )
@@ -336,7 +331,6 @@ function MyTodoCard({ home }: { home: RoomHome }) {
  */
 function TimeUpSheet({
   reason = 'timeUp',
-  hoursLeft: left = 0,
   isHost,
   weaving,
   error,
@@ -344,7 +338,6 @@ function TimeUpSheet({
   onClose,
 }: {
   reason?: 'timeUp' | 'allDone'
-  hoursLeft?: number
   isHost: boolean
   weaving: boolean
   error: string | null
@@ -377,7 +370,7 @@ function TimeUpSheet({
               <>
                 이제 첫 두루마리를 엮을 수 있어요
                 <br />
-                {left > 0 ? `지금 엮으면 남은 ${left}시간을 기다리지 않아도 돼요` : '지금 바로 엮을 수 있어요'}
+                지금 바로 엮을 수 있어요
               </>
             ) : (
               <>
@@ -518,7 +511,6 @@ function RoomHomePage() {
     ) : room.status === 'CIRCULATING' && home.allCompleted && !allDoneClosed ? (
       <TimeUpSheet
         reason="allDone"
-        hoursLeft={hoursLeft(room.deadlineAt)}
         isHost={me.role === 'HOST'}
         weaving={weaving}
         error={weaveError}
@@ -617,9 +609,7 @@ function RoomHomePage() {
             {me.role === 'HOST' ? (
               <>
                 <p className="mt-2 text-[11px] text-sub">
-                  {hoursLeft(room.deadlineAt) > 0 && Number.isFinite(hoursLeft(room.deadlineAt))
-                    ? `지금 엮으면 남은 ${hoursLeft(room.deadlineAt)}시간을 기다리지 않아도 돼요`
-                    : '지금 바로 엮을 수 있어요'}
+                  지금 바로 엮을 수 있어요
                 </p>
                 {weaveError && <p className="mt-2 text-[11px] text-point">{weaveError}</p>}
                 <Button onClick={handleWeave} disabled={weaving} className="mt-3.5 w-full">
