@@ -3,12 +3,13 @@ import { useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { MAX_PHOTOS } from '../api/photos'
 import { closeRoom, getRoomHome, ROOM_CAPACITY } from '../api/rooms'
-import type { Member, RoomHome, RoomStatus, RoomSummary } from '../api/types'
+import type { CirculationCard, Member, RoomHome, RoomStatus, RoomSummary } from '../api/types'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { SparkleIcon } from '../components/entry/EntryIcons'
 import Flower, { EmptySlot } from '../components/Flower'
-import { TodayFlowers } from '../components/TodayFlowers'
+import BranchFlowers from '../components/BranchFlowers'
+import { participationRate, useRoomCards } from '../lib/participation'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { copyForShare, shareWithDevice } from '../lib/share'
@@ -96,9 +97,13 @@ function ScrollIcon() {
 }
 
 /** 참여현황 한 줄: 꽃 + 이름, 사진/이야기 수(다 봤으면 체크), 참여율 막대 */
-function MemberProgress({ member, done }: { member: Member; done: boolean }) {
-  // 모두 다 봤으면 막대를 꽉 채운다
-  const rate = done ? 1 : Math.min(Math.max(member.responseRate ?? 0, 0), 1)
+/** 방 전체에 모인 사진·이야기 수. 하나도 없을 때만 핀 꽃 아래에 안내를 띄운다 */
+const sumOf = (members: Member[], key: 'photoCount' | 'storyCount') => members.reduce((n, m) => n + (m[key] ?? 0), 0)
+const activityTotal = (members: Member[]) => sumOf(members, 'photoCount') + sumOf(members, 'storyCount')
+
+function MemberProgress({ member, done, cards }: { member: Member; done: boolean; cards: CirculationCard[] | null }) {
+  // 참여율 = 참여한 사진(올린 사진 + 이야기를 남긴 사진) ÷ 방 전체 사진. 모두 다 봤으면 막대를 꽉 채운다
+  const rate = done ? 1 : cards ? participationRate(cards, member) : Math.min(Math.max(member.responseRate ?? 0, 0), 1)
   return (
     <li>
       <div className="flex items-center justify-between">
@@ -183,9 +188,9 @@ const SHARE_BUTTON_CLASS =
   'flex h-[57px] items-center justify-center gap-1.5 rounded-[20px] border border-line bg-surface text-[13px] text-sub active:opacity-80'
 
 /** 방이 열리고 친구들이 다 모이기 전: 초대 링크 공유와 내 첫 사진 올리기 */
-function GatheringHome({ home, inviteToken, datePrompt }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode }) {
+function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null }) {
   const navigate = useNavigate()
-  const { room, members, todayFlowers, myTodo } = home
+  const { room, members, myTodo } = home
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
@@ -196,13 +201,11 @@ function GatheringHome({ home, inviteToken, datePrompt }: { home: RoomHome; invi
         <RoomHeader room={room} gathering unreadCount={home.unreadCount} />
 
         <section className="mt-3.5 px-1.5">
-          <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
+          <h2 className="text-[11px] text-sub">핀 꽃</h2>
           {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
-          <TodayFlowers members={members} flowers={todayFlowers} />
+          <BranchFlowers roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-2 text-[11px] text-sub">
-            {todayFlowers.length > 0
-              ? `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`
-              : '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
+            {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
           </p>
         </section>
 
@@ -411,12 +414,7 @@ function TimeUpSheet({
   )
 }
 
-/** 마감 시각이 지났는데 아직 엮지 않은 방인지 */
-function isTimeUp(room: RoomSummary) {
-  return (room.status === 'COLLECTING' || room.status === 'CIRCULATING') && room.deadlineAt !== null && new Date(room.deadlineAt).getTime() <= Date.now()
-}
-
-/** 모임방 홈: 방 상태, 오늘 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
+/** 모임방 홈: 방 상태, 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
 function RoomHomePage() {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
@@ -425,9 +423,7 @@ function RoomHomePage() {
   const [error, setError] = useState<string | null>(null)
   const [weaving, setWeaving] = useState(false)
   const [weaveError, setWeaveError] = useState<string | null>(null)
-  // 시간이 다 됐다는 시트는 이 화면에 들어올 때마다 한 번 보여주고, 닫으면 다시 띄우지 않는다
-  const [timeUpClosed, setTimeUpClosed] = useState(false)
-  // 모두 다 봤을 때 시트도 같은 방식: 들어올 때 한 번, 내리면 아래 카드로만 남는다
+  // 모두 다 봤을 때 시트: 들어올 때 한 번, 내리면 아래 카드로만 남는다
   const [allDoneClosed, setAllDoneClosed] = useState(false)
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
   // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다 (방 참가자 누구나 같은 링크)
@@ -464,11 +460,14 @@ function RoomHomePage() {
     getRoomHome(roomId, token).then(setHome).catch(() => {})
   }
 
+  // 핀 꽃·참여현황이 같이 쓰는 둘러보기 사진 목록 (홈이 갱신되면 같이 다시 불러온다)
+  const roomCards = useRoomCards(roomId, token, home)
+
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (error) return <NotFoundPage message={error} />
   if (!home) return <main className="flex-1 bg-bg" aria-busy="true" />
 
-  const { room, me, members, todayFlowers, myTodo } = home
+  const { room, me, members, myTodo } = home
 
   const handleWeave = async () => {
     setWeaving(true)
@@ -500,15 +499,7 @@ function RoomHomePage() {
   }
 
   const timeUpSheet =
-    isTimeUp(room) && !timeUpClosed ? (
-      <TimeUpSheet
-        isHost={me.role === 'HOST'}
-        weaving={weaving}
-        error={weaveError}
-        onWeave={handleWeave}
-        onClose={() => setTimeUpClosed(true)}
-      />
-    ) : room.status === 'CIRCULATING' && home.allCompleted && !allDoneClosed ? (
+    room.status === 'CIRCULATING' && home.allCompleted && !allDoneClosed ? (
       <TimeUpSheet
         reason="allDone"
         isHost={me.role === 'HOST'}
@@ -523,7 +514,7 @@ function RoomHomePage() {
   if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
     return (
       <>
-        <GatheringHome home={home} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
+        <GatheringHome home={home} roomCards={roomCards} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
         {timeUpSheet}
       </>
     )
@@ -542,12 +533,10 @@ function RoomHomePage() {
         <RoomHeader room={room} gathering={false} unreadCount={home.unreadCount} />
 
         <section className="mt-2.5 px-1.5">
-          <h2 className="text-[11px] text-sub">오늘 핀 꽃</h2>
-          <TodayFlowers members={members} flowers={todayFlowers} />
+          <h2 className="text-[11px] text-sub">핀 꽃</h2>
+          <BranchFlowers roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-1 text-[11px] text-sub">
-            {allDone
-              ? `이야기 ${todayFlowers.length}개가 모였어요`
-              : `이야기 ${todayFlowers.length}개 · 친구가 오면 꽃이 더해져요`}
+            {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
           </p>
         </section>
 
@@ -580,7 +569,7 @@ function RoomHomePage() {
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
             {members.map((m) => (
-              <MemberProgress key={m.id} member={m} done={allDone} />
+              <MemberProgress key={m.id} member={m} done={allDone} cards={roomCards} />
             ))}
           </ul>
         </section>

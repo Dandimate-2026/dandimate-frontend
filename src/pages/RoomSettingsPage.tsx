@@ -20,7 +20,7 @@ import { coverSrc, uploadRoomCover } from '../api/roomCovers'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
-import { formatDateSpaced, formatDateTime, toLocalDateTimeInput } from '../lib/date'
+import { formatDateSpaced, formatDateTime, latestDeadline, toLocalDateTimeInput } from '../lib/date'
 import { objectParticle } from '../lib/plans'
 import { getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
@@ -99,6 +99,7 @@ function EditDialog({
   target,
   initialValue,
   minCapacity = 1,
+  maxDeadline,
   onCancel,
   onSave,
 }: {
@@ -106,6 +107,8 @@ function EditDialog({
   initialValue: string
   /** 인원 바꾸기: 지금 들어온 인원보다 적게는 줄일 수 없다 */
   minCapacity?: number
+  /** 첫 두루마리 시각: 방을 만든 날로부터 1년까지 */
+  maxDeadline?: Date
   onCancel: () => void
   onSave: (value: string) => Promise<void>
 }) {
@@ -197,6 +200,7 @@ function EditDialog({
               aria-label={title}
               type={target === 'deadlineAt' ? 'datetime-local' : 'date'}
               min={target === 'deadlineAt' ? toLocalDateTimeInput(new Date().toISOString()) : undefined}
+              max={target === 'deadlineAt' && maxDeadline ? toLocalDateTimeInput(maxDeadline.toISOString()) : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="h-[52px] w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
@@ -214,7 +218,7 @@ function EditDialog({
           <p className="mt-3 text-center text-[12px] leading-5 text-sub">
             두루마리를 엮기 전까지 언제든 바꿀 수 있어요.
             <br />
-            지금보다 뒤의 시각으로 골라 주세요.
+            지금부터 방을 만든 날로부터 1년 안에서 골라 주세요.
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
@@ -591,6 +595,7 @@ function RoomSettingsPage() {
       {editing && (
         <EditDialog
           target={editing}
+          maxDeadline={latestDeadline(room.createdAt)}
           initialValue={
             editing === 'roomName'
               ? room.name

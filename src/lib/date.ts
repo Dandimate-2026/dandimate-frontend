@@ -38,3 +38,10 @@ export function timeAgo(iso: string) {
   if (hours < 24) return `${hours}시간 전`
   return `${Math.floor(hours / 24)}일 전`
 }
+
+/** 두루마리를 엮을 수 있는 가장 늦은 시각: 방을 만든 때(모르면 지금)로부터 1년. 방은 1년 뒤 지워진다 */
+export function latestDeadline(createdAt?: string) {
+  const d = createdAt ? new Date(createdAt) : new Date()
+  d.setFullYear(d.getFullYear() + 1)
+  return d
+}
