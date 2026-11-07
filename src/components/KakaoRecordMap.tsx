@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { groupPlaces, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
-import { DAEGU_GYEONGBUK_RINGS } from '../lib/daeguGyeongbukShape'
 import Flower from './Flower'
 
 // 카카오 지도 SDK (카카오톡 공유와 같은 JavaScript 키). 카카오 콘솔에서 "카카오맵" 사용 설정이 켜져 있어야 한다
@@ -11,8 +10,6 @@ const SDK_URL = `https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=${A
 
 /** 이 레벨 이하(더 가까이)로 확대하면 도시 핀 대신 사진별 세부 장소 핀을 보여준다 (카카오 레벨: 숫자가 작을수록 가까이) */
 const DETAIL_LEVEL = 8
-/** 대구·경북이 한눈에 들어오는 처음 위치·레벨 */
-const START = { lat: 36.25, lng: 128.75, level: 11 }
 /** 지도를 끌어도 대구·경북 밖으로 너무 나가지 않게 가운데 좌표를 이 범위로 묶는다 (울릉도·독도 포함) */
 const BOUNDS = { minLat: 35.4, maxLat: 37.6, minLng: 127.7, maxLng: 131.95 }
 
@@ -24,6 +21,7 @@ interface KakaoMap {
   getLevel: () => number
   getCenter: () => LatLng
   setCenter: (latLng: LatLng) => void
+  setLevel: (level: number) => void
   setMaxLevel: (level: number) => void
   relayout: () => void
 }
@@ -34,16 +32,6 @@ interface KakaoMaps {
   load: (callback: () => void) => void
   LatLng: new (lat: number, lng: number) => LatLng
   Map: new (el: HTMLElement, options: { center: LatLng; level: number }) => KakaoMap
-  Polygon: new (options: {
-    map?: KakaoMap
-    path: LatLng[][]
-    strokeWeight?: number
-    strokeColor?: string
-    strokeOpacity?: number
-    fillColor?: string
-    fillOpacity?: number
-    zIndex?: number
-  }) => KakaoOverlay
   CustomOverlay: new (options: { position: LatLng; content: HTMLElement; yAnchor?: number; xAnchor?: number; zIndex?: number }) => KakaoOverlay
   event: { addListener: (target: KakaoMap, type: string, handler: () => void) => void }
 }
@@ -80,8 +68,8 @@ type Marker =
   | { key: string; kind: 'place'; pin: CityPin; place: MapPlaceItem; count: number; el: HTMLElement }
 
 /**
- * 카카오 지도 위 기록 지도. 멀리서는 도시 핀, 확대하면 사진마다 고른 세부 장소 핀.
- * 지도를 못 불러오면 onFail을 불러 그림 지도로 바꾸게 한다
+ * 커스텀 행정구역 지도를 충분히 확대한 뒤 보여 주는 카카오 상세 지도.
+ * 실제 도로·지명·좌표는 이 단계에서만 보여 주고, 축소하면 다시 커스텀 지도로 돌아간다.
  */
 function KakaoRecordMap({
   pins,
@@ -89,6 +77,8 @@ function KakaoRecordMap({
   cityFlower,
   onOpenCity,
   onFail,
+  onOverview,
+  initialCenter,
   children,
 }: {
   pins: CityPin[]
@@ -97,12 +87,15 @@ function KakaoRecordMap({
   /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
   onOpenCity: (pin: CityPin, place?: MapPlaceItem) => void
   onFail: () => void
+  /** 충분히 축소하면 다시 행정구역 개요 지도로 보낸다 */
+  onOverview: () => void
+  initialCenter: { lat: number; lng: number }
   children?: ReactNode
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [maps, setMaps] = useState<KakaoMaps | null>(null)
   const mapRef = useRef<KakaoMap | null>(null)
-  const [level, setLevel] = useState(START.level)
+  const [level, setLevel] = useState(DETAIL_LEVEL)
   const [markers, setMarkers] = useState<Marker[]>([])
 
   // 지도 만들기
@@ -111,33 +104,19 @@ function KakaoRecordMap({
     loadKakaoMaps()
       .then((km) => {
         if (cancelled || !boxRef.current) return
-        const map = new km.Map(boxRef.current, { center: new km.LatLng(START.lat, START.lng), level: START.level })
+        const map = new km.Map(boxRef.current, { center: new km.LatLng(initialCenter.lat, initialCenter.lng), level: DETAIL_LEVEL })
         map.setMaxLevel(12)
-        km.event.addListener(map, 'zoom_changed', () => setLevel(map.getLevel()))
+        km.event.addListener(map, 'zoom_changed', () => {
+          const nextLevel = map.getLevel()
+          setLevel(nextLevel)
+          if (nextLevel >= 10) onOverview()
+        })
         // 대구·경북 밖으로 끌고 나가면 범위 안으로 되돌린다
         km.event.addListener(map, 'dragend', () => {
           const c = map.getCenter()
           const lat = Math.min(BOUNDS.maxLat, Math.max(BOUNDS.minLat, c.getLat()))
           const lng = Math.min(BOUNDS.maxLng, Math.max(BOUNDS.minLng, c.getLng()))
           if (lat !== c.getLat() || lng !== c.getLng()) map.setCenter(new km.LatLng(lat, lng))
-        })
-        // 대구·경북 밖은 바다색으로 덮어서 대구·경북만 보이게 한다 (큰 사각형에 대구·경북 모양으로 구멍을 낸다)
-        const toPath = (ring: [number, number][]) => ring.map(([lat, lng]) => new km.LatLng(lat, lng))
-        const world: [number, number][] = [
-          [30, 120],
-          [30, 140],
-          [45, 140],
-          [45, 120],
-        ]
-        new km.Polygon({
-          map,
-          path: [toPath(world), ...DAEGU_GYEONGBUK_RINGS.map(toPath)],
-          strokeWeight: 2,
-          strokeColor: '#c9bfb2',
-          strokeOpacity: 1,
-          fillColor: '#e9eeec',
-          fillOpacity: 1,
-          zIndex: 1,
         })
         mapRef.current = map
         setMaps(km)
@@ -148,6 +127,7 @@ function KakaoRecordMap({
     return () => {
       cancelled = true
     }
+    // initialCenter는 커스텀 지도에서 카카오 상세 지도로 넘어오는 한 번의 위치값이다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -197,6 +177,27 @@ function KakaoRecordMap({
         <p className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-surface/90 px-2.5 py-1 text-[10px] text-sub">
           확대하면 다녀온 곳이 보여요
         </p>
+      )}
+
+      {maps && (
+        <div className="absolute right-2 bottom-2 z-10 flex flex-col overflow-hidden rounded-[12px] border border-line bg-surface shadow-sm">
+          <button
+            type="button"
+            aria-label="확대"
+            onClick={() => mapRef.current?.setLevel(Math.max(1, mapRef.current.getLevel() - 1))}
+            className="size-9 text-[18px] active:bg-bg"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            aria-label="축소"
+            onClick={() => mapRef.current?.setLevel(Math.min(12, mapRef.current.getLevel() + 1))}
+            className="size-9 border-t border-line text-[18px] active:bg-bg"
+          >
+            −
+          </button>
+        </div>
       )}
 
       {/* 카카오 지도 위 핀은 React로 그려서 꽃 아이콘·스타일을 그대로 쓴다 */}
