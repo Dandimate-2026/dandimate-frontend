@@ -9,7 +9,7 @@ export const FLOWER_COLOR: Record<FlowerCode, string> = {
   ROYAL_AZALEA: '#3D7BD6',
   CANOLA: '#428E80',
   LILAC: '#946DC4',
-  FORGET_ME_NOT: '#B59633',
+  FORGET_ME_NOT: '#C9372F',
   TEAL: '#8E2A6B',
   PURPLE: '#728C0E',
 }

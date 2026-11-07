@@ -9,7 +9,7 @@ import ScrollDocument from './ScrollDocument'
 import { canUseTemplate, getTemplate, SCROLL_TEMPLATES, type RoomPlan, type ScrollTemplateId } from './templates'
 
 const PLAN_LABEL: Record<RoomPlan, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
-const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : '특별 꾸미기')
+const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : 'PRO')
 
 /** 방 이름에 지역 이름이 들어 있으면 그 지역 템플릿을 추천한다 (예: "경주 1박 2일" → 경주) */
 function recommendFor(roomName: string): ScrollTemplateId | null {
@@ -40,6 +40,8 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
         <span className={`tp-badge ${item.plan.toLowerCase()}`}>{planBadge(item.plan)}</span>
       </span>
       <span className="tp-tile-name">{item.name}</span>
+      {/* Pro 특별 꾸미기는 시즌 한정이라 이름 밑에 작게 알린다 */}
+      {item.plan === 'PRO' && <span className="tp-tile-sub">겨울 시즌 한정</span>}
     </button>
   )
 
@@ -80,10 +82,16 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
       <div className="tp-section-head"><h2>지역 템플릿</h2><span>Lite 이상</span></div>
       <div className="tp-row" aria-label="지역 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan === 'LITE').map(tile)}</div>
     </section>
-    <section className="tp-section">
-      <div className="tp-section-head"><h2>기본 · 특별</h2><span>기본 무료 · 특별 Pro</span></div>
-      <div className="tp-row" aria-label="기본 · 특별 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan !== 'LITE').map(tile)}</div>
-    </section>
+    <div className="tp-split">
+      <section className="tp-section">
+        <div className="tp-section-head"><h2>특별 꾸미기</h2><span>Pro 전용</span></div>
+        <div className="tp-row" aria-label="특별 꾸미기 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan === 'PRO').map(tile)}</div>
+      </section>
+      <section className="tp-section">
+        <div className="tp-section-head"><h2>기본</h2><span>무료</span></div>
+        <div className="tp-row" aria-label="기본 템플릿">{SCROLL_TEMPLATES.filter((item) => item.plan === 'FREE').map(tile)}</div>
+      </section>
+    </div>
 
     <div className="tp-footer">
       <p className="tp-note">{lockNote ?? `${template.name} 템플릿으로 펼쳐요`}</p>

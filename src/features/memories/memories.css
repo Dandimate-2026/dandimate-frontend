@@ -600,3 +600,12 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-live .scroll-toast-inline { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(calc(100% - 32px), 398px); z-index: 30;
   box-shadow: 0 6px 20px rgba(42, 38, 35, .18); animation: scroll-toast-in .3s ease-out; }
 @keyframes scroll-toast-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* 지역·특별 템플릿도 그림 바로 아래에 봉을 건다 (그림 아래 끝에 살짝 걸치게) */
+.scroll-live.has-template:not(.scroll-template-minimal) > .scroll-rod:not(.scroll-rod-end) { margin: -9px 4px 0; z-index: 1; }
+.scroll-document:not(.scroll-template-minimal) > .scroll-rod:not(.scroll-rod-end) { margin: -9px 14px 0; z-index: 1; }
+
+/* 특별 꾸미기(Pro)와 기본을 한 줄에 나란히 */
+.tp-split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tp-split .tp-section-head { justify-content: flex-start; gap: 6px; }
+.tp-tile-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 600; color: var(--color-point); }

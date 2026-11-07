@@ -117,7 +117,9 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   return <main className={`memory-page memory-scroll scroll-live scroll-design scroll-template-${templateId} has-template`} style={templateStyle(templateId)}>
     <button type="button" className="scroll-cover-back" onClick={onBack} aria-label="뒤로 가기">‹</button>
     <div className="scroll-cover-actions"><button type="button" className="template-change-button" onClick={() => setPickingTemplate(true)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>템플릿 바꾸기</button>{saveButton}</div>
-    {templateId === 'minimal' ? <div className="scroll-rod" aria-hidden="true" /> : <img className="scroll-template-hero" src={template.art} width={360} height={180} alt="" />}
+    {/* 모든 템플릿에 봉을 둔다. 지역·특별 템플릿은 그림 바로 아래에 봉이 걸린다 */}
+    {templateId !== 'minimal' && <img className="scroll-template-hero" src={template.art} width={360} height={180} alt="" />}
+    <div className="scroll-rod" aria-hidden="true" />
     <TripHeading onBack={onBack} title={home.room.name} separateTitle cover
       detail={`${home.room.meetingDate?.replaceAll('-', '.') ?? '모임 날짜 미정'} · 참여 ${scroll.participantCount}/${scroll.memberCount} · 사진 ${scroll.paragraphs.length}장`}
       members={home.members.map((member) => ({ name: member.nickname, color: memoryFlowerColor(member.flowerCode) }))}
@@ -146,8 +148,8 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       </div>
       {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
     </section>})}
-    {templateId === 'minimal' && scroll.paragraphs.length > 0 && <div className="scroll-rod scroll-rod-end" aria-hidden="true" />}
-    <ScrollUnroll showRod={templateId === 'minimal'} rememberKey={`${home.room.id}:${home.me.id}:${scroll.id}`} />
+    {scroll.paragraphs.length > 0 && <div className="scroll-rod scroll-rod-end" aria-hidden="true" />}
+    <ScrollUnroll showRod rememberKey={`${home.room.id}:${home.me.id}:${scroll.id}`} />
     {scroll.paragraphs.length > 0 && <footer className="scroll-complete-footer">
       <div className="scroll-end-flowers" aria-hidden="true"><MemoryFlower color="pink" size={25} /><MemoryFlower color="blue" size={25} /><MemoryFlower color="orange" size={25} /></div>
       <h2>두루마리를 끝까지 읽었어요</h2><p>사진 {scroll.paragraphs.length}장 · 이야기 {storyCount}개가 엮였어요</p>
