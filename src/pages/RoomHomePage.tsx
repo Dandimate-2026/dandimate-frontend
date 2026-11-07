@@ -20,7 +20,6 @@ import { getRoomSession } from '../lib/session'
 import WeaveDatePrompt from '../components/WeaveDatePrompt'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
-import { useSheetDrag } from '../hooks/useSheetDrag'
 import { siteUrl } from '../lib/siteUrl'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 
@@ -326,94 +325,6 @@ function MyTodoCard({ home }: { home: RoomHome }) {
   )
 }
 
-/**
- * 엮을 때가 되면 아래에서 올라오는 알림 시트.
- * - timeUp: 약속한 시간이 다 됐을 때
- * - allDone: 마감 전에 모두가 다 봤을 때 (조기 엮기)
- * 내리면 홈 아래쪽 카드로 같은 내용이 남아 있다
- */
-function TimeUpSheet({
-  reason = 'timeUp',
-  isHost,
-  weaving,
-  error,
-  onWeave,
-  onClose,
-}: {
-  reason?: 'timeUp' | 'allDone'
-  isHost: boolean
-  weaving: boolean
-  error: string | null
-  onWeave: () => void
-  onClose: () => void
-}) {
-  const sheetDrag = useSheetDrag(onClose)
-  return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-ink/40" onClick={onClose}>
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="timeup-title"
-        onClick={(e) => e.stopPropagation()}
-        style={sheetDrag.sheetStyle}
-        className="flex w-full max-w-[430px] flex-col items-center rounded-t-[28px] bg-surface px-6 pt-3 pb-8 text-center text-ink"
-      >
-        <div {...sheetDrag.handleProps} className="-my-2 flex w-full justify-center py-2" aria-hidden="true">
-          <span className="h-1 w-10 rounded-full bg-line" />
-        </div>
-        <div className="mt-6">
-          <ScrollIcon />
-        </div>
-        <h2 id="timeup-title" className="mt-3 text-[18px] font-bold">
-          {reason === 'allDone' ? '모두 다 봤어요' : '약속한 시간이 다 됐어요'}
-        </h2>
-        <p className="mt-2 text-[13px] leading-5 text-sub">
-          {reason === 'allDone' ? (
-            isHost ? (
-              <>
-                이제 첫 두루마리를 엮을 수 있어요
-                <br />
-                지금 바로 엮을 수 있어요
-              </>
-            ) : (
-              <>
-                친구들이 모두 다 봤어요
-                <br />
-                방장이 엮으면 첫 두루마리가 나와요
-              </>
-            )
-          ) : isHost ? (
-            <>
-              지금까지 모인 이야기로
-              <br />첫 두루마리를 엮어 볼까요?
-            </>
-          ) : (
-            <>
-              방장이 엮으면
-              <br />첫 두루마리가 나와요
-            </>
-          )}
-        </p>
-        {error && <p className="mt-2 text-[12px] text-point">{error}</p>}
-        {isHost ? (
-          <>
-            <Button onClick={onWeave} disabled={weaving} className="mt-6 w-full">
-              {weaving ? '엮는 중…' : '엮으러 가기'}
-            </Button>
-            <button type="button" onClick={onClose} className="mt-3 py-1 text-[13px] text-sub active:opacity-80">
-              조금 있다가 할게요
-            </button>
-          </>
-        ) : (
-          <Button onClick={onClose} className="mt-6 w-full">
-            확인
-          </Button>
-        )}
-      </section>
-    </div>
-  )
-}
-
 /** 모임방 홈: 방 상태, 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
 function RoomHomePage() {
   const { roomId = '' } = useParams()
@@ -423,8 +334,6 @@ function RoomHomePage() {
   const [error, setError] = useState<string | null>(null)
   const [weaving, setWeaving] = useState(false)
   const [weaveError, setWeaveError] = useState<string | null>(null)
-  // 모두 다 봤을 때 시트: 들어올 때 한 번, 내리면 아래 카드로만 남는다
-  const [allDoneClosed, setAllDoneClosed] = useState(false)
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
   // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다 (방 참가자 누구나 같은 링크)
   const inviteToken = useRoomInvite(roomId)
@@ -498,25 +407,10 @@ function RoomHomePage() {
     await copyForShare(text, url)
   }
 
-  const timeUpSheet =
-    room.status === 'CIRCULATING' && home.allCompleted && !allDoneClosed ? (
-      <TimeUpSheet
-        reason="allDone"
-        isHost={me.role === 'HOST'}
-        weaving={weaving}
-        error={weaveError}
-        onWeave={handleWeave}
-        onClose={() => setAllDoneClosed(true)}
-      />
-    ) : null
-
   // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
   if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
     return (
-      <>
-        <GatheringHome home={home} roomCards={roomCards} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
-        {timeUpSheet}
-      </>
+      <GatheringHome home={home} roomCards={roomCards} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
     )
   }
 
@@ -525,6 +419,8 @@ function RoomHomePage() {
   // 두루마리가 완성된 방도 시안처럼 모두 다 본 모양(체크·꽉 찬 막대)으로 보여준다
   const grown = room.status === 'GROWING'
   const allDone = readyToWeave || grown
+  // 혼자 쓰는 방: 사진 한 장만 올려도 '모두 다 봤어요'가 되어 버려서 문구와 버튼을 따로 둔다
+  const solo = members.length === 1
 
   return (
     // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
@@ -566,7 +462,7 @@ function RoomHomePage() {
           <div className="flex items-center justify-between px-0.5 text-[11px]">
             <h2 className="text-sub">참여현황</h2>
             <p>
-              {members.length}/{room.capacity ?? ROOM_CAPACITY}명{allDone && ' 다 봤어요'}
+              {solo ? '혼자 기록하는 중' : <>{members.length}/{room.capacity ?? ROOM_CAPACITY}명{allDone && ' 다 봤어요'}</>}
             </p>
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
@@ -578,7 +474,8 @@ function RoomHomePage() {
       </div>
 
       <footer className="mt-auto px-5 pb-5 [@media(min-height:900px)]:mt-2">
-        <WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />
+        {/* 모두 다 봐서 지금 엮을 수 있으면 "언제 엮을까요?"는 숨기고 아래 "엮으러 가기" 카드 하나만 보인다 */}
+        {!readyToWeave && <WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />}
         {grown ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon />
@@ -595,9 +492,24 @@ function RoomHomePage() {
         ) : readyToWeave ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon />
-            <p className="mt-2 text-[15px] font-bold">모두 다 봤어요. 이제 엮을 수 있어요</p>
+            <p className="mt-2 text-[15px] font-bold">{solo ? '혼자서도 두루마리를 엮을 수 있어요' : '모두 다 봤어요. 이제 엮을 수 있어요'}</p>
             {/* 마감 전에 엮기(조기 마감)는 방장만 할 수 있다 */}
-            {me.role === 'HOST' ? (
+            {solo ? (
+              <>
+                <p className="mt-2 text-[11px] text-sub">사진을 더 올릴수록 두루마리가 길어져요</p>
+                {weaveError && <p className="mt-2 text-[11px] text-point">{weaveError}</p>}
+                <Button onClick={handleWeave} disabled={weaving} className="mt-3.5 w-full">
+                  {weaving ? '엮는 중…' : '지금 엮기'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => navigate(paths.photoUpload(room.id))}
+                  className="mt-3 py-1 text-[12px] text-sub active:opacity-80"
+                >
+                  더 남길 사진이 있나요? <span className="font-semibold text-point">사진 더 올리기 ›</span>
+                </button>
+              </>
+            ) : me.role === 'HOST' ? (
               <>
                 <p className="mt-2 text-[11px] text-sub">
                   지금 바로 엮을 수 있어요
@@ -611,18 +523,18 @@ function RoomHomePage() {
               <p className="mt-2 text-[11px] text-sub">방장이 엮으면 두루마리가 나와요</p>
             )}
             {/* 엮기 전에 아직 남길 이야기가 있으면 더 덧붙일 수 있다고 알려 준다 */}
-            <button
+            {!solo && <button
               type="button"
               onClick={() => navigate(paths.roomCirculation(room.id))}
               className="mt-3 py-1 text-[12px] text-sub active:opacity-80"
             >
               아직 남길 이야기가 있나요? <span className="font-semibold text-point">더 덧붙이기 ›</span>
-            </button>
+            </button>}
           </Card>
         ) : (
           <MyTodoCard home={home} />
         )}
-        <div className="mt-4 flex justify-center">
+        {!solo && <div className="mt-4 flex justify-center">
           <button
             type="button"
             onClick={() => void handleShareToChat()}
@@ -631,9 +543,8 @@ function RoomHomePage() {
             <ShareIcon />
             단톡방에 알리기
           </button>
-        </div>
+        </div>}
       </footer>
-      {timeUpSheet}
     </main>
   )
 }
