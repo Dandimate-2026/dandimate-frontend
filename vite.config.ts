@@ -84,6 +84,10 @@ export default defineConfig({
   ],
   server: {
     open: true,
+    watch: {
+      // QA 브라우저 프로필 등 실행 중 잠기는 산출물은 감시하지 않는다.
+      ignored: ['**/artifacts/**'],
+    },
     // 로컬 개발 시 /api 요청을 백엔드로 넘겨 CORS 문제를 피한다
     proxy: {
       '/api': {

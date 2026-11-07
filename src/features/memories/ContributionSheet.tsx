@@ -2,17 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import Button from '../../components/Button'
 import { RecordButton, WaveProgress } from '../../components/entry/VoiceControls'
 import { formatDuration, useVoiceRecorder } from '../../hooks/useVoiceRecorder'
-import { BottomSheet } from './components'
+import { BottomSheet, MemoryHeader } from './components'
 import type { MemoryContribution } from './types'
 import { formatVoiceLimit } from '../../hooks/useRoomQuota'
 import { LengthNotice } from '../../components/LengthNotice'
 import { clampText } from '../../lib/textLimit'
 
-export default function ContributionSheet({ kind, quote, initial, startWithText = false, onSave, onClose, onTranscribe, maxLength = 500, maxVoiceMs }: {
+export default function ContributionSheet({ kind, quote, initial, startWithText = false, fullPage = false, onSave, onClose, onTranscribe, maxLength = 500, maxVoiceMs }: {
   kind: 'addition' | 'reply'
   quote: string
   initial?: MemoryContribution
   startWithText?: boolean
+  fullPage?: boolean
   onSave: (value: MemoryContribution) => void | Promise<void>
   onClose: () => void
   onTranscribe?: (audio: Blob) => Promise<{ transcript: string; transcriptionId: string }>
@@ -93,9 +94,9 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     } finally { if (mounted.current) setSaving(false) }
   }
 
-  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>
+  const content = <>
     <blockquote>{quote}</blockquote>
-    <h3>{kind === 'reply' ? '여기에 빠진 이야기가 있나요?' : '이 장면, 당신은 어떻게 기억해요?'}</h3>
+    <h3>{fullPage ? '어떻게 다시 엮어 볼까요?' : kind === 'reply' ? '여기에 빠진 이야기가 있나요?' : '이 장면, 당신은 어떻게 기억해요?'}</h3>
     <p className="memory-sheet-hint">{kind === 'reply' ? '당신이 기억하는 장면을 보태주세요' : '한 두 문장이면 충분해요'}</p>
     {mode === 'voice' ? <div className="memory-recorder">
       {audio ? <><audio controls src={audio.url} aria-label="녹음 미리 듣기" /><p>녹음 {formatDuration(audio.durationMs)}</p><button type="button" className="memory-text-link" onClick={() => void start()}>다시 녹음하기</button></> : <>
@@ -111,7 +112,9 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     </div>}
     {error && <p role="alert" className="memory-error">{error}</p>}
     {transcribing && <p role="status" className="memory-sheet-hint">녹음을 글로 옮기고 있어요…</p>}
-    {(mode === 'text' || audio) && <Button className="memory-save" onClick={() => void save()} disabled={(!text.trim() && !audio) || recorder.recording || starting || transcribing || saving}>{saving ? '저장 중…' : kind === 'reply' ? '답가 남기기' : '기억 남기기'}</Button>}
+    {(mode === 'text' || audio) && <Button className="memory-save" onClick={() => void save()} disabled={(!text.trim() && !audio) || recorder.recording || starting || transcribing || saving}>{saving ? '저장 중…' : fullPage ? '이 이야기로 다시 엮기' : kind === 'reply' ? '답가 남기기' : '기억 남기기'}</Button>}
     <button type="button" className="memory-text-link memory-mode-link" disabled={starting || transcribing || saving} onClick={() => { recorder.cancel(); setMode(mode === 'voice' ? 'text' : 'voice') }}>{mode === 'voice' ? '지금 말하기 어려워요 → 글로 답하기' : '말로 답하기'}</button>
-  </BottomSheet>
+  </>
+  if (fullPage) return <main className="memory-page memory-reweave-editor"><MemoryHeader title="다시 엮기" onBack={() => { if (!saving) onClose() }} /><div className="memory-reweave-content">{content}</div></main>
+  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>{content}</BottomSheet>
 }

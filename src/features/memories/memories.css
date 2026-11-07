@@ -82,7 +82,10 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-weaving h1 { font-size: 20px; font-weight: 650; margin-top: 26px; }
 .memory-weaving-main p { font-size: 16px; line-height: 20px; color: var(--color-sub); margin-top: 7px; }
 .memory-loading { display: flex; gap: 10px; justify-content: center; margin-top: 23px; }
-.memory-loading span { width: 34px; height: 4px; border-radius: 2px; background: var(--color-point); }
+.memory-loading span { width: 34px; height: 4px; border-radius: 2px; background: var(--color-point); animation: memory-weaving-pulse 1.35s ease-in-out infinite; }
+.memory-loading span:nth-child(2) { animation-delay: .18s; }
+.memory-loading span:nth-child(3) { animation-delay: .36s; }
+@keyframes memory-weaving-pulse { 0%, 70%, 100% { opacity: .25; transform: scaleX(.8); } 35% { opacity: 1; transform: scaleX(1); } }
 .memory-weaving-footer { margin-top: auto; padding-top: 45px; padding-bottom: 30px; font-size: 12px; color: var(--color-sub); text-align: center; }
 .memory-weaving-footer .memory-share button { gap: 15px; }
 .memory-scroll { padding-top: 100px; padding-bottom: 20px; }
@@ -193,9 +196,15 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-rewoven-heading > button { flex-shrink: 0; color: var(--color-sub); text-decoration: underline; }
 .memory-text-highlight { color: inherit; background: #fae7ef; box-shadow: inset 0 -2px 0 #edbdd0; border-radius: 3px; padding: 1px 0 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .memory-narrative { white-space: pre-wrap; overflow-wrap: anywhere; }
-.scroll-rewoven { border: 1px solid var(--color-point); border-radius: 20px; padding: 14px; margin-top: 12px; background: var(--color-surface); }
+.scroll-rewoven { margin-top: 12px; }
 .scroll-rewoven .scroll-rewoven-heading { margin-top: 0; }
 .scroll-reweave-button { width: 100%; padding: 12px; margin-top: 12px; }
+.scroll-bottom-reweave { padding: 16px 0; text-align: center; }
+.scroll-bottom-reweave > p { color: var(--color-sub); font-size: 13px; }
+.scroll-reweave-targets { display: grid; gap: 12px; margin-top: 16px; }
+.scroll-reweave-targets button { padding: 16px; text-align: left; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); }
+.scroll-reweave-targets strong, .scroll-reweave-targets span { display: block; }
+.scroll-reweave-targets span { margin-top: 8px; color: var(--color-sub); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .scroll-complete-footer { text-align: center; padding: 24px 0; }
 .scroll-end-flowers { display: flex; justify-content: center; gap: 4px; margin-bottom: 10px; }
 .scroll-complete-footer h2 { font-size: 18px; font-weight: 700; }
@@ -212,7 +221,7 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-reweaving .memory-weaving-main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 40px; }
 .memory-reweaving .memory-weaving-footer { padding-top: 32px; padding-bottom: 30px; }
 .memory-reweaving .memory-weaving-footer strong { color: var(--color-point); font-weight: 650; }
-.memory-reweaving .memory-loading span:nth-child(n+2) { background: var(--color-line); }
+.memory-reweaving .memory-loading span:nth-child(n+2) { background: var(--color-point); }
 .memory-sheet:has(.download-options) { background: var(--color-surface); }
 .memory-sheet:has(.download-options) .memory-sheet-body { padding-top: 30px; }
 .template-picker > h1 { font-size: 28px; font-weight: 750; line-height: 1.4; margin: 8px 0; }
@@ -263,4 +272,315 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-export-stage { position: fixed; left: -10000px; top: 0; width: 360px; pointer-events: none; }
 .scroll-export-stage > .scroll-document { width: 360px; }
 .scroll-export-stage > .scroll-document:not(:first-child) { min-height: 360px; }
+.scroll-design .memory-trip-topline { justify-content: flex-start; gap: 8px; }
+.scroll-design .memory-trip-topline h1 { flex: 1; line-height: 1.4; overflow-wrap: anywhere; }
+.scroll-live:not(.has-template) { padding-top: max(36px, env(safe-area-inset-top)); }
+.scroll-live:not(.has-template) .memory-trip-heading > p,
+.scroll-live:not(.has-template) .memory-trip-heading > .memory-members { margin-left: 12px; }
+.scroll-design .memory-members { flex-wrap: wrap; gap: 10px; }
+.scroll-design.has-template { position: relative; }
+.scroll-live.has-template { padding-top: 0; }
+.scroll-design.has-template > .scroll-template-hero { margin: 0 -20px 0; width: calc(100% + 40px); aspect-ratio: 1.5; object-fit: cover; }
+.scroll-cover-back { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 16px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; background: #fffdf7ed; font-size: 30px; line-height: 1; display: grid; place-items: center; padding-bottom: 3px; }
+.scroll-cover-save { position: absolute; top: max(20px, env(safe-area-inset-top)); right: 16px; z-index: 2; }
+.scroll-live.has-template .scroll-save-button { width: 36px; height: 36px; padding: 8px; overflow: hidden; font-size: 0; border: 0; background: #fffdf7ed; }
+.scroll-live.has-template .scroll-save-button svg { width: 20px; height: 20px; flex-shrink: 0; }
+.scroll-design.has-template .memory-trip-heading { position: relative; border-bottom: 0; border-left: 1px solid var(--scroll-accent); padding: 16px 0 4px 16px; margin: 18px 0 0 4px; }
+.scroll-design.has-template .memory-trip-heading::before,
+.scroll-design.has-template .memory-chapter::before { content: ''; position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--scroll-accent); left: -5.5px; top: 25px; }
+.scroll-design.has-template .memory-trip-heading > p,
+.scroll-design.has-template .memory-trip-heading .memory-members { margin-left: 0; }
+.scroll-design.has-template .memory-chapter { position: relative; margin-left: 4px; padding: 14px 0 20px 16px; border-left: 1px solid var(--scroll-accent); border-top: 0; }
+.scroll-design.has-template .memory-chapter::before { top: 24px; }
+.scroll-design .memory-photo { background: var(--scroll-photo); box-shadow: none; }
+.scroll-design.has-template .memory-photo { border-radius: 16px; }
+.scroll-design.has-template .memory-narrative { font-size: 14px; line-height: 1.6; }
+.scroll-design .memory-chapter-meta { margin-top: 16px; }
+.scroll-document.scroll-design > .scroll-template-hero { margin: 0; width: 100%; }
+.scroll-document.scroll-template-minimal { background: #eee8dd; padding-top: 22px; }
+.scroll-document.scroll-template-minimal .scroll-document-body { background: #fffdf7; margin: 0 22px; padding: 4px 14px 20px; }
+.scroll-document.has-template .scroll-document-body { padding-top: 0; }
+.scroll-document.has-template .scroll-document-heading { position: relative; border-left: 1px solid var(--scroll-accent); margin-left: 4px; padding: 16px 0 0 16px; }
+.scroll-document-heading .memory-members { margin-left: 0; }
+.memory-app .scroll-bottom-rating { margin-top: 12px; border-radius: 24px; padding: 22px 20px 18px; }
+.scroll-bottom-rating .memory-rating-options { align-items: center; margin: 14px 0 8px; }
+.scroll-bottom-rating .memory-rating-options label { width: 44px; height: 44px; display: grid; place-items: center; }
+.scroll-bottom-rating .memory-rating-options span { width: 28px; height: 28px; transition: background .15s; }
+.scroll-bottom-rating .memory-rating-options label:nth-child(2) span,
+.scroll-bottom-rating .memory-rating-options label:nth-child(4) span { width: 32px; height: 32px; }
+.scroll-bottom-rating .memory-rating-options label:nth-child(3) span { width: 36px; height: 36px; }
+.scroll-rating-complete { padding: 16px; text-align: center; color: var(--color-point); font-size: 13px; }
+.memory-reweave-content { margin-top: 36px; }
+.memory-reweave-content blockquote { padding: 20px; margin-bottom: 24px; border-radius: 16px; background: #efe9df; white-space: pre-wrap; }
+.memory-reweave-content h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.memory-reweave-content .memory-save { width: 100%; margin-top: 24px; }
+.template-picker .memory-header { position: relative; justify-content: center; }
+.template-picker .memory-header .memory-back { width: 100%; justify-content: center; font-size: 14px; }
+.template-picker .memory-header .memory-back svg { position: absolute; left: 0; }
+.template-picker > h1 { font-size: 24px; }
+.template-picker .template-featured { border-color: var(--color-ink); border-radius: 20px; padding: 12px; }
+.template-picker .template-featured > img { width: 100px; height: 100px; }
+.template-picker .template-featured h2 { font-size: 18px; }
+.template-picker .template-grid { display: flex; overflow-x: auto; gap: 10px; padding: 3px 2px 8px; }
+.template-picker .template-tile { flex: 0 0 94px; border-radius: 14px; }
+.template-picker .template-tile img { height: 84px; }
+.template-picker .template-tile strong { padding: 8px; }
+.template-picker .template-plan.lite { background: #f6d9e4; color: #ba3f73; }
+.template-picker .template-plan.pro { background: #302b26; }
+.template-picker .template-document-preview { border: 0; border-radius: 22px; max-height: 61dvh; }
+.template-picker .template-chips button img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.template-picker .template-note { margin-top: auto; padding-top: 24px; font-size: 11px; }
+@media (max-width: 350px) { .scroll-design.has-template > .scroll-template-hero { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); } .scroll-bottom-rating .memory-rating-options label { width: 40px; } }
 @media (max-width: 350px) { .scroll-live > .scroll-template-hero { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); } .template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 템플릿 고르기 (시안 S11-3) */
+.template-picker-top { position: relative; }
+.template-picker-top .template-later { position: absolute; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 8px 4px; font-size: 13px; color: var(--color-sub); background: none; }
+.template-picker .template-eyebrow { font-size: 12px; margin-top: 18px; }
+.template-picker > h1 { font-size: 24px; margin: 6px 0 4px; }
+.template-picker .template-featured { position: relative; width: 100%; align-items: center; text-align: left; border: 2px solid var(--color-ink); margin-top: 26px; padding: 14px; }
+.template-picker .template-featured[aria-pressed="false"] { border: 1px solid var(--color-line); }
+.template-featured-badge { position: absolute; top: -11px; left: 16px; border-radius: 999px; background: var(--color-point); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 9px; }
+.template-picker .template-featured > img { width: 104px; height: 78px; border-radius: 10px; }
+.template-featured-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+.template-featured-name { display: flex; align-items: center; gap: 6px; font-size: 18px; font-weight: 750; }
+.template-featured-desc { font-size: 12px; color: var(--color-sub); }
+.template-featured-why { font-size: 11px; font-weight: 700; color: var(--color-point); }
+.template-row { display: flex; gap: 10px; overflow-x: auto; margin: 10px -20px 0; padding: 4px 20px 6px; scrollbar-width: none; }
+.template-row::-webkit-scrollbar { display: none; }
+.template-row .template-tile { flex: 0 0 96px; border: 0; background: none; overflow: visible; }
+.template-tile-art { position: relative; display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-line); }
+.template-row .template-tile img { height: 72px; }
+.template-row .template-tile[aria-pressed="true"] { outline: none; }
+.template-row .template-tile[aria-pressed="true"] .template-tile-art { border: 2px solid var(--color-ink); }
+.template-row .template-tile strong { padding: 6px 2px 0; font-size: 12px; font-weight: 600; }
+.template-plan.lite { background: #fff; color: var(--color-point); border: 1px solid #f0c9d8; }
+.template-plan.pro { background: var(--color-ink); color: #fff; }
+.template-plan.inline { position: static; font-size: 9px; }
+
+/* 두루마리 위 "템플릿 바꾸기" 버튼 */
+.scroll-template-control .template-change-button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 12px; font-weight: 600; color: var(--color-ink); }
+.scroll-template-control .template-change-button:active { opacity: .8; }
+
+/* 기본 미니멀 (시안): 위쪽 두루마리 막대 + 가운데 흰 종이 */
+.scroll-rod { height: 22px; border-radius: 11px; background: #302b26; border-left: 14px solid #79523b; border-right: 14px solid #79523b; }
+.scroll-document.scroll-template-minimal > .scroll-rod { margin: 0 12px; }
+.scroll-live.scroll-template-minimal > .scroll-rod { margin: calc(max(20px, env(safe-area-inset-top)) + 50px) -8px 0; position: relative; z-index: 1; }
+.scroll-live.scroll-template-minimal .scroll-cover-back,
+.scroll-live.scroll-template-minimal .scroll-save-button { background: #fffdf7; box-shadow: 0 1px 4px rgba(42, 38, 35, .12); }
+
+/* 미리보기의 템플릿 칩: 작은 동그란 그림 */
+.template-chips button img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.template-chips button[aria-pressed="true"] { border-width: 2px; padding: 6px 9px; }
+
+/* 템플릿 바꾸기 줄도 왼쪽 세로줄을 이어 그린다 */
+.scroll-design.has-template .scroll-template-control { margin: 0 0 0 4px; padding: 6px 0 4px; border-left: 1px solid var(--scroll-accent); }
+
+/* 긴 이름: 한 사람 이름이 줄을 넘지 않게 말줄임 */
+.scroll-design .memory-members li { min-width: 0; max-width: 100%; }
+.scroll-design .memory-members li { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: block; }
+.scroll-design .memory-members li > * { vertical-align: middle; margin-right: 5px; }
+.scroll-design .memory-trip-topline h1, .scroll-document-heading h1 { overflow-wrap: anywhere; }
+
+/* 기본 미니멀: 바깥 베이지 없이 전체를 흰 종이로 */
+.scroll-live.scroll-template-minimal { background: #fffdf7; }
+.scroll-document.scroll-template-minimal { background: #fffdf7; }
+.scroll-document.scroll-template-minimal .scroll-document-body { margin: 0 8px; }
+
+/* 뒤로·저장 동그라미 버튼이 종이색에 묻히지 않게 */
+.scroll-live .scroll-cover-back,
+.scroll-live.has-template .scroll-save-button { background: #fff; border: 1px solid rgba(42, 38, 35, .14); box-shadow: 0 2px 8px rgba(42, 38, 35, .14); color: var(--color-ink); }
+
+/* 엮는 중: 칸 크기는 그대로, 안쪽이 차오르는 진행 애니메이션 */
+.memory-loading span { position: relative; overflow: hidden; background: #f0d5df; animation: none; transform: none; opacity: 1; }
+.memory-loading span::after { content: ''; position: absolute; inset: 0; background: var(--color-point); transform: scaleX(0); transform-origin: left; animation: memory-weaving-fill 2.4s ease-in-out infinite; }
+.memory-loading span:nth-child(2)::after { animation-delay: .8s; }
+.memory-loading span:nth-child(3)::after { animation-delay: 1.6s; }
+@keyframes memory-weaving-fill { 0% { transform: scaleX(0); } 33%, 75% { transform: scaleX(1); } 100% { transform: scaleX(1); opacity: 0; } }
+
+/* 두루마리 펼쳐지기: 위에서 아래로 종이가 풀려 내려온다 */
+.scroll-live { animation: scroll-unroll 1.1s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes scroll-unroll { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .scroll-live, .memory-loading span::after { animation: none; }
+  .memory-loading span::after { transform: scaleX(1); }
+}
+
+/* 멤버 이름: 꽃 옆 한 줄, 길면 말줄임 (위 block 규칙을 되돌림) */
+.scroll-design .memory-members li { display: flex; align-items: center; gap: 5px; overflow: visible; white-space: normal; max-width: 100%; min-width: 0; }
+.scroll-design .memory-members li > * { margin-right: 0; }
+.memory-members li { min-width: 0; max-width: 100%; }
+.memory-member-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.memory-members li > :first-child { flex-shrink: 0; }
+
+/* 템플릿 바꾸기: 위쪽 뒤로가기와 저장 사이 가운데 */
+.scroll-cover-template { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 2; }
+.scroll-cover-template .template-change-button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid rgba(42, 38, 35, .14); box-shadow: 0 2px 8px rgba(42, 38, 35, .14); font-size: 12px; font-weight: 600; color: var(--color-ink); white-space: nowrap; }
+
+/* 엮는 중 그림: 위아래 막대 사이로 종이가 펼쳐지고, 왼쪽 줄을 따라 점이 내려간다 */
+.weave-anim { position: relative; width: 120px; height: 150px; margin: 0 auto; }
+.weave-rod { position: absolute; left: 0; right: 0; height: 14px; border-radius: 7px; background: #302b26; border-left: 10px solid #79523b; border-right: 10px solid #79523b; z-index: 1; }
+.weave-rod-top { top: 0; }
+.weave-rod-bottom { top: 8px; animation: weave-rod-down 3.2s ease-in-out infinite; }
+.weave-paper { position: absolute; left: 14px; right: 14px; top: 7px; height: 0; background: #fffdf7; border: 1px solid #e4dccf; border-top: 0; border-bottom: 0; overflow: hidden; animation: weave-paper-open 3.2s ease-in-out infinite; }
+.weave-paper img { position: absolute; left: 50%; top: 42px; width: 46px; height: auto; transform: translateX(-50%); opacity: .9; }
+.weave-line { position: absolute; left: 12px; top: 10px; bottom: 10px; width: 1px; background: #302b26; }
+.weave-dot { position: absolute; left: 8.5px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-point); animation: weave-dot-move 3.2s ease-in-out infinite; }
+@keyframes weave-paper-open { 0% { height: 0; } 45%, 85% { height: 128px; } 100% { height: 0; } }
+@keyframes weave-rod-down { 0% { top: 8px; } 45%, 85% { top: 134px; } 100% { top: 8px; } }
+@keyframes weave-dot-move { 0%, 30% { top: 10px; opacity: 0; } 40% { opacity: 1; } 80% { top: 104px; opacity: 1; } 90%, 100% { top: 104px; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .weave-paper, .weave-rod-bottom, .weave-dot { animation: none; }
+  .weave-paper { height: 128px; }
+  .weave-rod-bottom { top: 134px; }
+}
+
+/* 엮는 중: 안쪽엔 꽃만 */
+.weave-flower { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: block; line-height: 0; }
+.weave-paper { animation-name: weave-paper-open; }
+
+/* 위쪽 버튼: 오른쪽에 템플릿·저장을 붙여 둔다 */
+.scroll-cover-actions { position: absolute; top: max(20px, env(safe-area-inset-top)); right: 16px; z-index: 2; display: flex; align-items: center; gap: 8px; }
+.scroll-cover-actions .template-change-button { display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 12px; border-radius: 999px; background: #fff; border: 1px solid rgba(42, 38, 35, .14); box-shadow: 0 2px 8px rgba(42, 38, 35, .14); font-size: 12px; font-weight: 600; color: var(--color-ink); white-space: nowrap; }
+.scroll-live .scroll-cover-actions .scroll-save-button { width: 36px; height: 36px; padding: 8px; overflow: hidden; font-size: 0; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1px solid rgba(42, 38, 35, .14); box-shadow: 0 2px 8px rgba(42, 38, 35, .14); }
+.scroll-live .scroll-cover-actions .scroll-save-button svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+/* 봉: 둥근 나무 막대처럼 (위아래 음영 + 양 끝 손잡이) */
+.scroll-rod { position: relative; height: 18px; border: 0; border-radius: 9px; margin-left: 6px; margin-right: 6px;
+  background: linear-gradient(to bottom, #5a4f45 0%, #3a332c 35%, #26211c 70%, #3a332c 100%); box-shadow: 0 3px 6px rgba(42, 38, 35, .25); }
+.scroll-rod::before, .scroll-rod::after { content: ''; position: absolute; top: -3px; width: 16px; height: 24px; border-radius: 8px;
+  background: linear-gradient(to bottom, #a07250 0%, #7d5539 45%, #5e3e29 100%); box-shadow: inset 0 1px 1px rgba(255, 255, 255, .25); }
+.scroll-rod::before { left: -10px; }
+.scroll-rod::after { right: -10px; }
+.scroll-live.scroll-template-minimal > .scroll-rod { margin: calc(max(20px, env(safe-area-inset-top)) + 54px) 4px 0; }
+.scroll-document.scroll-template-minimal > .scroll-rod { margin: 0 14px; }
+.scroll-rod-end { margin: 0 4px 28px; }
+.scroll-document .scroll-rod-end { margin: 0 -6px 8px; }
+
+/* 봉과 왼쪽 세로줄 이어지게: 첫 제목 칸은 위 여백 없이 봉 바로 아래에서 시작 */
+.scroll-live.scroll-template-minimal .memory-trip-heading { margin-top: 0; padding-top: 30px; }
+.scroll-live.scroll-template-minimal .memory-trip-heading::before { top: 39px; }
+.scroll-document.scroll-template-minimal .scroll-document-heading { padding-top: 26px; }
+/* 마지막 문단 줄도 아래 봉까지 */
+.scroll-live.scroll-template-minimal .memory-chapter:last-of-type { padding-bottom: 28px; }
+
+/* 두루마리 보러 갈 때 "두루룩" 펼쳐지기: 아래 봉이 화면 아래로 내려가며 종이를 연다 */
+.scroll-live { animation: none; }
+.scroll-unroll-cover { position: fixed; left: 50%; width: min(100%, 430px); transform: translateX(-50%); top: 92px; bottom: 0; z-index: 3; pointer-events: none;
+  background: var(--scroll-bg, #fffdf7); animation: scroll-unroll-cover 1.3s cubic-bezier(.3, .6, .25, 1) .15s forwards; }
+.scroll-template-minimal .scroll-unroll-cover { background: #fffdf7; }
+.scroll-unroll-cover .scroll-rod { margin: -9px 4px 0; }
+@keyframes scroll-unroll-cover { 0% { top: 92px; opacity: 1; } 90% { top: 100%; opacity: 1; } 100% { top: 100%; opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .scroll-unroll-cover { display: none; } }
+.scroll-live.scroll-template-minimal > .scroll-rod.scroll-rod-end { margin: 0 4px 28px; }
+.scroll-live.scroll-template-minimal .memory-chapter:last-of-type { padding-bottom: 24px; }
+
+/* 직접 펼치는 두루마리: 끌면 따라오고, 놓거나 누르면 천천히 끝까지 펼쳐진다 */
+.scroll-unroll-cover { animation: none; pointer-events: auto; touch-action: none; cursor: grab; }
+.scroll-unroll-cover.is-closed { transition: top .35s ease-out; }
+.scroll-unroll-cover.is-opening { transition: top 1.6s cubic-bezier(.35, .1, .25, 1), opacity .3s 1.4s; opacity: 0; pointer-events: none; }
+.scroll-unroll-cover.is-dragging { cursor: grabbing; }
+.scroll-unroll-hint { margin-top: 26px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 13px; color: var(--color-sub); }
+.scroll-unroll-hint span { font-size: 18px; animation: scroll-unroll-nudge 1.4s ease-in-out infinite; }
+@keyframes scroll-unroll-nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+.scroll-unroll-cover .scroll-rod { margin: 0 20px; }
+
+/* 평가 동그라미: 크기 차이를 더 크게 (가운데가 가장 크고 양 끝이 가장 작다) */
+.scroll-bottom-rating .memory-rating-options label { width: 48px; height: 48px; }
+.scroll-bottom-rating .memory-rating-options label:nth-child(1) span,
+.scroll-bottom-rating .memory-rating-options label:nth-child(5) span { width: 22px; height: 22px; }
+.scroll-bottom-rating .memory-rating-options label:nth-child(2) span,
+.scroll-bottom-rating .memory-rating-options label:nth-child(4) span { width: 31px; height: 31px; }
+.scroll-bottom-rating .memory-rating-options label:nth-child(3) span { width: 42px; height: 42px; }
+
+/* 두루마리 문단 사이 구분선: 세로줄에서 오른쪽으로 점선 */
+.scroll-design.has-template .memory-chapter + .memory-chapter { border-top: 0; }
+/* 두루마리 아래 영역(평가 · 다시 엮기 · 끝까지 읽었어요 · 더 보태기) 사이 구분선 */
+.scroll-live .scroll-bottom-reweave,
+.scroll-live .scroll-complete-footer,
+.scroll-live .memory-more { position: relative; margin-top: 28px; padding-top: 28px; }
+.scroll-live .scroll-bottom-reweave::before,
+.scroll-live .scroll-complete-footer::before,
+.scroll-live .memory-more::before { content: ''; position: absolute; top: 0; left: 8px; right: 8px; border-top: 1px solid var(--color-line); }
+
+/* 말린 두루마리를 묶은 끈: 누르거나 당기면 풀리고 나서 펼쳐진다 */
+.scroll-unroll-tie { position: absolute; left: 50%; top: -30px; width: 18px; height: 52px; transform: translateX(-50%); pointer-events: none; }
+.scroll-unroll-tie::before { content: ''; position: absolute; left: 4px; right: 4px; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(to right, #b8455f, #d9677f 50%, #b8455f); }
+.scroll-unroll-bow { position: absolute; left: 50%; top: 12px; width: 44px; height: 22px; transform: translateX(-50%); }
+.scroll-unroll-bow::before, .scroll-unroll-bow::after { content: ''; position: absolute; top: 0; width: 20px; height: 18px; border: 4px solid #c85570; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: transparent; }
+.scroll-unroll-bow::before { left: 0; transform: rotate(-18deg); }
+.scroll-unroll-bow::after { right: 0; transform: rotate(18deg); }
+.scroll-unroll-bow span { position: absolute; left: 50%; top: 7px; width: 9px; height: 9px; border-radius: 3px; background: #a83a54; transform: translateX(-50%); z-index: 1; }
+.scroll-unroll-bow i { position: absolute; top: 14px; width: 6px; height: 20px; background: #c85570; border-radius: 0 0 3px 3px; }
+.scroll-unroll-bow i:first-of-type { left: 15px; transform: rotate(14deg); }
+.scroll-unroll-bow i:last-of-type { right: 15px; transform: rotate(-14deg); }
+.scroll-unroll-cover.is-untying .scroll-unroll-tie { animation: scroll-untie .55s ease-in forwards; }
+@keyframes scroll-untie {
+  0% { transform: translateX(-50%) rotate(0); opacity: 1; }
+  35% { transform: translateX(-50%) scale(1.08) rotate(-6deg); opacity: 1; }
+  100% { transform: translateX(-30%) translateY(40px) rotate(24deg) scale(.7); opacity: 0; }
+}
+.scroll-unroll-tie { top: -21px; height: 42px; z-index: 2; }
+.scroll-unroll-bow { top: 10px; }
+/* 더 보태기 상자는 테두리가 있어서, 구분선을 상자 바깥 위에 긋는다 */
+.scroll-live .memory-more { margin-top: 57px; padding-top: 24px; overflow: visible; }
+.scroll-live .memory-more::before { top: -29px; left: 8px; right: 8px; }
+
+/* ===== 템플릿 고르기 (새 디자인) ===== */
+.tp { padding-bottom: 0; }
+.tp-eyebrow { margin-top: 18px; font-size: 12px; font-weight: 650; color: var(--color-point); }
+.tp-title { margin: 6px 0 4px; font-size: 24px; font-weight: 750; line-height: 1.38; }
+.tp-sub { font-size: 13px; color: var(--color-sub); }
+.tp-featured { display: block; width: 100%; margin-top: 20px; padding: 0; border: 1px solid var(--color-line); border-radius: 22px; background: var(--color-surface); overflow: hidden; text-align: left; transition: box-shadow .15s, border-color .15s; }
+.tp-featured[aria-pressed="true"] { border-color: var(--color-ink); box-shadow: 0 0 0 1px var(--color-ink); }
+.tp-featured-art { position: relative; display: block; }
+.tp-featured-art img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.tp-reco { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 999px; background: var(--color-point); color: #fff; font-size: 11px; font-weight: 700; }
+.tp-featured-body { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px 16px; }
+.tp-featured-name { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 750; color: var(--color-ink); }
+.tp-featured-desc { font-size: 12.5px; line-height: 1.5; color: var(--color-sub); }
+.tp-featured-why { margin-top: 2px; font-size: 11.5px; font-weight: 650; color: var(--color-point); }
+.tp-section { margin-top: 26px; }
+.tp-section-head { display: flex; align-items: baseline; justify-content: space-between; }
+.tp-section-head h2 { font-size: 15px; font-weight: 750; }
+.tp-section-head span { font-size: 11px; color: var(--color-sub); }
+.tp-row { display: flex; gap: 10px; margin: 10px -20px 0; padding: 4px 20px 6px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.tp-row::-webkit-scrollbar { display: none; }
+.tp-tile { flex: 0 0 104px; padding: 0; border: 0; background: none; text-align: left; scroll-snap-align: start; }
+.tp-tile-art { position: relative; display: block; border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--color-line); }
+.tp-tile-art img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.tp-tile[aria-pressed="true"] .tp-tile-art { box-shadow: 0 0 0 2px var(--color-ink); }
+.tp-tile-name { display: block; margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--color-ink); }
+.tp-tile[aria-pressed="true"] .tp-tile-name { font-weight: 750; }
+.tp-badge { position: absolute; top: 6px; right: 6px; padding: 2px 6px; border-radius: 6px; font-size: 9px; font-weight: 750; line-height: 1.4; }
+.tp-badge.inline { position: static; font-size: 10px; }
+.tp-badge.free { background: rgba(255, 255, 255, .9); color: var(--color-sub); }
+.tp-badge.lite { background: rgba(255, 255, 255, .92); color: var(--color-point); }
+.tp-badge.pro { background: var(--color-ink); color: #fff; }
+.tp-badge.inline.free, .tp-badge.inline.lite { background: #f6e3ea; }
+.tp-footer { position: sticky; bottom: 0; margin: 24px -20px 0; padding: 12px 20px max(16px, env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent, var(--color-bg) 22%); }
+.tp-note { margin-bottom: 10px; text-align: center; font-size: 12px; color: var(--color-sub); }
+
+/* 문단 ⋮ 메뉴 */
+.memory-chapter-actions { position: relative; }
+.scroll-paragraph-more { margin-left: auto; }
+.tp-row { scroll-padding-inline: 20px; }
+.tp-footer { display: block; width: auto; align-self: stretch; }
+.tp-footer > button { width: 100%; }
+.scroll-paragraph-more button, .scroll-paragraph-more [role="menuitem"] { white-space: nowrap; }
+
+/* ===== 두루마리 아래 영역 새 순서 ===== */
+/* 끝까지 읽었어요: 아래 봉 바로 밑, 구분선 없이 */
+.scroll-live .scroll-complete-footer { margin-top: 8px; padding-top: 8px; padding-bottom: 8px; }
+.scroll-live .scroll-complete-footer::before { display: none; }
+.scroll-live .scroll-complete-footer > p { margin-bottom: 0; }
+.scroll-live .scroll-bottom-rating { margin-top: 20px; }
+/* 다시 엮기: 긴 버튼 대신 한 줄 + 작은 버튼 */
+.scroll-live .scroll-bottom-reweave { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 12px 16px; border-radius: 16px; background: var(--color-bg); text-align: left; }
+.scroll-live .scroll-bottom-reweave::before { display: none; }
+.scroll-live .scroll-bottom-reweave > p { margin: 0; font-size: 13px; color: var(--color-sub); }
+.scroll-reweave-chip { flex-shrink: 0; height: 34px; padding: 0 14px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 13px; font-weight: 650; color: var(--color-ink); white-space: nowrap; }
+.scroll-reweave-chip:disabled { opacity: .4; }
+.scroll-bottom-save { margin-top: 20px; }
+/* 더 보태기: 진짜 버튼처럼 테두리 */
+.scroll-live .memory-more button { height: 48px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 15px; font-weight: 650; }

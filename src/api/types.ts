@@ -35,7 +35,8 @@ export interface RoomSummary {
   name: string
   meetingDate?: string
   status: RoomStatus
-  deadlineAt: string
+  /** 엮을 시각. 방장이 정하기 전에는 없을 수 있다 */
+  deadlineAt: string | null
   /** 방장을 포함한 정원 (1~8) */
   capacity?: number
   planType?: RoomPlanType

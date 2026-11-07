@@ -16,6 +16,7 @@ import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
+import WeaveDatePrompt from '../components/WeaveDatePrompt'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
 import { useSheetDrag } from '../hooks/useSheetDrag'
@@ -30,13 +31,15 @@ const STATUS_LABEL: Record<RoomStatus, string> = {
 }
 
 /** 마감까지 남은 시간 안내 문구 */
-function deadlineText(deadlineAt: string) {
+function deadlineText(deadlineAt: string | null) {
+  if (!deadlineAt) return '엮을 날을 정하면 알려드릴게요'
   const hours = hoursLeft(deadlineAt)
   return hours > 0 ? `첫 두루마리까지 ${hours}시간` : '곧 첫 두루마리가 나와요'
 }
 
 /** 마감까지 남은 시간(시간 단위, 올림) */
-function hoursLeft(deadlineAt: string) {
+function hoursLeft(deadlineAt: string | null) {
+  if (!deadlineAt) return Infinity
   return Math.ceil((new Date(deadlineAt).getTime() - Date.now()) / (60 * 60 * 1000))
 }
 
@@ -185,7 +188,7 @@ const SHARE_BUTTON_CLASS =
   'flex h-[57px] items-center justify-center gap-1.5 rounded-[20px] border border-line bg-surface text-[13px] text-sub active:opacity-80'
 
 /** 방이 열리고 친구들이 다 모이기 전: 초대 링크 공유와 내 첫 사진 올리기 */
-function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: string }) {
+function GatheringHome({ home, inviteToken, datePrompt }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode }) {
   const navigate = useNavigate()
   const { room, members, todayFlowers, myTodo } = home
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
@@ -235,6 +238,7 @@ function GatheringHome({ home, inviteToken }: { home: RoomHome; inviteToken?: st
 
       {/* 긴 화면(노트북 등)에서는 아래에 붙이지 않고 내용 바로 아래에 둔다 */}
       <footer className="mt-auto px-5 pt-3 pb-6 [@media(min-height:900px)]:mt-2">
+        {datePrompt}
         <Card className="px-[26px] pt-[15px] pb-6">
           <p className="text-[11px] text-sub">내 할 일</p>
           <p className="mt-1 text-[15px] font-bold">
@@ -416,7 +420,7 @@ function TimeUpSheet({
 
 /** 마감 시각이 지났는데 아직 엮지 않은 방인지 */
 function isTimeUp(room: RoomSummary) {
-  return (room.status === 'COLLECTING' || room.status === 'CIRCULATING') && new Date(room.deadlineAt).getTime() <= Date.now()
+  return (room.status === 'COLLECTING' || room.status === 'CIRCULATING') && room.deadlineAt !== null && new Date(room.deadlineAt).getTime() <= Date.now()
 }
 
 /** 모임방 홈: 방 상태, 오늘 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
@@ -461,6 +465,11 @@ function RoomHomePage() {
         if (e instanceof ApiError && (e.status === 403 || e.status === 404)) setError('이 방에 더 들어갈 수 없어요')
       })
   })
+
+  const reloadHome = () => {
+    if (token === undefined) return
+    getRoomHome(roomId, token).then(setHome).catch(() => {})
+  }
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (error) return <NotFoundPage message={error} />
@@ -522,7 +531,7 @@ function RoomHomePage() {
   if (room.status === 'COLLECTING' && members.length < (room.capacity ?? ROOM_CAPACITY)) {
     return (
       <>
-        <GatheringHome home={home} inviteToken={inviteToken} />
+        <GatheringHome home={home} inviteToken={inviteToken} datePrompt={<WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />} />
         {timeUpSheet}
       </>
     )
@@ -586,6 +595,7 @@ function RoomHomePage() {
       </div>
 
       <footer className="mt-auto px-5 pb-5 [@media(min-height:900px)]:mt-2">
+        <WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />
         {grown ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon />
@@ -607,7 +617,7 @@ function RoomHomePage() {
             {me.role === 'HOST' ? (
               <>
                 <p className="mt-2 text-[11px] text-sub">
-                  {hoursLeft(room.deadlineAt) > 0
+                  {hoursLeft(room.deadlineAt) > 0 && Number.isFinite(hoursLeft(room.deadlineAt))
                     ? `지금 엮으면 남은 ${hoursLeft(room.deadlineAt)}시간을 기다리지 않아도 돼요`
                     : '지금 바로 엮을 수 있어요'}
                 </p>

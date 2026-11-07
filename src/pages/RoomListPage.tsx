@@ -54,6 +54,7 @@ function hasTodo({ myTodo }: RoomHome) {
 
 /** 진행 중인 방의 남은 시간 · 참여 인원 */
 function ongoingMeta({ room, members }: RoomHome) {
+  if (!room.deadlineAt) return `엮을 날 미정 · 참여 ${members.length}명`
   const hours = Math.ceil((new Date(room.deadlineAt).getTime() - Date.now()) / (60 * 60 * 1000))
   return `${hours > 0 ? `${hours}시간 남음` : '곧 마감'} · 참여 ${members.length}명`
 }
@@ -196,7 +197,7 @@ function RoomListPage() {
     .sort(
       (a, b) =>
         Number(hasTodo(b)) - Number(hasTodo(a)) ||
-        new Date(a.room.deadlineAt).getTime() - new Date(b.room.deadlineAt).getTime(),
+        (a.room.deadlineAt ? new Date(a.room.deadlineAt).getTime() : Infinity) - (b.room.deadlineAt ? new Date(b.room.deadlineAt).getTime() : Infinity),
     )
   const done = homes
     .filter((h) => h.room.status === 'GROWING')
