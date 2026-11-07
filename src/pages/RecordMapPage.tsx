@@ -10,6 +10,10 @@ import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 import { ViewablePhoto } from '../components/PhotoViewer'
+import MoreMenu from '../components/MoreMenu'
+import PlaceSheet from '../components/PlaceSheet'
+import { setPhotoLocation, type Place } from '../api/places'
+import { deletePhoto } from '../api/photos'
 
 // 시안 지도 그림(840×860) 크기. 그림 속 도시 위치(안동·구미·대구·포항·경주)에 맞춰 좌표 → 픽셀 식을 구했다
 const MAP_W = 840
@@ -54,17 +58,54 @@ function PlacePhotoCard({
   completed,
   myUserId,
   onGo,
+  onChanged,
 }: {
   place: MapPlaceItem
   roomName: string
   completed: boolean
   myUserId: string | null
   onGo: (path: string) => void
+  /** 내 사진의 장소를 바꾸거나 지웠을 때 (지도를 다시 불러온다) */
+  onChanged: (message: string) => void
 }) {
   const canOpen = Boolean(getRoomSession(place.roomId))
   // 지도 응답에 사진·올린 사람·첫 한마디가 같이 온다
   const uploader = place.uploader
   const own = Boolean(myUserId && uploader?.userId === myUserId)
+  const [placing, setPlacing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+
+  const changePlace = async (_name: string, next?: Place) => {
+    if (!next || busy) return
+    setBusy(true)
+    setFailed(null)
+    try {
+      await setPhotoLocation(place.photoId, next)
+      setPlacing(false)
+      onChanged(`${next.placeName}(으)로 옮겼어요`)
+    } catch {
+      setFailed('장소를 바꾸지 못했어요. 다시 시도해 주세요')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const removePhoto = async () => {
+    if (busy) return
+    setBusy(true)
+    setFailed(null)
+    try {
+      await deletePhoto(place.photoId)
+      setConfirmDelete(false)
+      onChanged('사진을 지웠어요')
+    } catch {
+      setFailed('사진을 지우지 못했어요. 다시 시도해 주세요')
+      setConfirmDelete(false)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   let action: { label: string; path: string } | null = null
   let note = ''
@@ -100,7 +141,21 @@ function PlacePhotoCard({
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold">📍 {place.placeName}</p>
+          <div className="flex items-start justify-between gap-1">
+            <p className="truncate text-[15px] font-bold">📍 {place.placeName}</p>
+            {/* 내 사진: 장소 바꾸기, 두루마리가 완성되기 전이면 사진 지우기 */}
+            {own && (
+              <span className="-mt-1 -mr-1 shrink-0">
+                <MoreMenu
+                  label="내 사진 메뉴"
+                  items={[
+                    { label: '장소 바꾸기', onSelect: () => setPlacing(true) },
+                    ...(completed ? [] : [{ label: '사진 지우기', onSelect: () => setConfirmDelete(true), danger: true }]),
+                  ]}
+                />
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 flex items-center gap-1 text-[12px] text-sub">
             {uploader && <Flower code={uploader.flowerCode as FlowerCode} size={14} />}
             {roomName}
@@ -127,11 +182,37 @@ function PlacePhotoCard({
       ) : (
         <p className="mt-2 text-right text-[11px] text-muted">{note}</p>
       )}
+      {failed && <p className="mt-1 text-right text-[11px] text-point" role="alert">{failed}</p>}
+
+      {placing && (
+        <PlaceSheet
+          title="이 사진은 어디에서 찍었나요?"
+          recent={[]}
+          onClose={() => !busy && setPlacing(false)}
+          onSelect={(name, detail) => void changePlace(name, detail)}
+        />
+      )}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-6" onClick={() => !busy && setConfirmDelete(false)}>
+          <div role="alertdialog" aria-modal="true" aria-labelledby="map-delete-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-[340px] rounded-[24px] bg-surface p-5 text-ink">
+            <h2 id="map-delete-title" className="text-[17px] font-bold">이 사진을 지울까요?</h2>
+            <p className="mt-1.5 text-[13px] leading-5 text-sub">사진과 여기에 남긴 이야기가 모두 지워지고, 지도에서도 사라져요. 되돌릴 수 없어요.</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" disabled={busy} onClick={() => setConfirmDelete(false)} className="h-11 rounded-full border border-line text-[14px] font-semibold">
+                그대로 두기
+              </button>
+              <button type="button" disabled={busy} onClick={() => void removePhoto()} className="h-11 rounded-full bg-point text-[14px] font-semibold text-surface">
+                {busy ? '지우는 중…' : '지우기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function CitySheet({ pin, place: focus, onClose }: { pin: CityPin; place?: MapPlaceItem; onClose: () => void }) {
+function CitySheet({ pin, place: focus, onClose, onChanged }: { pin: CityPin; place?: MapPlaceItem; onClose: () => void; onChanged: (message: string) => void }) {
   const placeName = focus?.placeName
   // 세부 장소를 눌러 열었으면 그 장소에서 찍은 사진만 (AI 요약은 도시 단위라 보여주지 않는다)
   const places = focus ? pin.places.filter((p) => samePlace(p, focus)) : pin.places
@@ -205,6 +286,7 @@ function CitySheet({ pin, place: focus, onClose }: { pin: CityPin; place?: MapPl
                       completed={room?.status === 'GROWING'}
                       myUserId={myUserId}
                       onGo={(path) => navigate(path)}
+                      onChanged={onChanged}
                     />
                   </li>
                 )
@@ -566,6 +648,21 @@ function RecordMapPage() {
       .catch(() => setError(true))
   }, [])
 
+  // 내 사진의 장소를 바꾸거나 지우면 시트를 닫고 지도를 다시 불러온다
+  const [notice, setNotice] = useState<string | null>(null)
+  const reloadAfterChange = (message: string) => {
+    setOpenCity(null)
+    setNotice(message)
+    window.setTimeout(() => setNotice(null), 3000)
+    getMyRecordMap()
+      .then((next) => {
+        setPins(next)
+        if (roomId === ALL_ROOMS) setVisiblePins(next)
+        else return getMyRecordMap(roomId).then(setVisiblePins)
+      })
+      .catch(() => setError(true))
+  }
+
   const changeRoom = (next: string) => {
     setRoomId(next)
     setOpenCity(null)
@@ -620,7 +717,12 @@ function RecordMapPage() {
         도시를 누르면 AI가 그곳의 추억을 한 줄로 들려줘요
       </p>
 
-      {openCity && <CitySheet pin={openCity} place={openPlace} onClose={() => setOpenCity(null)} />}
+      {openCity && <CitySheet pin={openCity} place={openPlace} onClose={() => setOpenCity(null)} onChanged={reloadAfterChange} />}
+      {notice && (
+        <p role="status" className="fixed inset-x-0 top-[max(16px,env(safe-area-inset-top))] z-50 mx-auto w-fit rounded-full bg-ink px-4 py-2 text-[13px] text-surface">
+          {notice}
+        </p>
+      )}
       <BottomTabs />
     </main>
   )

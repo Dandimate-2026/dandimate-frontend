@@ -7,6 +7,8 @@ import type { MemoryContribution } from './types'
 import { formatVoiceLimit } from '../../hooks/useRoomQuota'
 import { LengthNotice } from '../../components/LengthNotice'
 import { clampText } from '../../lib/textLimit'
+import { useAudioPlayback } from '../../hooks/useAudioPlayback'
+import { PlayIcon, RetryIcon, StopIcon } from '../../components/entry/EntryIcons'
 
 export default function ContributionSheet({ kind, quote, initial, startWithText = false, fullPage = false, onSave, onClose, onTranscribe, maxLength = 500, maxVoiceMs }: {
   kind: 'addition' | 'reply'
@@ -53,6 +55,9 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     }
   } })
 
+  // 녹음 듣기: 처음 한마디 화면과 같이 [정지 / 이어 듣기 / 다시 듣기] 한 버튼으로
+  const playback = useAudioPlayback(audio?.url)
+
   useEffect(() => {
     mounted.current = true
     const urls = ownedUrls.current
@@ -64,6 +69,7 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
 
   async function start() {
     if (starting || recorder.recording) return
+    playback.reset()
     setError('')
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setError('녹음을 지원하지 않는 환경이에요. 글로 남겨 주세요.')
@@ -94,26 +100,35 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     } finally { if (mounted.current) setSaving(false) }
   }
 
+  const voiceButtons = <div className="memory-voice-actions">
+    <Button variant="outline" onClick={playback.toggle} aria-pressed={playback.playing}>
+      {playback.playing ? <StopIcon /> : <PlayIcon />}{playback.playing ? '정지' : playback.paused ? '이어 듣기' : '다시 듣기'}
+    </Button>
+    <Button variant="outline" disabled={starting || transcribing || saving} onClick={() => { setMode('voice'); void start() }}>
+      <RetryIcon />다시 녹음
+    </Button>
+  </div>
+
   const content = <>
     <blockquote>{quote}</blockquote>
     <h3>{fullPage ? '어떻게 다시 엮어 볼까요?' : kind === 'reply' ? '여기에 빠진 이야기가 있나요?' : '이 장면, 당신은 어떻게 기억해요?'}</h3>
     <p className="memory-sheet-hint">{kind === 'reply' ? '당신이 기억하는 장면을 보태주세요' : '한 두 문장이면 충분해요'}</p>
     {mode === 'voice' ? <div className="memory-recorder">
-      {audio ? <><audio controls src={audio.url} aria-label="녹음 미리 듣기" /><p>녹음 {formatDuration(audio.durationMs)}</p><button type="button" className="memory-text-link" onClick={() => void start()}>다시 녹음하기</button></> : <>
+      {audio ? <><p>녹음 {formatDuration(audio.durationMs)}</p>{voiceButtons}</> : <>
         <RecordButton recording={recorder.recording} disabled={starting} onStart={() => void start()} onStop={recorder.stop} />
         {recorder.recording ? <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={maxMs} /> : <p>{starting ? '마이크 연결 중…' : `눌러서 ${kind === 'reply' ? '한두 문장만 ' : ''}말해 주세요 · 최대 ${formatVoiceLimit(maxMs)}`}</p>}
       </>}
     </div> : <div className="memory-write-field">
-      <label htmlFor="memory-contribution">내 이야기</label>
+      <label htmlFor="memory-contribution">{audio ? `받아 적은 글 · 눌러서 고칠 수 있어요 · 녹음 ${formatDuration(audio.durationMs)}` : '내 이야기'}</label>
       <textarea id="memory-contribution" value={text} onChange={(event) => setText(clampText(event.target.value, maxLength))} maxLength={maxLength} rows={4} placeholder="내가 기억하는 장면을 적어 주세요" autoFocus />
       <span>{text.length}/{maxLength}</span>
       <LengthNotice length={text.length} max={maxLength} />
-      {audio && <audio controls src={audio.url} aria-label="함께 남길 녹음" />}
+      {audio && voiceButtons}
     </div>}
     {error && <p role="alert" className="memory-error">{error}</p>}
     {transcribing && <p role="status" className="memory-sheet-hint">녹음을 글로 옮기고 있어요…</p>}
     {(mode === 'text' || audio) && <Button className="memory-save" onClick={() => void save()} disabled={(!text.trim() && !audio) || recorder.recording || starting || transcribing || saving}>{saving ? '저장 중…' : fullPage ? '이 이야기로 다시 엮기' : kind === 'reply' ? '답가 남기기' : '기억 남기기'}</Button>}
-    <button type="button" className="memory-text-link memory-mode-link" disabled={starting || transcribing || saving} onClick={() => { recorder.cancel(); setMode(mode === 'voice' ? 'text' : 'voice') }}>{mode === 'voice' ? '지금 말하기 어려워요 → 글로 답하기' : '말로 답하기'}</button>
+    {!(mode === 'text' && audio) && <button type="button" className="memory-text-link memory-mode-link" disabled={starting || transcribing || saving} onClick={() => { recorder.cancel(); setMode(mode === 'voice' ? 'text' : 'voice') }}>{mode === 'voice' ? '지금 말하기 어려워요 → 글로 답하기' : '말로 답하기'}</button>}
   </>
   if (fullPage) return <main className="memory-page memory-reweave-editor"><MemoryHeader title="다시 엮기" onBack={() => { if (!saving) onClose() }} /><div className="memory-reweave-content">{content}</div></main>
   return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>{content}</BottomSheet>

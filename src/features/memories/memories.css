@@ -11,7 +11,9 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-app *, .memory-sheet * { box-sizing: border-box; }
 .memory-app button, .memory-sheet button, .memory-app a, .memory-sheet label[for] { -webkit-tap-highlight-color: transparent; }
 .memory-app button:not(:disabled), .memory-sheet button:not(:disabled) { cursor: pointer; }
-.memory-app button:focus-visible, .memory-app a:focus-visible, .memory-sheet button:focus-visible, .memory-sheet textarea:focus-visible, .memory-sheet input:focus-visible { outline: 2px solid var(--color-point); outline-offset: 4px; }
+.memory-app button:focus-visible, .memory-app a:focus-visible, .memory-sheet button:focus-visible, .memory-sheet input:focus-visible { outline: 2px solid var(--color-point); outline-offset: 4px; }
+/* 입력칸은 두꺼운 핑크 테두리 대신 칸 테두리만 진하게 */
+.memory-sheet textarea:focus-visible, .memory-write-field textarea:focus { outline: none; border-color: var(--color-ink); }
 .memory-app audio, .memory-sheet audio { width: 100%; min-width: 0; height: 38px; }
 .memory-page { min-height: max(780px, 100dvh); display: flex; flex-direction: column; padding: max(64px, env(safe-area-inset-top)) 20px max(34px, env(safe-area-inset-bottom)); }
 .memory-header { display: flex; align-items: center; justify-content: space-between; height: 24px; flex-shrink: 0; }
@@ -609,3 +611,7 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .tp-split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .tp-split .tp-section-head { justify-content: flex-start; gap: 6px; }
 .tp-tile-sub { display: block; margin-top: 1px; font-size: 11px; font-weight: 600; color: var(--color-point); }
+
+/* 덧붙이기·답가 녹음 듣기 / 다시 녹음 (처음 한마디 화면과 같은 모양) */
+.memory-voice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; width: 100%; }
+.memory-voice-actions > button { display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 999px; font-size: 14px; }
