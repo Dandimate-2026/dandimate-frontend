@@ -44,6 +44,8 @@ export interface RoomSummary {
   coverImageUrl?: string | null
   /** 방을 만든 시각 · 방장이 첫 두루마리 시각을 이미 바꿨는지 (한 번만 바꿀 수 있다) */
   createdAt?: string
+  /** 방 생성 완료일로부터 1년 뒤 자동 삭제 예정 시각 */
+  deleteAt?: string
   deadlineChangedByHost?: boolean
   /** 플랜별 한도와 사용량. 모임방 홈 조회에만 들어 있다 */
   quota?: RoomQuota
@@ -126,6 +128,7 @@ export interface RoomHome {
   room: RoomSummary
   me: Member
   members: Member[]
+  /** 이전 필드명 호환. 이제 날짜 제한 없는 전체 핀 꽃 */
   todayFlowers: { memberId: string; flowerCode: FlowerCode; entryKind: 'FIRST' | 'ADDON' }[]
   myTodo: {
     needsFirstEntry: boolean
@@ -258,7 +261,14 @@ export interface Job {
 }
 
 // PLAN_UPGRADE_REQUESTED: 멤버가 방장에게 플랜을 바꿔 달라고 요청함 (TODO: 백엔드 미지원, 가정한 값)
-export type NotificationType = 'ASKBACK_RECEIVED' | 'SCROLL_READY' | 'REPLY_APPLIED' | 'PLAN_UPGRADE_REQUESTED'
+export type NotificationType =
+  | 'ASKBACK_RECEIVED'
+  | 'SCROLL_READY'
+  | 'REPLY_APPLIED'
+  | 'PLAN_UPGRADE_REQUESTED'
+  | 'ROOM_DELETION_DUE_30D'
+  | 'ROOM_DELETION_DUE_7D'
+  | 'ROOM_DELETION_DUE_1D'
 
 /** 어떤 한도 때문에 플랜 변경을 요청했는지 */
 export type PlanRequestReason = 'PHOTO' | 'VOICE' | 'REWEAVE'
@@ -268,6 +278,8 @@ export interface RoomNotification {
   type: NotificationType
   resourceType: string
   resourceId: string
+  message?: string | null
+  scheduledFor?: string | null
   readAt?: string | null
   createdAt: string
 }

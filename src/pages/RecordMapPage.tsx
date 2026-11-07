@@ -174,6 +174,10 @@ function CitySheet({ pin, place: focus, onClose }: { pin: CityPin; place?: MapPl
           <p className="text-[12px] font-semibold text-point">✦ AI가 기억하는 {pin.city}</p>
           {pin.summary ? (
             <p className="mt-2 text-[16px] leading-7 font-bold">“{pin.summary}”</p>
+          ) : pin.summaryStatus === 'GENERATING' ? (
+            <p className="mt-2 text-[14px] leading-6 text-sub">AI가 이 지역의 추억을 한 줄로 정리하고 있어요</p>
+          ) : pin.summaryStatus === 'FAILED' ? (
+            <p className="mt-2 text-[14px] leading-6 text-sub">요약을 만들지 못했어요. 잠시 후 다시 확인해 주세요</p>
           ) : (
             <p className="mt-2 text-[14px] leading-6 text-sub">
               아직 요약이 없어요. 이 방의 두루마리가 완성되면
@@ -544,6 +548,7 @@ function RoomFilter({
 /** 아래 탭 "기록 지도": 내 사진 장소를 도시별 꽃 핀으로 보여준다. 방을 고르면 그 방 사진의 장소만 보인다 */
 function RecordMapPage() {
   const [allPins, setPins] = useState<CityPin[] | null>(null)
+  const [visiblePins, setVisiblePins] = useState<CityPin[] | null>(null)
   const [error, setError] = useState(false)
   const [openCity, setOpenCity] = useState<CityPin | null>(null)
   // 확대해서 세부 장소 핀을 눌렀으면 그 장소 이름 (그 장소 사진만 보여준다)
@@ -555,7 +560,7 @@ function RecordMapPage() {
   const [roomId, setRoomId] = useState(ALL_ROOMS)
   // 카카오 지도를 못 불러오면(키·콘솔 설정 문제) 시안 그림 지도로 보여준다
   const [kakaoFailed, setKakaoFailed] = useState(false)
-  const pins = allPins ? filterPins(allPins, roomId) : null
+  const pins = visiblePins
   // 지도에 장소가 있는 방들 (방 고르기 목록)
   const roomOptions = allPins
     ? [...new Map(allPins.flatMap((p) => p.rooms).map((r) => [r.roomId, { roomId: r.roomId, name: r.name }])).values()]
@@ -563,9 +568,26 @@ function RecordMapPage() {
 
   useEffect(() => {
     getMyRecordMap()
-      .then(setPins)
+      .then((next) => { setPins(next); setVisiblePins(next) })
       .catch(() => setError(true))
   }, [])
+
+  const changeRoom = (next: string) => {
+    setRoomId(next)
+    setOpenCity(null)
+    setError(false)
+    if (next === ALL_ROOMS) {
+      setVisiblePins(allPins)
+      return
+    }
+    // 방 필터는 서버에도 똑같이 적용한다. 실패하면 이미 받은 전체 응답을 안전한 대체값으로 사용한다.
+    getMyRecordMap(next)
+      .then(setVisiblePins)
+      .catch(() => {
+        setVisiblePins(allPins ? filterPins(allPins, next) : [])
+        setError(true)
+      })
+  }
 
   return (
     <main className={`relative flex min-h-dvh flex-col bg-[#e9eeec] text-ink ${BOTTOM_TABS_SPACE}`}>
@@ -578,10 +600,7 @@ function RecordMapPage() {
           <RoomFilter
             rooms={roomOptions}
             value={roomId}
-            onChange={(next) => {
-              setRoomId(next)
-              setOpenCity(null)
-            }}
+            onChange={changeRoom}
           />
         </div>
       </header>
