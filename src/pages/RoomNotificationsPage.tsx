@@ -20,6 +20,9 @@ const NOTIFICATION_TEXT: Record<NotificationType, { title: string; detail: strin
   SCROLL_READY: { title: '두루마리가 완성됐어요', detail: '우리 이야기를 펼쳐 보세요' },
   REPLY_APPLIED: { title: '답가가 두루마리에 엮였어요', detail: '바뀐 문단을 확인해 보세요' },
   PLAN_UPGRADE_REQUESTED: { title: '플랜을 바꿔 달라는 요청이 왔어요', detail: '친구가 더 남기고 싶어 해요' },
+  ROOM_DELETION_DUE_30D: { title: '모임방 삭제 예정 안내', detail: '삭제 전에 필요한 기록을 저장해 주세요' },
+  ROOM_DELETION_DUE_7D: { title: '모임방이 7일 뒤 삭제돼요', detail: '필요한 기록을 미리 저장해 주세요' },
+  ROOM_DELETION_DUE_1D: { title: '모임방이 내일 삭제돼요', detail: '오늘 안에 필요한 기록을 저장해 주세요' },
 }
 
 // 플랜 변경 요청은 어떤 한도 때문인지 설명을 바꿔 보여준다
@@ -56,6 +59,7 @@ function RoomNotificationsPage() {
     if (item.type === 'ASKBACK_RECEIVED') navigate(paths.askback(roomId, item.resourceId))
     // 방장이 플랜 변경 요청을 누르면 플랜 화면으로 간다
     else if (item.type === 'PLAN_UPGRADE_REQUESTED') navigate(paths.roomPlan(roomId))
+    else if (item.type.startsWith('ROOM_DELETION_DUE_')) navigate(paths.roomHome(roomId))
     else navigate(paths.roomWeaving(roomId))
   }
 
@@ -95,7 +99,7 @@ function RoomNotificationsPage() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-semibold">{text.title}</span>
                     <span className="mt-0.5 block text-[11px] text-sub">
-                      {(item.type === 'PLAN_UPGRADE_REQUESTED' && PLAN_REQUEST_DETAIL[item.resourceType]) || text.detail}
+                      {item.message || (item.type === 'PLAN_UPGRADE_REQUESTED' && PLAN_REQUEST_DETAIL[item.resourceType]) || text.detail}
                     </span>
                   </span>
                   <span className="shrink-0 text-[10px] text-sub">{timeAgo(item.createdAt)}</span>

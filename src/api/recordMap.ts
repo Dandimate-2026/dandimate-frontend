@@ -12,10 +12,15 @@ export interface MapRoomItem {
   photoCount: number
   recordCount: number
   summary: string | null
+  summaryStatus?: SummaryStatus
 }
+
+export type SummaryStatus = 'NONE' | 'GENERATING' | 'READY' | 'FAILED'
 
 export interface CityPin {
   city: string
+  /** 시·군 단위 10자리 행정구역 코드. GeoJSON feature와 연결할 때 쓴다 */
+  adminAreaCode?: string | null
   /** 그 도시 사진 좌표의 평균 */
   latitude: number
   longitude: number
@@ -25,6 +30,7 @@ export interface CityPin {
   bloomed: boolean
   /** 그 도시의 가장 최근 두루마리 요약 (AI가 기억하는 한 줄) */
   summary: string | null
+  summaryStatus?: SummaryStatus
   rooms: MapRoomItem[]
   /** 이 도시에서 사진마다 고른 장소 (검색으로 고른 장소명) */
   places: MapPlaceItem[]
@@ -34,6 +40,8 @@ export interface MapPlaceItem {
   photoId: string
   roomId: string
   placeName: string
+  city?: string
+  adminAreaCode?: string | null
   latitude: number
   longitude: number
   /** 사진 주소 */
@@ -44,6 +52,9 @@ export interface MapPlaceItem {
   firstEntrySnippet?: string | null
   /** 카카오 장소 id. 같은 장소인지 이름보다 정확하게 가린다 */
   placeId?: string | null
+  placeGroupKey?: string
+  recordCount?: number
+  recordIds?: string[]
 }
 
 /** 같은 장소에서 찍은 사진을 핀 하나로 묶는다 (사진 수 포함) */
@@ -101,9 +112,10 @@ const MOCK_MAP: CityPin[] = [
 ]
 
 /** 내가 참여 중인 방의 사진 장소를 도시별로 묶은 지도 */
-export async function getMyRecordMap(): Promise<CityPin[]> {
+export async function getMyRecordMap(roomId?: string): Promise<CityPin[]> {
   if (USE_MOCK) return MOCK_MAP.filter(inDaeguGyeongbuk)
-  const res = await request<{ cities: CityPin[] }>('/users/me/map')
+  const query = roomId ? `?roomId=${encodeURIComponent(roomId)}` : ''
+  const res = await request<{ cities: CityPin[] }>(`/users/me/map${query}`)
   return res.cities.filter(inDaeguGyeongbuk)
 }
 
