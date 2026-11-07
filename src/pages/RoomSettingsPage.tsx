@@ -489,7 +489,7 @@ function RoomSettingsPage() {
           {canChangeDeadline && (
             // 첫 두루마리 시각은 엮기 전까지 횟수 제한 없이 바꿀 수 있다
             <InfoRow label="첫 두루마리" editable={isHost} onEdit={() => setEditing('deadlineAt')}>
-              {formatDateTime(room.deadlineAt)}
+              {room.deadlineAt ? formatDateTime(room.deadlineAt) : '아직 안 정했어요'}
             </InfoRow>
           )}
         </ul>
@@ -597,7 +597,7 @@ function RoomSettingsPage() {
               : editing === 'meetingDate'
                 ? (room.meetingDate ?? '')
                 : editing === 'deadlineAt'
-                  ? toLocalDateTimeInput(room.deadlineAt)
+                  ? (room.deadlineAt ? toLocalDateTimeInput(room.deadlineAt) : '')
                   : editing === 'capacity'
                     ? String(room.capacity ?? ROOM_CAPACITY)
                     : me.nickname
