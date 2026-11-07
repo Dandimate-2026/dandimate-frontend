@@ -43,7 +43,10 @@ export const MOCK_TIMEUP_ROOM_ID = 'timeup'
 export const MOCK_LIMIT_ROOM_ID = 'limit'
 /** 사진 한도 없이 계속 올려 볼 수 있는 방 (사진 올리기·장소 고르기 화면 확인용) */
 export const MOCK_UNLIMITED_ROOM_ID = 'unlimited'
+/** 8명이 이야기를 많이 나눈 방 (핀 꽃이 가득한 화면 확인용) */
+export const MOCK_LIVELY_ROOM_ID = 'lively'
 export const MOCK_ROOM_IDS = [
+  MOCK_LIVELY_ROOM_ID,
   MOCK_UNLIMITED_ROOM_ID,
   MOCK_ROOM_ID,
   MOCK_READY_ROOM_ID,
@@ -427,4 +430,67 @@ export const mockUnlimitedRoomHome: RoomHome = {
   },
   // 홈의 내 할 일이 늘 "사진 올리고 한마디 남기기"로 보이게 한다
   myTodo: { ...mockRoomHome.myTodo, needsFirstEntry: true },
+}
+
+/** 이야기를 많이 나눈 방: 8명이 모두 사진을 올리고 서로 덧붙여서 핀 꽃이 가득하다 */
+export const livelyMembers: RoomHome['members'] = [
+  { id: 'l1', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA', photoCount: 3, storyCount: 7, responseRate: 1 },
+  { id: 'l2', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA', photoCount: 3, storyCount: 6, responseRate: 0.9 },
+  { id: 'l3', nickname: '지수', role: 'MEMBER', flowerCode: 'ROYAL_AZALEA', photoCount: 2, storyCount: 5, responseRate: 0.85 },
+  { id: 'l4', nickname: '하린', role: 'MEMBER', flowerCode: 'CANOLA', photoCount: 3, storyCount: 4, responseRate: 0.8 },
+  { id: 'l5', nickname: '도윤', role: 'MEMBER', flowerCode: 'LILAC', photoCount: 2, storyCount: 4, responseRate: 0.7 },
+  { id: 'l6', nickname: '예준', role: 'MEMBER', flowerCode: 'FORGET_ME_NOT', photoCount: 3, storyCount: 3, responseRate: 0.65 },
+  { id: 'l7', nickname: '수아', role: 'MEMBER', flowerCode: 'TEAL', photoCount: 2, storyCount: 3, responseRate: 0.6 },
+  { id: 'l8', nickname: '시우', role: 'MEMBER', flowerCode: 'PURPLE', photoCount: 1, storyCount: 2, responseRate: 0.5 },
+]
+const livelyPattern = [0, 1, 2, 0, 3, 4, 1, 5, 0, 2, 1, 3, 0, 4, 2, 5, 1, 3, 0] // 수아·시우는 아직 오늘 이야기가 없다 (봉오리)
+
+export const mockLivelyRoomHome: RoomHome = {
+  ...mockRoomHome,
+  room: { ...mockRoomHome.room, id: MOCK_LIVELY_ROOM_ID, name: '제주 여름 MT', capacity: 8 },
+  me: livelyMembers[1],
+  members: livelyMembers,
+  todayFlowers: livelyPattern.map((i, n) => ({
+    memberId: livelyMembers[i].id,
+    flowerCode: livelyMembers[i].flowerCode,
+    entryKind: n < 8 ? ('FIRST' as const) : ('ADDON' as const),
+  })),
+}
+
+/** 데모 '제주 여름 MT' 방의 둘러보기 사진: 사람마다 올린 사진 수만큼, 첫 한마디와 친구들 덧붙이기가 달려 있다 */
+const LIVELY_FIRST = [
+  '협재 바다 색이 진짜 이랬어, 보정 하나도 안 했음', '새벽에 일출 보러 성산 올라간 날', '흑돼지 줄 한 시간 섰는데 그럴 만했다',
+  '숙소 마당에서 다 같이 별 본 밤', '우도 땅콩 아이스크림 두 개 먹은 사람 나야', '비 와서 카페 투어로 바꾼 날이 제일 웃겼어',
+  '렌터카 길 잘못 들어서 발견한 귤밭', '오름 올라가다 바람에 모자 날아감', '마지막 날 공항 가기 전 해변 산책',
+]
+const LIVELY_ADDON = [
+  '이때 너 신발 젖은 거 아직도 기억나', '나 이 사진 배경화면 했잖아', '다음엔 꼭 일출 성공하자', '여기 또 가고 싶다 진짜',
+  '이날 노래 부른 거 영상 있음ㅋㅋ', '사진 찍어 준 사람 칭찬해', '이 순간 공기 냄새까지 생각나', '내가 운전했던 날!',
+]
+export function mockLivelyCards() {
+  type M = (typeof livelyMembers)[number]
+  const at = (min: number) => new Date(Date.now() - min * 60_000).toISOString()
+  // 사람마다 참여현황 수와 똑같이: 사진 photoCount장(각각 첫 한마디), 나머지 이야기는 친구 사진에 덧붙이기
+  const cards = livelyMembers.flatMap((owner, oi) =>
+    Array.from({ length: owner.photoCount ?? 0 }, (_, k) => {
+      const id = `lively-${owner.id}-${k}`
+      return {
+        photo: { id, imageUrl: `https://picsum.photos/seed/${id}/600/600`, uploader: owner, displayOrder: k },
+        firstEntry: { id: `${id}-first`, photoId: id, member: owner, kind: 'FIRST' as const, inputMode: 'TEXT' as const, transcript: LIVELY_FIRST[(oi + k * 3) % LIVELY_FIRST.length], confirmedAt: at(oi * 90 + k * 40 + 30) },
+        myResponse: { status: owner.id === livelyMembers[1].id ? 'OWN_PHOTO' as const : 'ADDON' as const },
+        locked: false,
+        lockReason: null,
+        otherEntries: [] as { id: string; photoId: string; member: M; kind: 'ADDON'; inputMode: 'TEXT'; transcript: string; confirmedAt: string }[],
+      }
+    }),
+  )
+  livelyMembers.forEach((m, mi) => {
+    const extra = (m.storyCount ?? 0) - (m.photoCount ?? 0)
+    const targets = cards.filter((c) => c.photo.uploader.id !== m.id)
+    for (let j = 0; j < extra; j += 1) {
+      const card = targets[(mi * 5 + j * 3) % targets.length]
+      card.otherEntries.push({ id: `${card.photo.id}-add-${m.id}-${j}`, photoId: card.photo.id, member: m, kind: 'ADDON', inputMode: 'TEXT', transcript: LIVELY_ADDON[(mi + j) % LIVELY_ADDON.length], confirmedAt: at(mi * 13 + j * 7) })
+    }
+  })
+  return cards
 }

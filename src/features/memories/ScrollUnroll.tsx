@@ -7,8 +7,7 @@ type Phase = 'tied' | 'untying' | 'closed' | 'dragging' | 'opening' | 'done'
 
 /**
  * 두루마리를 사용자가 직접 펼친다.
- * 1단계: 끈으로 묶여 있다 → 누르면 끈만 풀린다.
- * 2단계: 풀린 두루마리를 누르거나 아래로 당기면 펼쳐진다.
+ * 끈을 한 번 누르면 끈이 풀리고, 이어서 두루마리가 저절로 아래로 펼쳐진다.
  */
 /** 이 기기에서 이 두루마리를 한 번 펼쳤는지 (다시 들어올 때는 바로 펼친 채로) */
 function wasOpened(key: string) {
@@ -50,9 +49,9 @@ export default function ScrollUnroll({ showRod, rememberKey }: { showRod: boolea
 
   const untie = () => {
     setPhase('untying')
-    window.setTimeout(() => setPhase('closed'), UNTIE_MS)
+    window.setTimeout(open, UNTIE_MS)
   }
-  const open = () => {
+  function open() {
     rememberOpened(storageKey)
     setPhase('opening')
     setOffset(window.innerHeight)

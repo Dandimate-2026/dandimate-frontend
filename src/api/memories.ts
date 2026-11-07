@@ -1,5 +1,5 @@
 import { request } from './client'
-import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK } from './mock'
+import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK, MOCK_LIVELY_ROOM_ID, mockLivelyCards } from './mock'
 import type { CirculationResponse, Entry, Job, Member, Scroll, TranscriptionDraft } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
@@ -33,7 +33,7 @@ export function recordMockAddon(photoId: string) {
 }
 
 export async function getCirculation(roomId: string, token: string) {
-  if (USE_MOCK) return mockPhotoCards()
+  if (USE_MOCK) return roomId === MOCK_LIVELY_ROOM_ID ? mockLivelyCards() : mockPhotoCards()
   const cards: CirculationResponse['cards'] = []
   let cursor: string | null | undefined
   do {

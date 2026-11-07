@@ -48,3 +48,11 @@ body {
     box-shadow: 0 0 0 1px rgb(42 38 35 / 0.06), 0 12px 40px rgb(42 38 35 / 0.08);
   }
 }
+
+/* (데모) 가지에 사람마다 꽃 한 송이: 왼쪽부터 차례로 톡 피어난다 */
+.branch-flower { padding: 0; border: 0; background: none; cursor: pointer; line-height: 0; transform: translate(-50%, -50%) scale(0); animation: branch-bloom .55s cubic-bezier(.3, 1.6, .5, 1) forwards; }
+.branch-flower.is-bud { animation-duration: .35s; }
+@keyframes branch-bloom { to { transform: translate(-50%, -50%) scale(1); } }
+.branch-count { position: absolute; right: -7px; top: -5px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; color: #fff;
+  font-size: 9px; font-weight: 700; line-height: 15px; text-align: center; box-shadow: 0 0 0 1.5px var(--color-bg); }
+@media (prefers-reduced-motion: reduce) { .branch-flower { animation: none; transform: translate(-50%, -50%); } }

@@ -59,8 +59,6 @@ function RecentPhotosCarousel({
 }) {
   const navigate = useNavigate()
   const [cards, setCards] = useState<CirculationCard[]>([])
-  const [page, setPage] = useState(0)
-  const trackRef = useRef<HTMLUListElement>(null)
   // 사진마다 마지막으로 본 이야기 수. 처음 들어온 방이면 지금 수를 기준으로 삼아 배지를 띄우지 않는다
   const [seen, setSeen] = useState<Record<string, number> | null>(() => getSeenStories(roomId))
   // 화면을 보는 동안 새로 붙은 이야기 한 줄 안내 ("방금 민지님이 서연님 사진에 덧붙였어요")
@@ -124,12 +122,6 @@ function RecentPhotosCarousel({
     seen ? Math.max(0, card.otherEntries.length - (seen[card.photo.id] ?? 0)) : 0
   const totalNew = cards.reduce((sum, c) => sum + newCount(c), 0)
 
-  const goTo = (index: number) => {
-    const track = trackRef.current
-    if (!track) return
-    track.scrollTo({ left: index * track.clientWidth, behavior: 'smooth' })
-  }
-
   return (
     <section className="mt-3" aria-label="친구들이 올린 사진">
       {/* 새 이야기가 붙은 순간 잠깐 보여주는 한 줄, 그 외에는 새 이야기 총 개수 */}
@@ -142,21 +134,15 @@ function RecentPhotosCarousel({
           {activity ?? `새 이야기 ${totalNew}개가 붙었어요`}
         </p>
       )}
-      <ul
-        ref={trackRef}
-        onScroll={(e) => {
-          const el = e.currentTarget
-          setPage(Math.round(el.scrollLeft / el.clientWidth))
-        }}
-        className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {cards.map((card) => {
+      <ul>
+        {/* 가장 최근 사진 한 장만 보여주고, 나머지는 둘러보기에서 본다 */}
+        {cards.slice(0, 1).map((card) => {
           const own = card.myResponse.status === 'OWN_PHOTO'
           const line = statusLine(card)
           const uploader = card.photo.uploader
           const fresh = newCount(card)
           return (
-            <li key={card.photo.id} className="w-full shrink-0 snap-center px-px">
+            <li key={card.photo.id} className="px-px">
               <div
                 // 내 사진은 보러 갈 곳이 없어서, 카드를 누르면 새 이야기를 본 것으로 표시한다
                 onClick={own && fresh > 0 ? () => markSeen(card) : undefined}
@@ -214,45 +200,6 @@ function RecentPhotosCarousel({
         })}
       </ul>
 
-      {/* 여러 장이면 점으로 몇 번째인지 보여주고, 눌러서도 넘길 수 있다.
-          마우스로는 옆으로 밀 수 없어서, 마우스를 쓰는 PC에서는 양옆에 이전·다음 버튼도 보여준다 */}
-      {cards.length > 1 && (
-        <div className="mt-2 flex items-center justify-center gap-3">
-          <button
-            type="button"
-            aria-label="이전 사진"
-            disabled={page === 0}
-            onClick={() => goTo(page - 1)}
-            className="hidden size-7 items-center justify-center rounded-full border border-line bg-surface text-sub disabled:opacity-30 [@media(hover:hover)]:flex"
-          >
-            <span className="rotate-180">
-              <ArrowIcon />
-            </span>
-          </button>
-        <div className="flex justify-center gap-1.5" role="tablist" aria-label="사진 넘기기">
-          {cards.map((card, i) => (
-            <button
-              key={card.photo.id}
-              type="button"
-              role="tab"
-              aria-selected={page === i}
-              aria-label={`${i + 1}번째 사진`}
-              onClick={() => goTo(i)}
-              className={`h-1.5 rounded-full transition-all ${page === i ? 'w-4 bg-ink' : 'w-1.5 bg-line'}`}
-            />
-          ))}
-        </div>
-          <button
-            type="button"
-            aria-label="다음 사진"
-            disabled={page === cards.length - 1}
-            onClick={() => goTo(page + 1)}
-            className="hidden size-7 items-center justify-center rounded-full border border-line bg-surface text-sub disabled:opacity-30 [@media(hover:hover)]:flex"
-          >
-            <ArrowIcon />
-          </button>
-        </div>
-      )}
     </section>
   )
 }
