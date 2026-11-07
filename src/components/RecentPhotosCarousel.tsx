@@ -126,6 +126,7 @@ function RecentPhotosCarousel({
   const newCount = (card: CirculationCard) =>
     seen ? Math.max(0, card.otherEntries.length - (seen[card.photo.id] ?? 0)) : 0
   const totalNew = cards.reduce((sum, c) => sum + newCount(c), 0)
+  const ownCards = cards.filter((card) => card.myResponse.status === 'OWN_PHOTO')
 
   const saveLocation = async (_name: string, place?: Place) => {
     if (!locationPhoto || !place) return
@@ -231,6 +232,32 @@ function RecentPhotosCarousel({
           )
         })}
       </ul>
+
+      {ownCards.length > 0 && (
+        <section className="mt-3 rounded-[16px] border border-line bg-surface px-3 py-2.5" aria-label="내 사진 장소 설정">
+          <p className="text-[11px] text-sub">내 사진을 기록 지도에 표시하기</p>
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-0.5">
+            {ownCards.map((card) => (
+              <button
+                key={card.photo.id}
+                type="button"
+                onClick={() => {
+                  setLocationMessage(null)
+                  setLocationPhoto(card)
+                }}
+                className="flex min-w-[118px] items-center gap-2 rounded-[12px] bg-bg p-2 text-left active:opacity-80"
+              >
+                <img
+                  src={card.photo.imageUrl}
+                  alt=""
+                  className="size-8 shrink-0 rounded-[8px] bg-[#efe9df] object-cover"
+                />
+                <span className="min-w-0 text-[11px] font-semibold text-point">장소 추가·변경</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {locationMessage && <p className="mt-2 px-1 text-[11px] text-sub" role="status">{locationMessage}</p>}
       {locationPhoto && (
