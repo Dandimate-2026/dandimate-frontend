@@ -584,3 +584,19 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-bottom-save { margin-top: 20px; }
 /* 더 보태기: 진짜 버튼처럼 테두리 */
 .scroll-live .memory-more button { height: 48px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 15px; font-weight: 650; }
+
+/* 엮는 중 막대 3개: 왼쪽부터 차례로 착·착·착 채워지고, 잠깐 멈췄다가 다시 처음부터 */
+.memory-loading span::after { animation: none; transform: scaleX(0); }
+.memory-loading span:nth-child(1)::after { animation: weave-bar-1 2.4s ease-out infinite; }
+.memory-loading span:nth-child(2)::after { animation: weave-bar-2 2.4s ease-out infinite; }
+.memory-loading span:nth-child(3)::after { animation: weave-bar-3 2.4s ease-out infinite; }
+@keyframes weave-bar-1 { 0% { transform: scaleX(0); } 15%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+@keyframes weave-bar-2 { 0%, 22% { transform: scaleX(0); } 37%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+@keyframes weave-bar-3 { 0%, 44% { transform: scaleX(0); } 59%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .memory-loading span::after { animation: none !important; transform: scaleX(1); } }
+
+/* 다시 엮었어요·다운로드 안내 스낵바: 내용 사이가 아니라 화면 위쪽에 떠 있게 */
+.scroll-live .memory-toast-anchor { position: static; height: 0; }
+.scroll-live .scroll-toast-inline { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(calc(100% - 32px), 398px); z-index: 30;
+  box-shadow: 0 6px 20px rgba(42, 38, 35, .18); animation: scroll-toast-in .3s ease-out; }
+@keyframes scroll-toast-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
