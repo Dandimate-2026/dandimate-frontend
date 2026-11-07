@@ -12,6 +12,7 @@ import NotFoundPage from './NotFoundPage'
 import { USE_MOCK } from '../api/mock'
 import { PAYMENT_DEMO } from '../api/plans'
 import { useRoomInvite } from '../hooks/useRoomInvite'
+import { clearPlanReturn, readPlanReturn } from '../lib/planReturn'
 
 /** 결제를 마친 뒤 바뀐 한도를 보여주고, 친구를 부르러 보낸다 */
 function RoomPlanDonePage() {
@@ -27,6 +28,8 @@ function RoomPlanDonePage() {
   const memberAccessToken = session?.memberAccessToken
   const inviteToken = useRoomInvite(roomId)
   const { share, copied } = useInviteShare(inviteToken ?? '')
+  // 두루마리 템플릿을 고르다가 왔으면 그 두루마리로 돌아간다
+  const [returnPath] = useState(() => readPlanReturn(roomId))
 
   useEffect(() => {
     if (!roomId || memberAccessToken === undefined || savedRoomName) return
@@ -84,8 +87,8 @@ function RoomPlanDonePage() {
         >
           {copied ? '초대 링크가 복사됐어요' : '단톡방에 알리기'}
         </button>
-        <Button onClick={() => navigate(paths.roomHome(roomId), { replace: true })} className="w-full">
-          방으로 돌아가기
+        <Button onClick={() => { clearPlanReturn(roomId); navigate(returnPath ?? paths.roomHome(roomId), { replace: true }) }} className="w-full">
+          {returnPath ? '두루마리로 돌아가기' : '방으로 돌아가기'}
         </Button>
       </footer>
     </main>
