@@ -5,6 +5,8 @@ import type { CirculationCard } from '../api/types'
 import { getSeenStories, saveSeenStories } from '../lib/seenStories'
 import { paths } from '../routes/paths'
 import Flower from './Flower'
+import PlaceSheet from './PlaceSheet'
+import { setPhotoLocation, type Place } from '../api/places'
 
 /** 올린 시각을 "방금·N분 전·N시간 전·N일 전"으로 */
 function timeAgo(iso: string | undefined) {
@@ -63,6 +65,9 @@ function RecentPhotosCarousel({
   const [seen, setSeen] = useState<Record<string, number> | null>(() => getSeenStories(roomId))
   // 화면을 보는 동안 새로 붙은 이야기 한 줄 안내 ("방금 민지님이 서연님 사진에 덧붙였어요")
   const [activity, setActivity] = useState<string | null>(null)
+  const [locationPhoto, setLocationPhoto] = useState<CirculationCard | null>(null)
+  const [locationSaving, setLocationSaving] = useState(false)
+  const [locationMessage, setLocationMessage] = useState<string | null>(null)
   const knownEntries = useRef<Set<string> | null>(null)
 
   useEffect(() => {
@@ -122,6 +127,20 @@ function RecentPhotosCarousel({
     seen ? Math.max(0, card.otherEntries.length - (seen[card.photo.id] ?? 0)) : 0
   const totalNew = cards.reduce((sum, c) => sum + newCount(c), 0)
 
+  const saveLocation = async (_name: string, place?: Place) => {
+    if (!locationPhoto || !place) return
+    setLocationSaving(true)
+    try {
+      await setPhotoLocation(locationPhoto.photo.id, place)
+      setLocationMessage(`${place.placeName}에 꽃을 심었어요. 기록 지도에서 확인해 보세요.`)
+      setLocationPhoto(null)
+    } catch {
+      setLocationMessage('장소를 저장하지 못했어요. 다시 시도해 주세요.')
+    } finally {
+      setLocationSaving(false)
+    }
+  }
+
   return (
     <section className="mt-3" aria-label="친구들이 올린 사진">
       {/* 새 이야기가 붙은 순간 잠깐 보여주는 한 줄, 그 외에는 새 이야기 총 개수 */}
@@ -177,6 +196,19 @@ function RecentPhotosCarousel({
                       ? `새 이야기 ${fresh}개 · ${line.text}`
                       : [timeAgo(card.firstEntry?.confirmedAt), line.text].filter(Boolean).join(' · ')}
                   </p>
+                  {own && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setLocationMessage(null)
+                        setLocationPhoto(card)
+                      }}
+                      className="mt-1 text-[11px] font-semibold text-point underline underline-offset-2"
+                    >
+                      지도에 장소 {locationSaving && locationPhoto?.photo.id === card.photo.id ? '저장 중…' : '추가·변경'}
+                    </button>
+                  )}
                 </div>
                 {/* 친구 사진은 그 사진부터 덧붙이기 화면을 연다. 내 사진은 덧붙일 수 없어 버튼이 없다 */}
                 {/* 내 사진도 덧붙일 수 있어서 모든 사진에 보러 가기 버튼을 둔다 */}
@@ -199,6 +231,16 @@ function RecentPhotosCarousel({
           )
         })}
       </ul>
+
+      {locationMessage && <p className="mt-2 px-1 text-[11px] text-sub" role="status">{locationMessage}</p>}
+      {locationPhoto && (
+        <PlaceSheet
+          title="이 사진은 어디에서 찍었나요?"
+          recent={[]}
+          onClose={() => !locationSaving && setLocationPhoto(null)}
+          onSelect={saveLocation}
+        />
+      )}
 
     </section>
   )
