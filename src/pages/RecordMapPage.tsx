@@ -5,6 +5,7 @@ import type { FlowerCode } from '../api/types'
 import { getMe } from '../lib/auth'
 import recordMapImage from '../assets/record-map.webp'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
+import KakaoRecordMap from '../components/KakaoRecordMap'
 import Flower from '../components/Flower'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -26,6 +27,11 @@ function project(lat: number, lng: number) {
   const x = (point.x / MAP_W) * 100
   const y = (point.y / MAP_H) * 100
   return { x: Math.max(4, Math.min(96, x)), y: Math.max(4, Math.min(96, y)) }
+}
+
+/** 커스텀 지도 그림의 픽셀 위치를 대략적인 실제 좌표로 되돌린다. 확대 시 카카오맵 중심을 이어 주는 용도다. */
+function unproject(x: number, y: number) {
+  return { lat: (17363.6 - y) / 466.3, lng: (x + 48060.7) / 376.4 }
 }
 
 const CITY_FLOWERS: FlowerCode[] = [
@@ -230,12 +236,15 @@ function ZoomableMap({
   pins,
   activeCity,
   onOpenCity,
+  onEnterDetail,
   children,
 }: {
   pins: CityPin[]
   activeCity?: string
   /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
   onOpenCity: (pin: CityPin, place?: MapPlaceItem) => void
+  /** 충분히 확대한 시점에 실제 좌표 기반 카카오 상세 지도로 전환한다 */
+  onEnterDetail: (center: { lat: number; lng: number }) => void
   children?: ReactNode
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
@@ -244,6 +253,7 @@ function ZoomableMap({
   const [view, setView] = useState({ s: 1, x: 0, y: 0 })
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const gesture = useRef({ dist: 0, moved: 0 })
+  const detailEntered = useRef(false)
 
   // 지도 상자 크기를 재 둔다 (핀 위치 계산용)
   useEffect(() => {
@@ -330,6 +340,18 @@ function ZoomableMap({
   }
   const detail = view.s >= DETAIL_SCALE
   const places = detail ? pins.flatMap((pin) => groupPlaces(pin.places).map((g) => ({ pin, ...g }))) : []
+
+  useEffect(() => {
+    if (view.s < DETAIL_SCALE) {
+      detailEntered.current = false
+      return
+    }
+    if (detailEntered.current || size.w === 0 || size.h === 0) return
+    detailEntered.current = true
+    const imageX = (-view.x + size.w / 2) / view.s
+    const imageY = (-view.y + size.h / 2) / view.s
+    onEnterDetail(unproject(imageX * (MAP_W / size.w), imageY * (MAP_H / size.h)))
+  }, [onEnterDetail, size.h, size.w, view.s, view.x, view.y])
 
   return (
     <div className="relative mx-3 mt-4">
@@ -554,6 +576,8 @@ function RecordMapPage() {
     setOpenPlace(place)
   }
   const [roomId, setRoomId] = useState(ALL_ROOMS)
+  // 개요에서는 커스텀 행정구역 지도를, 충분히 확대하면 이 좌표를 중심으로 카카오 상세 지도를 보여 준다.
+  const [detailCenter, setDetailCenter] = useState<{ lat: number; lng: number } | null>(null)
   const pins = visiblePins
   // 지도에 장소가 있는 방들 (방 고르기 목록)
   const roomOptions = allPins
@@ -569,6 +593,7 @@ function RecordMapPage() {
   const changeRoom = (next: string) => {
     setRoomId(next)
     setOpenCity(null)
+    setDetailCenter(null)
     setError(false)
     if (next === ALL_ROOMS) {
       setVisiblePins(allPins)
@@ -599,22 +624,38 @@ function RecordMapPage() {
         </div>
       </header>
 
-      {/* 기록 지도는 시안의 깔끔한 행정구역 지도와 사진 좌표를 사용한다.
-          카카오맵 기본 타일은 도로·지명·지형이 함께 표시되어 이 화면의 디자인과 맞지 않는다. */}
-      <ZoomableMap pins={pins ?? []} activeCity={openCity?.city} onOpenCity={openSheet}>
-        {pins?.length === 0 && (
-          <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
-            아직 지도에 핀 꽃이 없어요.
-            <br />
-            사진에 장소를 남기면 여기에 꽃이 피어요
-          </p>
-        )}
-        {error && (
-          <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] text-sub">
-            지도를 불러오지 못했어요. 잠시 후 다시 열어 주세요
-          </p>
-        )}
-      </ZoomableMap>
+      {/* 개요는 시안의 커스텀 경계 지도, 확대하면 카카오 상세 지도. */}
+      {detailCenter ? (
+        <KakaoRecordMap
+          pins={pins ?? []}
+          activeCity={openCity?.city}
+          cityFlower={cityFlower}
+          initialCenter={detailCenter}
+          onOpenCity={openSheet}
+          onOverview={() => setDetailCenter(null)}
+          onFail={() => setDetailCenter(null)}
+        />
+      ) : (
+        <ZoomableMap
+          pins={pins ?? []}
+          activeCity={openCity?.city}
+          onOpenCity={openSheet}
+          onEnterDetail={setDetailCenter}
+        >
+          {pins?.length === 0 && (
+            <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
+              아직 지도에 핀 꽃이 없어요.
+              <br />
+              사진에 장소를 남기면 여기에 꽃이 피어요
+            </p>
+          )}
+          {error && (
+            <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] text-sub">
+              지도를 불러오지 못했어요. 잠시 후 다시 열어 주세요
+            </p>
+          )}
+        </ZoomableMap>
+      )}
 
       <p className="mx-5 mt-4 mb-4 rounded-[18px] bg-surface px-5 py-3.5 text-[13px] text-sub">
         도시를 누르면 AI가 그곳의 추억을 한 줄로 들려줘요
