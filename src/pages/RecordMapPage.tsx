@@ -5,7 +5,6 @@ import type { FlowerCode } from '../api/types'
 import { getMe } from '../lib/auth'
 import recordMapImage from '../assets/record-map.webp'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
-import KakaoRecordMap from '../components/KakaoRecordMap'
 import Flower from '../components/Flower'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -455,9 +454,6 @@ function ZoomableMap({
   )
 }
 
-/** 카카오 JavaScript 키가 있으면 카카오 지도를 쓴다 */
-const KAKAO_MAP_AVAILABLE = Boolean(import.meta.env.VITE_KAKAO_JS_KEY)
-
 const ALL_ROOMS = 'all'
 
 /** 고른 방의 사진 장소만 남긴 도시 핀. 전체면 그대로 */
@@ -558,8 +554,6 @@ function RecordMapPage() {
     setOpenPlace(place)
   }
   const [roomId, setRoomId] = useState(ALL_ROOMS)
-  // 카카오 지도를 못 불러오면(키·콘솔 설정 문제) 시안 그림 지도로 보여준다
-  const [kakaoFailed, setKakaoFailed] = useState(false)
   const pins = visiblePins
   // 지도에 장소가 있는 방들 (방 고르기 목록)
   const roomOptions = allPins
@@ -605,16 +599,9 @@ function RecordMapPage() {
         </div>
       </header>
 
-      {/* 시안의 대구·경북 시군 지도 그림. 멀리서는 도시 핀, 확대하면 사진마다 고른 세부 장소 핀이 보인다 */}
-      {/* 카카오 지도(키가 있고 불러와지면) → 안 되면 시안 그림 지도 */}
-      {KAKAO_MAP_AVAILABLE && !kakaoFailed ? (
-        <KakaoRecordMap
-          pins={pins ?? []}
-          activeCity={openCity?.city}
-          cityFlower={cityFlower}
-          onOpenCity={openSheet}
-          onFail={() => setKakaoFailed(true)}
-        >
+      {/* 기록 지도는 시안의 깔끔한 행정구역 지도와 사진 좌표를 사용한다.
+          카카오맵 기본 타일은 도로·지명·지형이 함께 표시되어 이 화면의 디자인과 맞지 않는다. */}
+      <ZoomableMap pins={pins ?? []} activeCity={openCity?.city} onOpenCity={openSheet}>
         {pins?.length === 0 && (
           <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
             아직 지도에 핀 꽃이 없어요.
@@ -627,23 +614,7 @@ function RecordMapPage() {
             지도를 불러오지 못했어요. 잠시 후 다시 열어 주세요
           </p>
         )}
-        </KakaoRecordMap>
-      ) : (
-        <ZoomableMap pins={pins ?? []} activeCity={openCity?.city} onOpenCity={openSheet}>
-        {pins?.length === 0 && (
-          <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
-            아직 지도에 핀 꽃이 없어요.
-            <br />
-            사진에 장소를 남기면 여기에 꽃이 피어요
-          </p>
-        )}
-        {error && (
-          <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] text-sub">
-            지도를 불러오지 못했어요. 잠시 후 다시 열어 주세요
-          </p>
-        )}
-        </ZoomableMap>
-      )}
+      </ZoomableMap>
 
       <p className="mx-5 mt-4 mb-4 rounded-[18px] bg-surface px-5 py-3.5 text-[13px] text-sub">
         도시를 누르면 AI가 그곳의 추억을 한 줄로 들려줘요
