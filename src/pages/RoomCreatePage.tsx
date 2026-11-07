@@ -391,7 +391,7 @@ function RoomCreatePage() {
         <Link to={paths.terms()} className="text-point">
           이용 안내
         </Link>
-        에 동의하게 돼요 · 48시간 뒤 첫 두루마리
+        에 동의하게 돼요
       </p>
 
     </main>
