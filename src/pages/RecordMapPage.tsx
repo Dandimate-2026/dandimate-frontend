@@ -501,10 +501,10 @@ function ZoomableMap({
                 aria-label={`${pin.city} 기록 ${pin.recordCount}개`}
                 style={pos}
                 // 점(높이 8px)의 가운데가 도시 자리에 오도록 아래로 4px 내린다
-                className="absolute flex -translate-x-1/2 translate-y-[calc(-100%+4px)] flex-col items-center"
+                className="absolute flex w-max -translate-x-1/2 translate-y-[calc(-100%+4px)] flex-col items-center"
               >
                 <span
-                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-2 text-[14px] font-bold shadow-[0_3px_12px_rgba(42,38,35,0.12)] ${
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-2 text-[14px] font-bold whitespace-nowrap shadow-[0_3px_12px_rgba(42,38,35,0.12)] ${
                     active ? 'bg-ink text-surface' : 'bg-surface'
                   }`}
                 >
@@ -534,7 +534,7 @@ function ZoomableMap({
               onClick={() => onOpenCity(pin, place)}
               aria-label={`${place.placeName} (${pin.city})`}
               style={pos}
-              className="absolute flex -translate-x-1/2 -translate-y-full flex-col items-center"
+              className="absolute flex w-max -translate-x-1/2 -translate-y-full flex-col items-center"
             >
               <span className="flex max-w-[120px] items-center gap-1 rounded-full bg-surface py-0.5 pr-2 pl-1 text-[11px] font-semibold shadow-[0_2px_8px_rgba(42,38,35,0.15)]">
                 <Flower code={(place.uploader?.flowerCode as FlowerCode | undefined) ?? cityFlower(pin.city)} size={14} />
