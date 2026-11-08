@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { getNotifications, markNotificationRead } from '../api/notifications'
 import type { NotificationType, RoomNotification } from '../api/types'
@@ -6,6 +6,7 @@ import { timeAgo } from '../lib/date'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 
 function ChevronLeftIcon() {
   return (
@@ -39,18 +40,35 @@ function RoomNotificationsPage() {
   const session = getRoomSession(roomId)
   const [items, setItems] = useState<RoomNotification[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const token = session?.memberAccessToken
+  const sequence = useRef(0)
 
+  const reload = () => {
+    if (token === undefined) return
+    const current = ++sequence.current
+    getNotifications(roomId, token)
+      .then((list) => {
+        if (current !== sequence.current) return
+        setItems([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+        setError(null)
+      })
+      .catch(() => { if (current === sequence.current) setError('알림을 불러오지 못했어요') })
+  }
   useEffect(() => {
-    if (!session) return
-    getNotifications(roomId, session.memberAccessToken)
-      .then((list) => setItems([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt))))
-      .catch(() => setError('알림을 불러오지 못했어요'))
-    // session은 매 렌더마다 새로 읽으므로 roomId 기준으로만 다시 불러온다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId])
+    if (token === undefined) return
+    const requestState = sequence
+    const current = ++requestState.current
+    getNotifications(roomId, token).then(list => {
+      if (current !== requestState.current) return
+      setItems([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+      setError(null)
+    }).catch(() => { if (current === requestState.current) setError('알림을 불러오지 못했어요') })
+    return () => { requestState.current++ }
+  }, [roomId, token])
+  useRoomLiveUpdates(roomId, token, reload)
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
-  if (error) return <NotFoundPage message={error} />
+  if (error && !items) return <main className="p-5 pt-16"><p role="alert">{error}</p><button type="button" onClick={reload}>다시 불러오기</button></main>
   if (!items) return <main className="flex-1 bg-bg" aria-busy="true" />
 
   const handleOpen = (item: RoomNotification) => {
@@ -81,7 +99,7 @@ function RoomNotificationsPage() {
       ) : (
         <ul className="mt-5 flex flex-col gap-2">
           {items.map((item) => {
-            const text = NOTIFICATION_TEXT[item.type]
+            const text = NOTIFICATION_TEXT[item.type] ?? { title: '새 소식이 있어요', detail: '방의 소식을 확인해 주세요' }
             const unread = !item.readAt
             return (
               <li key={item.id}>

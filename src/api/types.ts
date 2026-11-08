@@ -207,7 +207,13 @@ export interface Entry {
   confirmedAt: string
 }
 
-export type AskbackStatus = 'PENDING' | 'ANSWERED' | 'FORGOT' | 'EXPIRED' | 'CANCELLED'
+export type AskbackStatus = 'PENDING' | 'ANSWERED' | 'FORGOT' | 'SKIPPED' | 'EXPIRED' | 'CANCELLED'
+
+export interface AskbackQueue {
+  nextAskback: Askback | null
+  remainingCount: number
+  completed: boolean
+}
 
 export interface Askback {
   id: string

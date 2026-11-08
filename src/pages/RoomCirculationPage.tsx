@@ -17,6 +17,7 @@ import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 import { LengthNotice } from '../components/LengthNotice'
 import { canEditRoomRecords } from '../lib/roomState'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { clampText } from '../lib/textLimit'
 
 /** 꽃 색은 앱 공통 8색: 꽃 코드를 그대로 쓴다 */
@@ -98,6 +99,16 @@ function RoomCirculationPage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [roomId, token, startPhotoId])
+
+  useRoomLiveUpdates(roomId, session?.memberAccessToken, () => {
+    if (busy) return
+    const currentPhotoId = cards[index]?.photo.id
+    void getCirculation(roomId, token).then(result => {
+      const nextIndex = result.findIndex(item => item.photo.id === currentPhotoId)
+      setCards(result)
+      setIndex(nextIndex >= 0 ? nextIndex : Math.max(0, Math.min(index, result.length - 1)))
+    }).catch(() => {})
+  })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
 

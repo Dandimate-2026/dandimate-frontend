@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 
 const OPEN_AFTER = 90 // 이만큼 끌어내리면 놓았을 때 끝까지 펼친다
 const UNTIE_MS = 550 // 끈이 풀리는 시간
@@ -14,30 +14,41 @@ export default function ScrollUnroll({ showRod }: { showRod: boolean }) {
   // 위쪽 봉의 실제 위치·폭을 재서 아래 봉을 똑같이 맞춘다
   const [rod, setRod] = useState<{ top: number; left: number; width: number } | null>(null)
   const [offset, setOffset] = useState(0)
-  const [phase, setPhase] = useState<Phase>('tied')
+  const [phase, setPhase] = useState<Phase>(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'done' : 'tied')
   const startY = useRef(0)
+  const done = phase === 'done'
 
   useLayoutEffect(() => {
+    if (done) return
     // 이전 화면에서 내려와 있던 스크롤이 남으면, 펼치기 전 화면을 잠그면서 위쪽(그림·봉·제목)으로 못 올라간다.
     // 끈이 묶인 채로 시작할 때는 맨 위로 올린 뒤 봉 위치를 잰다
-    window.scrollTo(0, 0)
+    const html = document.documentElement
+    const previousOverflow = html.style.overflow
+    const previousAnchor = html.style.overflowAnchor
+    html.style.overflow = 'hidden'
+    html.style.overflowAnchor = 'none'
     const measure = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
       const top = document.querySelector('.scroll-live > .scroll-rod')?.getBoundingClientRect()
       if (top) setRod({ top: top.bottom, left: top.left, width: top.width })
     }
     measure()
+    // 브라우저의 스크롤 복원과 이미지 레이아웃이 끝난 뒤에도 봉 위치를 맞춘다.
+    const frame = requestAnimationFrame(measure)
+    const observer = new ResizeObserver(measure)
+    const hero = document.querySelector('.scroll-live > .scroll-template-hero')
+    if (hero) observer.observe(hero)
     window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
-
-  // 펼치기 전에는 화면이 스크롤되지 않게 막는다 (말린 두루마리 뒤로 내용이 비쳐 보이지 않게)
-  useEffect(() => {
-    if (phase === 'done') return
-    const html = document.documentElement
-    const prev = html.style.overflow
-    html.style.overflow = 'hidden'
-    return () => { html.style.overflow = prev }
-  }, [phase])
+    window.addEventListener('scroll', measure)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure)
+      html.style.overflow = previousOverflow
+      html.style.overflowAnchor = previousAnchor
+    }
+  }, [done])
 
   if (phase === 'done') return null
   const start = rod?.top ?? 124

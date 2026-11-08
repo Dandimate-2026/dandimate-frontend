@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { answerAskback, forgetAskback, getAskback, postponeAskback, transcribeAskback } from '../api/askbacks'
+import { answerAskback, forgetAskback, getAskback, getNextAskback, passAskback, postponeAskback, transcribeAskback } from '../api/askbacks'
 import { ApiError } from '../api/client'
-import type { Askback } from '../api/types'
+import type { Askback, AskbackQueue } from '../api/types'
 import Button from '../components/Button'
 import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon, SparkleIcon } from '../components/entry/EntryIcons'
@@ -13,6 +13,7 @@ import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 
 // 되묻기 답은 음성 1초부터 플랜별 최대 20/30/60초, 글 200자까지 (백엔드 명세)
 const MIN_VOICE_MS = 1_000
@@ -38,7 +39,7 @@ function closedMessage(err: unknown) {
 }
 
 /** AI가 친구들의 이야기를 읽고 나에게만 묻는 질문에 답하는 화면 */
-function AskbackPage() {
+function AskbackDetail() {
   const { roomId = '', askbackId = '' } = useParams()
   const navigate = useNavigate()
   const session = getRoomSession(roomId)
@@ -51,6 +52,9 @@ function AskbackPage() {
   const [draft, setDraft] = useState<VoiceDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [queue, setQueue] = useState<AskbackQueue | null>(null)
+  const [resolved, setResolved] = useState(false)
+  const [completed, setCompleted] = useState(false)
   // 방 전체 말하기 시간을 다 썼을 때 띄우는 시트
   const [voiceLimitOpen, setVoiceLimitOpen] = useState(false)
   const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
@@ -59,16 +63,24 @@ function AskbackPage() {
   const maxVoiceMs = voiceMaxMs(quota, 'other')
 
   useEffect(() => {
+    let active = true
     getAskback(askbackId, token)
-      .then(setAskback)
+      .then(result => { if (active) setAskback(result) })
       .catch((e: unknown) =>
-        setLoadError(
+        active && setLoadError(
           e instanceof ApiError && (e.status === 403 || e.status === 404)
             ? '질문을 찾을 수 없어요'
             : '질문을 불러오지 못했어요',
         ),
       )
-  }, [askbackId, token])
+    getNextAskback(roomId).then(result => { if (active) setQueue(result) }).catch(() => {})
+    return () => { active = false }
+  }, [askbackId, token, roomId])
+  useRoomLiveUpdates(roomId, session?.memberAccessToken, () => {
+    if (saving || resolved) return
+    getAskback(askbackId, token).then(setAskback).catch(() => {})
+    getNextAskback(roomId).then(setQueue).catch(() => {})
+  })
   useEffect(() => () => void (draft && URL.revokeObjectURL(draft.audioUrl)), [draft])
 
   const handleRecorded = async ({ blob, durationMs }: Recording) => {
@@ -100,7 +112,30 @@ function AskbackPage() {
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (loadError) return <NotFoundPage message={loadError} />
   if (!askback) return <main className="flex-1 bg-bg" aria-busy="true" />
-  if (askback.status !== 'PENDING') return <NotFoundPage message="이미 끝난 질문이에요" />
+  const goToQueue = (result: AskbackQueue) => {
+    setQueue(result)
+    if (result.nextAskback && !result.completed && result.nextAskback.id !== askbackId) {
+      navigate(paths.askback(roomId, result.nextAskback.id), { replace: true })
+    } else if (result.completed || !result.nextAskback) {
+      setCompleted(true)
+    } else {
+      setError('다음 질문을 아직 준비하고 있어요. 잠시 후 다시 확인해 주세요')
+    }
+  }
+  const nextQuestion = async () => {
+    setSaving(true); setError(null)
+    try { goToQueue(await getNextAskback(roomId)) }
+    catch { setError('저장은 완료됐어요. 다음 질문을 다시 불러와 주세요') }
+    finally { setSaving(false) }
+  }
+  if (resolved || completed || askback.status !== 'PENDING') return <main className="flex min-h-dvh flex-col justify-center gap-4 bg-bg px-5 text-center text-ink">
+    <h1 className="text-xl font-bold">{completed ? '지금 답할 질문을 모두 마쳤어요' : resolved ? '질문을 마쳤어요' : '이미 끝난 질문이에요'}</h1>
+    <p className="text-sm text-sub">{completed ? '함께 남긴 이야기는 방에서 확인할 수 있어요' : '남아 있는 질문을 이어서 확인해 보세요'}</p>
+    {error && <p role="alert" className="text-sm text-point">{error}</p>}
+    {!completed && <Button disabled={saving} onClick={() => void nextQuestion()}>{saving ? '확인 중…' : '다음 질문 확인'}</Button>}
+    <Button variant="outline" onClick={() => navigate(paths.roomAskbacks(roomId), { replace: true })}>내 질문 목록</Button>
+    <button type="button" onClick={() => navigate(paths.roomHome(roomId), { replace: true })}>방으로 돌아가기</button>
+  </main>
 
   const goHome = () => navigate(paths.roomHome(roomId), { replace: true })
 
@@ -133,7 +168,8 @@ function AskbackPage() {
           ? { inputMode: 'VOICE', transcriptionId: draft.transcriptionId, transcript: text }
           : { inputMode: 'TEXT', transcript: text },
       )
-      goHome()
+      setResolved(true)
+      await nextQuestion()
     } catch (err) {
       setError(closedMessage(err))
       setSaving(false)
@@ -141,12 +177,14 @@ function AskbackPage() {
   }
 
   const handleForgot = async () => {
+    if (saving) return
     recorder.cancel()
     setSaving(true)
     setError(null)
     try {
       await forgetAskback(askbackId, token)
-      setStep('forgot')
+      setResolved(true)
+      await nextQuestion()
     } catch (err) {
       setError(closedMessage(err))
       setStep('idle')
@@ -156,13 +194,26 @@ function AskbackPage() {
   }
 
   const handlePostpone = async () => {
+    if (saving) return
     recorder.cancel()
+    setSaving(true)
     try {
       await postponeAskback(askbackId, token)
     } catch {
       // 미루기가 실패해도 질문은 그대로 남아 있으니 홈으로 돌아간다
     }
     goHome()
+  }
+
+  const handlePass = async () => {
+    if (saving) return
+    recorder.cancel(); setSaving(true); setError(null)
+    try {
+      const result = await passAskback(askbackId)
+      setResolved(true)
+      goToQueue(result)
+    } catch (cause) { setError(closedMessage(cause)) }
+    finally { setSaving(false) }
   }
 
   const answering = step === 'review' || step === 'text'
@@ -180,6 +231,7 @@ function AskbackPage() {
           <SparkleIcon />
           AI가 물어봐요
         </p>
+        {queue && <p className="mt-2 text-[11px] text-sub">답할 질문 {queue.remainingCount}개 남음</p>}
         <h1 className="mt-2.5 text-[20px] leading-[28px] font-bold">{askback.question}</h1>
         {askback.evidenceNicknames.length > 0 && (
           <p className="mt-2 text-[11px] text-sub">
@@ -248,6 +300,7 @@ function AskbackPage() {
                   onStop={recorder.stop}
                 />
               </div>
+              <button type="button" disabled={saving || step === 'transcribing'} onClick={() => void handlePass()} className="mt-3 text-[11px] text-sub">이 질문 건너뛰고 다음 질문 보기</button>
               <div className="mt-3 flex h-6 items-center">
                 {step === 'recording' ? (
                   <WaveProgress elapsedMs={recorder.elapsedMs} maxMs={maxVoiceMs} />
@@ -314,4 +367,7 @@ function AskbackPage() {
   )
 }
 
-export default AskbackPage
+export default function AskbackPage() {
+  const { roomId, askbackId } = useParams()
+  return <AskbackDetail key={`${roomId}:${askbackId}`} />
+}

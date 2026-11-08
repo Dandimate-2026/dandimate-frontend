@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router'
 import AskbackPage from '../pages/AskbackPage'
+import RoomAskbacksPage from '../pages/RoomAskbacksPage'
 import FirstEntryPage from '../pages/FirstEntryPage'
 import InviteJoinPage from '../pages/InviteJoinPage'
 import LoginPage from '../pages/LoginPage'
@@ -65,6 +66,7 @@ function AppRoutes() {
         <Route path={paths.firstEntry(':roomId')} element={<FirstEntryPage />} />
         {/* AI가 나에게만 묻는 질문에 답하기 */}
         <Route path={paths.askback(':roomId', ':askbackId')} element={<AskbackPage />} />
+        <Route path={paths.roomAskbacks(':roomId')} element={<RoomAskbacksPage />} />
         {/* 친구 사진에 이야기 붙이기 */}
         <Route path={paths.roomCirculation(':roomId')} element={<RoomCirculationPage />} />
         {/* 엮으러 가기 다음: 엮는 중 → 두루마리 */}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { getRoomHome, requestPlanUpgrade } from '../api/rooms'
 import type { PlanRequestReason, RoomHome, RoomQuota } from '../api/types'
 import { paths } from '../routes/paths'
+import { useRoomLiveUpdates } from './useRoomLiveUpdates'
 
 /**
  * 플랜 한도를 확인하려고 모임방 홈 정보를 한 번 불러온다.
@@ -17,6 +18,9 @@ export function useRoomHomeForQuota(roomId: string, token: string | undefined) {
       .then(setHome)
       .catch(() => {})
   }, [roomId, token])
+  useRoomLiveUpdates(roomId, token, () => {
+    if (token !== undefined) void getRoomHome(roomId, token).then(setHome).catch(() => {})
+  })
 
   return home
 }

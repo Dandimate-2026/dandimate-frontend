@@ -16,6 +16,7 @@ export const TOSS_ENABLED = !USE_MOCK && Boolean(TOSS_CLIENT_KEY?.startsWith('te
 export type PaymentOrderStatus = 'READY' | 'PROCESSING' | 'DONE' | 'FAILED'
 
 export interface PaymentOrder {
+  orderType?: 'ROOM' | 'CREDIT'
   orderId: string
   orderName: string
   /** 서버가 정한 결제 금액 (원) */
@@ -24,8 +25,8 @@ export interface PaymentOrder {
   status: PaymentOrderStatus
   /** 새 방은 승인(DONE) 뒤에 생긴다. 그 전에는 null */
   roomId: string | null
-  fromPlan: RoomPlanType
-  targetPlan: RoomPlanType
+  fromPlan: RoomPlanType | null
+  targetPlan: RoomPlanType | null
   testMode: true
 }
 

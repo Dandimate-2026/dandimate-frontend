@@ -17,13 +17,14 @@ import type { DownloadResult } from './scrollDownload'
 import type { ReweaveResult } from './types'
 import { siteUrl } from '../../lib/siteUrl'
 
-export default function LiveScrollPage({ scroll, home, token, onBack, onReply, onRefresh, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion, onAddStory }: {
+export default function LiveScrollPage({ scroll, home, token, onBack, onReply, onRefresh, onDeleteReply, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion, onAddStory }: {
   scroll: Scroll
   home: RoomHome
   token: string
   onBack: () => void
   onReply: (paragraph: ScrollParagraph) => void
   onRefresh: () => Promise<void>
+  onDeleteReply?: (replyId: string) => Promise<void>
   onReweave?: (paragraph: ScrollParagraph) => void
   /** 재엮기를 다 썼을 때 한도 바텀시트를 띄운다 */
   onReweaveLimit?: () => void
@@ -42,6 +43,15 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   const [error, setError] = useState('')
   const [original, setOriginal] = useState<ScrollParagraph | null>(null)
   const [previous, setPrevious] = useState<ScrollParagraph | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
+  const confirmReplyDeletion = async () => {
+    if (!deleteTarget || !onDeleteReply || busy || pendingParagraphId) return
+    setBusy(deleteTarget); setError('')
+    try { await onDeleteReply(deleteTarget); setDeleteTarget(null) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '답가를 삭제하지 못했어요') }
+    finally { setBusy(null) }
+  }
   // 템플릿은 방 단위로 서버에 저장된다. 방금 고른 값은 서버에서 다시 받아 올 때까지만 먼저 보여 준다
   const [chosenTemplate, setChosenTemplate] = useState<ScrollTemplateId | null>(null)
   const selectedTemplate = chosenTemplate ?? fromServerTemplate(home.room.scrollTemplateId)
@@ -148,7 +158,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       {changes && <div className="scroll-rewoven-heading"><strong>✓ {changes.reply.member.nickname} 님의 답가가 엮였어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
       <ParagraphStory paragraph={paragraph} changes={changes} />
       {/* 이 문단에 남은 답가 (서버가 오래된 순으로 준다) */}
-      {paragraph.replies && paragraph.replies.length > 0 && <ul className="scroll-replies">{paragraph.replies.map((reply) => <li key={reply.id}><strong>{reply.mine ? '나' : reply.nickname}</strong> “{reply.transcript}”</li>)}</ul>}
+      {paragraph.replies && paragraph.replies.length > 0 && <ul className="scroll-replies">{paragraph.replies.map((reply) => <li key={reply.id}><strong>{reply.mine ? '나' : reply.nickname}</strong> “{reply.transcript}” {reply.mine && onDeleteReply && <button type="button" disabled={busy !== null || Boolean(pendingParagraphId)} className="memory-text-link" onClick={() => setDeleteTarget(reply.id)}>삭제</button>}</li>)}</ul>}
       <div className="memory-chapter-actions">
         <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>아 맞다 ! <strong>{paragraph.ahMatdaCount}</strong></button>
         <button type="button" className="memory-reply" disabled={Boolean(pendingParagraphId)} onClick={() => onReply(paragraph)}>답가 남기기 {paragraph.replyCount > 0 && `· ${paragraph.replyCount}`}</button>
@@ -161,6 +171,14 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       </div>
       {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
     </section>})}
+    {deleteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+      <section role="alertdialog" aria-modal="true" aria-labelledby="delete-reply-title" className="w-full max-w-sm rounded-3xl bg-surface p-6 text-center">
+        <h2 id="delete-reply-title" className="font-bold">내 답가를 삭제할까요?</h2>
+        <p className="mt-3 text-sm text-sub">삭제 후 서버가 문단을 복구하거나 다시 엮어요.</p>
+        {error && <p role="alert" className="mt-3 text-sm text-point">{error}</p>}
+        <div className="mt-5 flex gap-3"><Button variant="outline" disabled={busy !== null} onClick={() => setDeleteTarget(null)}>취소</Button><Button disabled={busy !== null || Boolean(pendingParagraphId)} onClick={() => void confirmReplyDeletion()}>{busy ? '삭제 요청 중…' : '삭제하기'}</Button></div>
+      </section>
+    </div>}
     {scroll.paragraphs.length > 0 && <div className="scroll-rod scroll-rod-end" aria-hidden="true" />}
     <ScrollUnroll showRod />
     {scroll.paragraphs.length > 0 && <footer className="scroll-complete-footer">

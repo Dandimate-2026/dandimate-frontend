@@ -1,11 +1,12 @@
 import { request } from './client'
 import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK, MOCK_LIVELY_ROOM_ID, mockLivelyCards, DEMO_CIRCULATION_PHOTOS, getMockRole } from './mock'
-import type { CirculationResponse, Entry, Job, Member, Scroll, TranscriptionDraft } from './types'
+import type { CirculationResponse, Entry, Job, Member, Scroll, ScrollReply, TranscriptionDraft } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
 const mockStatuses = new Map<string, 'ADDON' | 'PASSED'>()
 const mockReactionCounts = new Map<string, number>()
 const mockReplyCounts = new Map<string, number>()
+const mockReplies = new Map<string, ScrollReply[]>()
 const mockRewoven = new Map<string, { body: string; version: number; quote: string }>()
 const mockJobs = new Map<string, number>()
 const mockMember: Member = { id: 'mock-member', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA' }
@@ -68,6 +69,7 @@ export function getScroll(roomId: string, token: string) {
         ...(mockRewoven.has(mockParagraphId(roomId, index)) ? [{ entryId: `reply-${index}`, member: previewHome.me, quote: mockRewoven.get(mockParagraphId(roomId, index))!.quote }] : []),
       ],
       replyCount: mockReplyCounts.get(mockParagraphId(roomId, index)) ?? 0,
+      replies: mockReplies.get(mockParagraphId(roomId, index)) ?? [],
       ahMatdaCount: mockReactionCounts.get(mockParagraphId(roomId, index)) ?? 0, aiGenerated: true,
     })),
   })
@@ -84,9 +86,27 @@ export function retryWeave(roomId: string, token: string) {
   return request<{ job: Job }>(`/rooms/${roomId}/weave-jobs`, { method: 'POST', token, idempotent: true })
 }
 
+/** 삭제 후 서버가 문단을 복구/재엮는 작업이 끝날 때까지 job을 확인해야 한다. */
+export function deleteReply(replyId: string) {
+  if (USE_MOCK) {
+    for (const [paragraphId, replies] of mockReplies) {
+      if (!replies.some(reply => reply.id === replyId)) continue
+      const remaining = replies.filter(reply => reply.id !== replyId)
+      mockReplies.set(paragraphId, remaining)
+      mockReplyCounts.set(paragraphId, remaining.length)
+      const previous = mockRewoven.get(paragraphId)
+      const original = MEMORY_PHOTOS[Number(paragraphId.split('-').at(-1))]?.firstStory.text ?? ''
+      mockRewoven.set(paragraphId, { body: [original, ...remaining.map(reply => reply.transcript)].join('\n'), quote: remaining.at(-1)?.transcript ?? '', version: (previous?.version ?? 1) + 1 })
+    }
+    return Promise.resolve<{ job: Job }>({ job: { id: 'mock-delete-reply', type: 'REPLY_REWEAVE', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
+  }
+  return request<{ job: Job }>(`/replies/${replyId}`, { method: 'DELETE' })
+}
+
 export function createReply(paragraphId: string, token: string, body: { inputMode: 'TEXT' | 'VOICE'; transcript: string; transcriptionId?: string }) {
   if (USE_MOCK) {
     mockReplyCounts.set(paragraphId, (mockReplyCounts.get(paragraphId) ?? 0) + 1)
+    mockReplies.set(paragraphId, [...(mockReplies.get(paragraphId) ?? []), { id: `reply-${crypto.randomUUID()}`, memberId: mockMember.id, nickname: mockMember.nickname, transcript: body.transcript, status: 'APPLIED', mine: true, createdAt: new Date().toISOString() }])
     if (!paragraphId.startsWith(`${MOCK_SCROLL_PREVIEW_ROOM_ID}:`)) return Promise.resolve<{ job: Job }>({ job: { id: 'mock-reply-job', type: 'REPLY_REWEAVE', status: 'SUCCEEDED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
     consumeMockReweave()
     const previous = mockRewoven.get(paragraphId)

@@ -16,7 +16,11 @@ const POLL_INTERVAL_MS = 2000
 const ROOM_EVENT_NAMES = [
   'photo.published',
   'photo.uploaded',
+  'photo.deleted',
   'entry.created',
+  'entry.updated',
+  'entry.deleted',
+  'scroll.template.updated',
   'askback.created',
   'job.updated',
   'scroll.ready',
@@ -47,7 +51,9 @@ export function useRoomLiveUpdates(roomId: string, token: string | undefined, on
     let source: EventSource | null = null
     let timer: ReturnType<typeof setInterval> | null = null
     let stopped = false
-    const refresh = () => onChangeRef.current()
+    let connecting = false
+    let pollTicks = 0
+    const refresh = () => { if (!stopped) onChangeRef.current() }
 
     // 실시간 연결이 안 될 때만 짧게 확인한다. 다른 앱·탭으로 가 있는 동안에는 서버에 묻지 않는다
     const fallBackToPolling = () => {
@@ -55,20 +61,35 @@ export function useRoomLiveUpdates(roomId: string, token: string | undefined, on
       source = null
       if (stopped || timer) return
       timer = setInterval(() => {
-        if (document.visibilityState === 'visible') refresh()
+        if (document.visibilityState !== 'visible') return
+        refresh()
+        // 끊긴 일회용 토큰을 재사용하지 않고 새로 발급받아 연결한다.
+        if (++pollTicks % 5 === 0) connect()
       }, POLL_INTERVAL_MS)
     }
 
-    issueEventToken(roomId, token)
+    const connect = () => {
+      if (stopped || connecting || source) return
+      connecting = true
+      issueEventToken(roomId, token)
       .then(({ eventsUrl }) => {
         if (stopped) return
         source = new EventSource(devProxyUrl(eventsUrl), { withCredentials: true })
+        source.onopen = () => {
+          if (timer) clearInterval(timer)
+          timer = null
+          pollTicks = 0
+          refresh()
+        }
         ROOM_EVENT_NAMES.forEach((name) => source?.addEventListener(name, refresh))
         // 이름 없이 오는 이벤트가 생겨도 다시 불러온다
         source.onmessage = refresh
         source.onerror = fallBackToPolling
       })
       .catch(fallBackToPolling)
+      .finally(() => { connecting = false })
+    }
+    connect()
 
     // 다른 앱·탭에 갔다가 돌아오면 바로 한 번 확인한다
     const handleVisible = () => {

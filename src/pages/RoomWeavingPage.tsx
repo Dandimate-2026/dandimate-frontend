@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { USE_MOCK } from '../api/mock'
-import { createReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
+import { createReply, deleteReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
 import { getRoomHome } from '../api/rooms'
 import type { RoomHome, Scroll, ScrollParagraph } from '../api/types'
 import PlanLimitSheet, { VoiceLimitSheet } from '../components/PlanLimitSheet'
@@ -15,6 +15,7 @@ import '../features/memories/memories.css'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
+import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 
 function RoomWeavingPage() {
   const { roomId = '' } = useParams()
@@ -44,6 +45,7 @@ function RoomWeavingPage() {
   // 다시 엮기 버튼으로 방 전체를 다시 엮는 중 (입력 화면 없이 바로 '다시 엮는 중' 화면)
   const [reweavingAll, setReweavingAll] = useState(false)
   const [pendingContribution, setPendingContribution] = useState('')
+  const [deletingReply, setDeletingReply] = useState(false)
   const [reweaveResult, setReweaveResult] = useState<ReweaveResult>()
   // 챗봇에서 "이 문단에 답가 남기기"로 왔으면(?reply=사진id) 두루마리를 처음 불러왔을 때 그 사진 문단의 답가 창을 한 번 연다
   const replyPhotoId = params.get('reply')
@@ -78,6 +80,10 @@ function RoomWeavingPage() {
     const result = await getScroll(roomId, token)
     showScroll(result)
   }, [roomId, token, showScroll])
+  useRoomLiveUpdates(roomId, session?.memberAccessToken, () => {
+    if (jobId) return
+    void Promise.all([refresh(), getRoomHome(roomId, token).then(setHome)]).catch(() => {})
+  })
 
   useEffect(() => {
     if (jobFailed) return
@@ -122,6 +128,9 @@ function RoomWeavingPage() {
               setReplyNotice(`두루마리를 다시 엮었어요${remaining !== undefined ? ` · 재엮기 ${remaining}${limit !== undefined ? `/${limit}` : ''}회 남음` : ''}`)
               setReweavingAll(false)
               window.scrollTo(0, 0)
+            } else if (deletingReply) {
+              setReplyNotice('답가를 삭제하고 문단을 갱신했어요')
+              setDeletingReply(false)
             } else setReplyNotice('')
             setJobId(null)
             updateJobParam(null)
@@ -134,10 +143,22 @@ function RoomWeavingPage() {
     void check()
     const interval = window.setInterval(() => void check(), 5000)
     return () => { active = false; window.clearInterval(interval) }
-  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, reweavingAll])
+  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, reweavingAll, deletingReply])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   const backToHome = () => navigate(paths.roomHome(roomId))
+
+  async function removeReply(replyId: string) {
+    if (jobId) throw new Error('진행 중인 작업이 끝난 뒤 다시 시도해 주세요')
+    const owned = scroll?.paragraphs.some(paragraph => paragraph.replies?.some(reply => reply.id === replyId && reply.mine))
+    if (!owned) throw new Error('내가 남긴 답가만 삭제할 수 있어요')
+    const result = await deleteReply(replyId)
+    setDeletingReply(true); setJobFailed(false); setFailedWeave(false); setError('')
+    setReweaveResult(undefined)
+    setReplyNotice('답가를 삭제하고 문단을 갱신하고 있어요')
+    setJobId(result.job.id)
+    updateJobParam(result.job.id)
+  }
 
   /** 다시 엮기 (맨 아래 버튼·문단 ⋮ 메뉴 공통). 입력 화면 없이 바로 엮기 작업을 시작하고 '다시 엮는 중' 화면으로 간다 */
   async function startReweave() {
@@ -220,7 +241,7 @@ function RoomWeavingPage() {
     {reweaving && replyTarget ? null : jobId && (pendingParagraph || reweavingAll) && !jobFailed ? <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name} reweavingCount={reweavingAll ? scroll?.paragraphs.length || 1 : 1} remaining={home?.room.quota?.regenerationsRemaining} limit={home?.room.quota?.regenerationLimit} photoCount={scroll?.paragraphs.length} participantDetail={scroll ? `${scroll.participantCount}/${scroll.memberCount}` : undefined} error={error} /> : scroll && home ? <>
       {error && <p className="memory-error" role="alert">{error}</p>}
       <LiveScrollPage key={`${home.room.id}:${home.me.id}`} scroll={scroll} home={home} token={token} onBack={backToHome}
-        onReply={(paragraph) => { setReweaving(false); setReplyTarget(paragraph) }} onRefresh={refresh}
+        onReply={(paragraph) => { setReweaving(false); setReplyTarget(paragraph) }} onRefresh={refresh} onDeleteReply={removeReply}
         onReweaveLimit={() => setReweaveLimitOpen(true)}
         onReweave={() => void startReweave()}
         pendingParagraphId={jobId && !jobFailed ? pendingParagraph?.id ?? scroll.paragraphs[0]?.id : undefined} reweaveResult={reweaveResult}

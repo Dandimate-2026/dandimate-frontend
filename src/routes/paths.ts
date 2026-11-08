@@ -30,6 +30,7 @@ export const paths = {
   firstEntry: (roomId: string) => `/rooms/${roomId}/entries/new`,
   // 참여자 토큰이 방마다 있어서 방 id도 주소에 넣는다
   askback: (roomId: string, askbackId: string) => `/rooms/${roomId}/askbacks/${askbackId}`,
+  roomAskbacks: (roomId: string) => `/rooms/${roomId}/askbacks`,
   /** photoId를 주면 그 사진부터 보여준다 (챗봇 답에서 바로 덧붙이러 갈 때) */
   roomCirculation: (roomId: string, photoId?: string) =>
     `/rooms/${roomId}/circulation${photoId ? `?photo=${encodeURIComponent(photoId)}` : ''}`,
