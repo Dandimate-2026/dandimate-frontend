@@ -80,6 +80,7 @@ function LoginPage() {
       }
       note={
         <>
+          <Link to={paths.reviewerDemo()} className="mb-3 block text-point underline">심사용 데모 체험하기</Link>
           로그인하면{' '}
           <Link to={paths.terms()} className="text-point">
             이용약관

@@ -240,7 +240,10 @@ function RoomListPage() {
         {homes.length === 0 ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
           <section className="mt-[clamp(28px,6dvh,48px)] px-1.5">
-            <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
+              <Link to={paths.reviewerDemo()} className="text-xs text-point underline">심사용 데모 체험하기</Link>
+            </div>
             <div className="mt-6 flex flex-col items-center rounded-[24px] border border-dashed border-line bg-surface px-6 pt-9 pb-7 text-center">
               <div className="flex items-end gap-1" aria-hidden="true">
                 <Flower code="AZALEA" size={28} />
@@ -265,7 +268,10 @@ function RoomListPage() {
           </section>
         ) : (
           <section className="mt-[clamp(28px,6dvh,48px)]">
-          <h1 className="px-1.5 text-[26px] leading-8 font-bold">내 모임방</h1>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1.5">
+            <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
+            <Link to={paths.reviewerDemo()} className="text-xs text-point underline">심사용 데모 체험하기</Link>
+          </div>
           <p className="mt-2 px-1.5 text-[11px] text-sub">할 일이 있는 방이 먼저 보여요</p>
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
