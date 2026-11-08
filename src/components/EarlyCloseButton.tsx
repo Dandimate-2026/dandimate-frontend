@@ -1,15 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { closeRoom } from '../api/rooms'
 import type { RoomHome } from '../api/types'
 import { paths } from '../routes/paths'
 import Button from './Button'
+import Flower from './Flower'
 
 export default function EarlyCloseButton({ home, token }: { home: RoomHome; token: string }) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    dialogRef.current?.showModal()
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = overflow; previous?.focus() }
+  }, [open])
   if (home.me.role !== 'HOST' || !['COLLECTING', 'CIRCULATING'].includes(home.room.status)) return null
   const close = async () => {
     if (busy) return
@@ -20,14 +30,14 @@ export default function EarlyCloseButton({ home, token }: { home: RoomHome; toke
     } catch (cause) { setError(cause instanceof Error ? cause.message : '마감하지 못했어요. 다시 시도해 주세요'); setBusy(false) }
   }
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="mt-4 w-full py-2 text-[12px] text-sub">지금 마감하고 두루마리 엮기</button>
-    {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-      <section role="alertdialog" aria-modal="true" aria-labelledby="early-close-title" className="w-full max-w-sm rounded-3xl bg-surface p-6 text-center">
-        <h2 id="early-close-title" className="font-bold">지금 모임방을 마감할까요?</h2>
-        <p className="mt-3 text-sm text-sub">지금까지 모은 사진과 이야기로 엮기 시작해요. 마감 후에는 원본 기록을 더 수정할 수 없어요.</p>
-        {error && <p role="alert" className="mt-3 text-sm text-point">{error}</p>}
-        <div className="mt-5 flex gap-3"><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>계속 모으기</Button><Button disabled={busy} onClick={() => void close()}>{busy ? '마감 중…' : '마감하고 엮기'}</Button></div>
-      </section>
-    </div>}
+    <button type="button" onClick={() => setOpen(true)} className="mt-4 flex min-h-11 w-full items-center justify-center gap-1.5 text-[12px] font-medium text-sub active:opacity-60">지금까지의 이야기로 엮기<span aria-hidden="true">›</span></button>
+    {open && <dialog ref={dialogRef} aria-labelledby="early-close-title" aria-describedby="early-close-description" onCancel={(event) => { event.preventDefault(); if (!busy) setOpen(false) }} className="fixed inset-0 m-auto w-[calc(100%_-_48px)] max-w-[340px] rounded-[28px] border-0 bg-surface p-6 text-ink shadow-xl backdrop:bg-ink/35" onClick={(event) => { if (event.target === event.currentTarget && !busy) { const box = event.currentTarget.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) setOpen(false) } }}>
+      <div className="flex justify-center pt-2" aria-hidden="true"><Flower code="AZALEA" size={36} /></div>
+      <h2 id="early-close-title" className="mt-5 text-center text-[20px] font-bold leading-7">이제 두루마리로 엮을까요?</h2>
+      <p id="early-close-description" className="mt-3 text-center text-[13px] leading-[22px] text-sub">지금까지 모은 사진과 이야기를<br />하나의 두루마리로 엮어요.</p>
+      <p className="mt-4 rounded-2xl bg-bg px-4 py-3 text-[12px] leading-5 text-sub">엮기를 시작하면 원본 기록은 더 수정할 수 없어요.</p>
+      {error && <p role="alert" className="mt-3 text-[12px] leading-5 text-point">{error}</p>}
+      <div className="mt-6 grid grid-cols-2 gap-2.5"><Button variant="outline" className="h-12 rounded-full text-[13px]" disabled={busy} onClick={() => setOpen(false)} autoFocus>더 모을게요</Button><Button className="h-12 text-[13px]" disabled={busy} onClick={() => void close()}>{busy ? '엮기 시작 중…' : '두루마리 엮기'}</Button></div>
+    </dialog>}
   </>
 }

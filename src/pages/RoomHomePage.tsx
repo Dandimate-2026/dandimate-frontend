@@ -162,7 +162,6 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
           {room.name}
         </button>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => navigate(paths.roomAskbacks(room.id))} className="p-2 text-[12px] text-sub">내 질문</button>
           <button
             type="button"
             aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 안 읽음` : '알림'}
