@@ -42,7 +42,9 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   const [error, setError] = useState('')
   const [original, setOriginal] = useState<ScrollParagraph | null>(null)
   const [previous, setPrevious] = useState<ScrollParagraph | null>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState<ScrollTemplateId>(() => fromServerTemplate(home.room.scrollTemplateId))
+  // 템플릿은 방 단위로 서버에 저장된다. 방금 고른 값은 서버에서 다시 받아 올 때까지만 먼저 보여 준다
+  const [chosenTemplate, setChosenTemplate] = useState<ScrollTemplateId | null>(null)
+  const selectedTemplate = chosenTemplate ?? fromServerTemplate(home.room.scrollTemplateId)
   const [pickingTemplate, setPickingTemplate] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [notice, setNotice] = useState('')
@@ -56,17 +58,24 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     const timer = window.setTimeout(() => setNotice(''), 4500)
     return () => window.clearTimeout(timer)
   }, [notice])
-  useEffect(() => setSelectedTemplate(fromServerTemplate(home.room.scrollTemplateId)), [home.room.scrollTemplateId])
 
   if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => setPickingTemplate(false)} onSelect={async (id) => {
-    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); setSelectedTemplate(id); setPickingTemplate(false); await onRefresh(); window.scrollTo(0, 0) }
+    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); setChosenTemplate(id); setPickingTemplate(false); await onRefresh(); setChosenTemplate(null); window.scrollTo(0, 0) }
     catch (cause) { setError(cause instanceof Error ? cause.message : '템플릿을 저장하지 못했어요.'); setPickingTemplate(false) }
   }} />
+
+  // "아 맞다"를 눌렀는지: 이 화면에서 바꾼 값이 먼저, 없으면 서버가 기억하는 값
+  const isLiked = (paragraph: ScrollParagraph) => liked[paragraph.id] ?? Boolean(paragraph.myAhMatda)
+  // 평점: 이 화면에서 준 값 → 서버 값(같은 문단 버전일 때만) → 이 기기에 남긴 값
+  const ratingOf = (paragraph: ScrollParagraph) =>
+    ratings[`${paragraph.id}:${paragraph.version}`]
+    ?? (paragraph.myFidelityRating != null && paragraph.ratedParagraphVersion === paragraph.version ? paragraph.myFidelityRating : undefined)
+    ?? getParagraphRating(home.room.id, home.me.id, paragraph.id, paragraph.version)
 
   async function react(paragraph: ScrollParagraph) {
     if (busy) return
     setBusy(paragraph.id); setError('')
-    const next = !liked[paragraph.id]
+    const next = !isLiked(paragraph)
     try {
       await setAhMatda(paragraph.id, token, next)
       setLiked((value) => ({ ...value, [paragraph.id]: next }))
@@ -75,10 +84,9 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     finally { setBusy(null) }
   }
 
-  const unratedParagraphs = scroll.paragraphs.filter((paragraph) =>
-    (ratings[`${paragraph.id}:${paragraph.version}`] ?? getParagraphRating(home.room.id, home.me.id, paragraph.id, paragraph.version)) === undefined)
+  const unratedParagraphs = scroll.paragraphs.filter((paragraph) => ratingOf(paragraph) === undefined)
   const reweaveTargets = scroll.paragraphs.filter((paragraph) => {
-    const score = ratings[`${paragraph.id}:${paragraph.version}`] ?? getParagraphRating(home.room.id, home.me.id, paragraph.id, paragraph.version)
+    const score = ratingOf(paragraph)
     return score !== undefined && score <= 2
   })
 
@@ -139,8 +147,10 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       <div className={changes ? 'scroll-rewoven' : 'scroll-paragraph-story'}>
       {changes && <div className="scroll-rewoven-heading"><strong>✓ {changes.reply.member.nickname} 님의 답가가 엮였어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
       <ParagraphStory paragraph={paragraph} changes={changes} />
+      {/* 이 문단에 남은 답가 (서버가 오래된 순으로 준다) */}
+      {paragraph.replies && paragraph.replies.length > 0 && <ul className="scroll-replies">{paragraph.replies.map((reply) => <li key={reply.id}><strong>{reply.mine ? '나' : reply.nickname}</strong> “{reply.transcript}”</li>)}</ul>}
       <div className="memory-chapter-actions">
-        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={Boolean(liked[paragraph.id])} onClick={() => void react(paragraph)}>아 맞다 ! <strong>{paragraph.ahMatdaCount}</strong></button>
+        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>아 맞다 ! <strong>{paragraph.ahMatdaCount}</strong></button>
         <button type="button" className="memory-reply" disabled={Boolean(pendingParagraphId)} onClick={() => onReply(paragraph)}>답가 남기기 {paragraph.replyCount > 0 && `· ${paragraph.replyCount}`}</button>
         <button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button>
         {onReweave && !pendingParagraphId && <span className="scroll-paragraph-more"><MoreMenu label="문단 더 보기" items={[{
@@ -173,7 +183,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       <button type="button" className="scroll-reweave-chip" disabled={Boolean(pendingParagraphId)} onClick={() => {
         if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) { onReweaveLimit(); return }
         // 고르는 시트 없이 바로 재엮기 화면으로: 가장 낮게 평가한 문단부터 (다른 문단은 문단 ⋮ 메뉴로)
-        const score = (item: ScrollParagraph) => ratings[`${item.id}:${item.version}`] ?? getParagraphRating(home.room.id, home.me.id, item.id, item.version) ?? 5
+        const score = (item: ScrollParagraph) => ratingOf(item) ?? 5
         onReweave([...reweaveTargets].sort((a, b) => score(a) - score(b))[0])
       }}>다시 엮기</button>
     </section>}

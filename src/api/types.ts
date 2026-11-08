@@ -253,6 +253,23 @@ export interface ScrollParagraph {
   replyCount: number
   ahMatdaCount: number
   aiGenerated: true
+  /** 내가 "아 맞다"를 눌렀는지 (서버가 기억한다) */
+  myAhMatda?: boolean
+  /** 내가 준 평점(1~5)과 그때의 문단 버전. 문단이 다시 엮이면 버전이 달라져 다시 묻는다 */
+  myFidelityRating?: number | null
+  ratedParagraphVersion?: number | null
+  /** 이 문단에 남은 답가 (오래된 순) */
+  replies?: ScrollReply[]
+}
+
+export interface ScrollReply {
+  id: string
+  memberId: string
+  nickname: string
+  transcript: string
+  status: string
+  createdAt: string
+  mine: boolean
 }
 
 export interface Scroll {

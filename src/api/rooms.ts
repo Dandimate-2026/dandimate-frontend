@@ -43,12 +43,26 @@ import type {
 export const ROOM_CAPACITY = 8
 /** 방 만들 때 고를 수 있는 최소 인원. 혼자 다녀온 여행도 남길 수 있게 1명부터 (서버도 1~8명을 받는다) */
 export const MIN_ROOM_CAPACITY = 1
-// TODO: 백엔드와 약관 버전 값 확정 필요
+/** 서버에 약관 버전을 못 물어볼 때 쓰는 기본값 (서버 기본값과 같다) */
 export const CONSENT: Consent = {
-  version: '2026-10',
+  version: 'v1',
   terms: true,
   mediaProcessing: true,
   externalAiProcessing: true,
+}
+
+/**
+ * 방 만들기·입장·결제 때 보낼 약관 동의. 서버가 지금 쓰는 약관 버전(GET /consents/current)을 받아서 보낸다.
+ * 버전이 다르면 서버가 CONSENT_REQUIRED로 거절해서, 서버 값을 따른다. 못 받으면 기본값으로 보낸다
+ */
+export async function currentConsent(): Promise<Consent> {
+  if (USE_MOCK) return CONSENT
+  try {
+    const { version } = await request<{ version: string }>('/consents/current')
+    return version ? { ...CONSENT, version } : CONSENT
+  } catch {
+    return CONSENT
+  }
 }
 
 /** 로그인한 계정이 참여 중인 방 목록 */
@@ -58,8 +72,8 @@ export function getMyRooms() {
 }
 
 /** 로그인한 사용자가 방을 만들고 방장이 된다 */
-export function createRoom(body: Omit<CreateRoomRequest, 'consent'>) {
-  const payload: CreateRoomRequest = { ...body, consent: CONSENT }
+export async function createRoom(body: Omit<CreateRoomRequest, 'consent'>) {
+  const payload: CreateRoomRequest = { ...body, consent: await currentConsent() }
   if (USE_MOCK) return Promise.resolve(mockCreateRoom(payload))
   return request<CreateRoomResult>('/rooms', { method: 'POST', body: payload, idempotent: true })
 }
@@ -69,13 +83,20 @@ export function getInvitePreview(inviteToken: string) {
   return request<InvitePreview>(`/invites/${inviteToken}`)
 }
 
-export function joinRoom(inviteToken: string, nickname: string) {
+export async function joinRoom(inviteToken: string, nickname: string) {
   if (USE_MOCK) return Promise.resolve(mockJoinRoom(nickname))
   return request<JoinRoomResult>(`/invites/${inviteToken}/join`, {
     method: 'POST',
-    body: { nickname, consent: CONSENT },
+    body: { nickname, consent: await currentConsent() },
     idempotent: true,
   })
+}
+
+// 데모: 방 정보 수정(이름·엮는 시각·장소 등)을 이 화면 동안 기억해서 다시 불러와도 남게 한다
+const mockRoomEdits = new Map<string, Partial<RoomHome['room']>>()
+const withMockEdits = (home: RoomHome): RoomHome => {
+  const edits = mockRoomEdits.get(home.room.id)
+  return edits ? { ...home, room: { ...home.room, ...edits } } : home
 }
 
 export function getRoomHome(roomId: string, token: string) {
@@ -84,10 +105,10 @@ export function getRoomHome(roomId: string, token: string) {
       id: MOCK_SCROLL_PREVIEW_ROOM_ID, name: '경주 1박2일', planType: 'PRO' as const,
       quota: { ...mockDoneRoomHome.room.quota, regenerationLimit: 12, regenerationCount: 0, regenerationsRemaining: 12 },
     } }
-    return Promise.resolve(withMockQuota(withMockActivity(asMockRole(preview))))
+    return Promise.resolve(withMockEdits(withMockQuota(withMockActivity(asMockRole(preview)))))
   }
   // 역할을 먼저 정하고, 그 '나'에게 이 기기에서 남긴 사진·한마디를 반영한다
-  if (USE_MOCK) return Promise.resolve(withMockActivity(asMockRole(mockRoomHomeById(roomId))))
+  if (USE_MOCK) return Promise.resolve(withMockEdits(withMockActivity(asMockRole(mockRoomHomeById(roomId)))))
   return request<RoomHome>(`/rooms/${roomId}`, { token })
 }
 
@@ -121,7 +142,14 @@ export function updateRoom(
   body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number; coverImageUrl?: string; place?: RoomPlace | null; scrollTemplateId?: string },
   token: string,
 ) {
-  if (USE_MOCK) return Promise.resolve()
+  if (USE_MOCK) {
+    const { place, ...rest } = body
+    const edit: Partial<RoomHome['room']> = { ...mockRoomEdits.get(roomId), ...rest, ...(place !== undefined ? { place } : {}) }
+    // 서버처럼 방장이 엮는 시각을 정하면 '방장이 정함'으로 표시한다
+    if (body.deadlineAt) edit.deadlineChangedByHost = true
+    mockRoomEdits.set(roomId, edit)
+    return Promise.resolve()
+  }
   return request(`/rooms/${roomId}`, { method: 'PATCH', body, token })
 }
 

@@ -4,7 +4,7 @@ import { ANONYMOUS, loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { paths } from '../routes/paths'
 import { request } from './client'
 import { USE_MOCK } from './mock'
-import { CONSENT } from './rooms'
+import { currentConsent } from './rooms'
 import type { CreateRoomRequest, RoomPlanType } from './types'
 
 /** 토스 결제창용 클라이언트 키 (test_ck_…). 백엔드의 테스트 시크릿 키와 같은 상점의 키여야 한다 */
@@ -30,10 +30,10 @@ export interface PaymentOrder {
 }
 
 /** 유료 플랜(LITE·PRO)으로 새 방을 만드는 주문. 방은 결제 승인 뒤 서버가 만든다 */
-export function createRoomOrder(body: Omit<CreateRoomRequest, 'consent'>) {
+export async function createRoomOrder(body: Omit<CreateRoomRequest, 'consent'>) {
   return request<PaymentOrder>('/payments/room-orders', {
     method: 'POST',
-    body: { ...body, consent: CONSENT },
+    body: { ...body, consent: await currentConsent() },
     idempotent: true,
   })
 }
