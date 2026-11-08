@@ -12,16 +12,20 @@ import { canUseTemplate, getTemplate, saveTemplate, SCROLL_TEMPLATES, type RoomP
 const PLAN_LABEL: Record<RoomPlan, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
 const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : 'PRO')
 
-/** 방 이름에 지역 이름이 들어 있으면 그 지역 템플릿을 추천한다 (예: "경주 1박 2일" → 경주) */
-function recommendFor(roomName: string): ScrollTemplateId | null {
-  const region = SCROLL_TEMPLATES.find((item) => item.plan === 'LITE' && roomName.includes(item.name))
-  return region?.id ?? null
+/** 모임 장소(주소·장소 이름)나 방 이름에 지역 이름이 들어 있으면 그 지역 템플릿을 추천한다 (예: "경북 경주시 …" → 경주) */
+function recommendFor(...texts: (string | null | undefined)[]): ScrollTemplateId | null {
+  for (const text of texts) {
+    if (!text) continue
+    const region = SCROLL_TEMPLATES.find((item) => item.plan === 'LITE' && text.includes(item.name))
+    if (region) return region.id
+  }
+  return null
 }
 
 export default function TemplatePicker({ scroll, home, value, onSelect, onClose }: {
   scroll: Scroll; home: RoomHome; value: ScrollTemplateId; onSelect: (id: ScrollTemplateId) => void; onClose: () => void
 }) {
-  const recommended = recommendFor(home.room.name)
+  const recommended = recommendFor(home.room.place?.address, home.room.place?.placeName, home.room.name)
   const [selected, setSelected] = useState<ScrollTemplateId>(value === 'minimal' && recommended ? recommended : value)
   const [preview, setPreview] = useState(false)
   const [asked, setAsked] = useState(false)
@@ -77,7 +81,7 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
       <span className="tp-featured-body">
         <span className="tp-featured-name">{featured.name}<span className={`tp-badge inline ${featured.plan.toLowerCase()}`}>{planBadge(featured.plan)}</span></span>
         <span className="tp-featured-desc">{featured.description}</span>
-        {recommended && <span className="tp-featured-why">장소가 {featured.name}라서 추천해요</span>}
+        {recommended && <span className="tp-featured-why">{home.room.place ? '모임 장소' : '장소'}가 {featured.name}라서 추천해요</span>}
       </span>
     </button>
 

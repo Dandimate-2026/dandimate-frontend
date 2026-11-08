@@ -29,6 +29,8 @@ import { paths } from '../routes/paths'
 import { ViewablePhoto } from '../components/PhotoViewer'
 import { LengthNotice } from '../components/LengthNotice'
 import { clampText } from '../lib/textLimit'
+import PlaceSheet from '../components/PlaceSheet'
+import type { Place } from '../api/places'
 
 function ChevronLeftIcon() {
   return (
@@ -334,6 +336,9 @@ function RoomSettingsPage() {
   const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
   const [photoError, setPhotoError] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
+  // 모임 장소: 장소 검색 시트로 고르고, 서버 방 정보에 저장한다
+  const [placeOpen, setPlaceOpen] = useState(false)
+  const [placeError, setPlaceError] = useState('')
 
   const updatePlaceCover = (next: typeof placeCover) => {
     if (!saveRoomPlaceCover(roomId, next)) {
@@ -418,6 +423,20 @@ function RoomSettingsPage() {
     setEditing(null)
   }
 
+  const savePlace = async (next: Place | null) => {
+    setPlaceError('')
+    const place = next
+      ? { placeName: next.placeName, address: next.address, latitude: next.latitude, longitude: next.longitude }
+      : null
+    try {
+      await updateRoom(room.id, { place }, session.memberAccessToken)
+      setHome({ ...home, room: { ...room, place } })
+      setPlaceOpen(false)
+    } catch (e) {
+      setPlaceError(e instanceof ApiError && e.status < 500 && e.message ? e.message : '모임 장소를 저장하지 못했어요. 다시 시도해 주세요')
+    }
+  }
+
   const handleLeave = async () => {
     await leaveRoom(room.id)
     removeRoomSession(room.id)
@@ -478,6 +497,20 @@ function RoomSettingsPage() {
           <InfoRow label="모임 날짜" editable={isHost} onEdit={() => setEditing('meetingDate')}>
             {room.meetingDate ? formatDateSpaced(room.meetingDate) : <Empty>정하지 않았어요</Empty>}
           </InfoRow>
+          <InfoRow label="모임 장소" editable={isHost} onEdit={() => setPlaceOpen(true)}>
+            {room.place ? (
+              <span className="flex items-center gap-2">
+                <span className="truncate">📍 {room.place.placeName}</span>
+                {isHost && (
+                  <button type="button" onClick={() => void savePlace(null)} className="shrink-0 text-[11px] text-sub underline underline-offset-2">
+                    지우기
+                  </button>
+                )}
+              </span>
+            ) : (
+              <Empty>정하지 않았어요</Empty>
+            )}
+          </InfoRow>
           <InfoRow label="대표 사진" editable={isHost} onEdit={() => photoInputRef.current?.click()}>
             {/* 대표 사진은 줄 안에서 작은 썸네일로 바로 보여준다 */}
             <span className="flex items-center gap-2">
@@ -509,6 +542,11 @@ function RoomSettingsPage() {
               e.target.value = ''
             }}
           />
+        )}
+        {placeError && (
+          <p className="mt-2 text-[11px] text-point" role="alert">
+            {placeError}
+          </p>
         )}
         {photoError && (
           <p className="mt-2 text-[11px] text-point" role="alert">
@@ -671,6 +709,16 @@ function RoomSettingsPage() {
           confirmLabel="삭제하기"
           onCancel={() => setConfirming(null)}
           onConfirm={handleDeleteRoom}
+        />
+      )}
+      {placeOpen && (
+        <PlaceSheet
+          title="어디에서 모이나요?"
+          recent={[]}
+          onClose={() => setPlaceOpen(false)}
+          onSelect={(_, detail) => {
+            if (detail) void savePlace(detail)
+          }}
         />
       )}
     </main>

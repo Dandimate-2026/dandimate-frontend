@@ -36,6 +36,7 @@ import type {
   MyRoom,
   PlanRequestReason,
   RoomHome,
+  RoomPlace,
 } from './types'
 
 /** 방 정원 최댓값 (방장 포함). 방마다 1~8명 중 고를 수 있다 */
@@ -116,7 +117,8 @@ export function closeRoom(roomId: string, token: string) {
 export function updateRoom(
   roomId: string,
   /** capacity: 방장이 인원을 바꾼다 (지금 들어온 인원 이상 ~ 8명). 백엔드 반영 전에는 서버가 무시하거나 거절할 수 있다 */
-  body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number; coverImageUrl?: string },
+  /** place: 모임 장소. 빼면 그대로, null이면 지운다 */
+  body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number; coverImageUrl?: string; place?: RoomPlace | null },
   token: string,
 ) {
   if (USE_MOCK) return Promise.resolve()

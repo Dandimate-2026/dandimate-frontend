@@ -45,3 +45,9 @@ export function setPhotoLocation(photoId: string, place: Place) {
     },
   })
 }
+
+/** 사진의 장소를 지운다 (기록 지도에서 빠진다). 올린 본인만 */
+export function removePhotoLocation(photoId: string) {
+  if (USE_MOCK) return Promise.resolve()
+  return request<void>(`/photos/${photoId}/location`, { method: 'DELETE' })
+}

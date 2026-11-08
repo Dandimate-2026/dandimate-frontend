@@ -37,6 +37,16 @@ const TIMES = [
   { label: '밤 9시', value: '21:00' },
 ]
 
+/** 시계 아이콘 (엮을 시각 정하기) */
+function ClockIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  )
+}
+
 const INPUT_CLASS = 'mt-2 h-11 w-full rounded-full border border-line bg-bg px-4 text-[14px] outline-none focus:border-ink'
 
 /**
@@ -95,13 +105,15 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
 
   return (
     <>
-      <section className="mb-3 flex items-center gap-3 rounded-[20px] border border-point/30 bg-[#fbeef3] px-4 py-3.5">
+      {/* 방장 전용 카드: 핑크 질문 카드·흰 할 일 카드와 겹치지 않게 연한 회색 */}
+      <section className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#ebe7e1] px-4 py-3.5">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-point">방장에게만 보여요</p>
+          <p className="text-[11px] font-semibold text-sub">방장에게만 보여요</p>
           <h2 className="mt-0.5 text-[14px] font-bold">두루마리를 언제 엮을까요?</h2>
           <p className="truncate text-[12px] text-sub">{at && !problem ? `${describe(at)} 고르는 중` : '아직 안 정했어요'}</p>
         </div>
-        <button type="button" onClick={() => setSheet(true)} className="h-10 shrink-0 rounded-full bg-ink px-4 text-[13px] font-semibold text-surface active:opacity-80">
+        <button type="button" onClick={() => setSheet(true)} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-semibold text-surface active:opacity-80">
+          <ClockIcon />
           정하기
         </button>
       </section>
@@ -117,7 +129,7 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
           >
             <span className="mx-auto block h-1 w-10 rounded-full bg-line" aria-hidden="true" />
             <div className="mt-3 flex items-start justify-between">
-              <h2 id="weave-date-title" className="text-[17px] font-bold">두루마리를 언제 엮을까요?</h2>
+              <h2 id="weave-date-title" className="flex items-center gap-1.5 text-[17px] font-bold"><span className="text-point"><ClockIcon size={18} /></span>두루마리를 언제 엮을까요?</h2>
               <button type="button" onClick={() => setSheet(false)} aria-label="닫기" className="-mt-1 flex size-9 items-center justify-center text-[22px] text-sub">×</button>
             </div>
             <p className="mt-0.5 text-[12px] leading-[18px] text-sub">그때까지 모인 사진과 이야기로 엮어요. 나중에 설정에서 바꿀 수 있어요</p>

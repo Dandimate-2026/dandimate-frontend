@@ -30,6 +30,14 @@ export interface Member {
   responseRate?: number
 }
 
+/** 방 단위 모임 장소 (장소 검색으로 고른 값) */
+export interface RoomPlace {
+  placeName: string
+  address: string
+  latitude: number
+  longitude: number
+}
+
 export interface RoomSummary {
   id: string
   name: string
@@ -42,7 +50,9 @@ export interface RoomSummary {
   planType?: RoomPlanType
   /** 대표 사진 주소 (서버 경로). coverSrc로 바꿔 쓴다 */
   coverImageUrl?: string | null
-  /** 방을 만든 시각 · 방장이 첫 두루마리 시각을 이미 바꿨는지 (한 번만 바꿀 수 있다) */
+  /** 모임 장소 (방장이 설정에서 정한다). 정하지 않았으면 null */
+  place?: RoomPlace | null
+  /** 방을 만든 시각 · 방장이 첫 두루마리 시각을 이미 바꿨는지 (엮기 전까지 횟수 제한 없이 바꿀 수 있다) */
   createdAt?: string
   /** 방 생성 완료일로부터 1년 뒤 자동 삭제 예정 시각 */
   deleteAt?: string

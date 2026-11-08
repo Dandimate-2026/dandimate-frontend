@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { MAX_PHOTOS } from '../api/photos'
-import { closeRoom, getRoomHome, ROOM_CAPACITY } from '../api/rooms'
-import type { CirculationCard, Member, RoomHome, RoomStatus, RoomSummary } from '../api/types'
+import { getRoomHome, ROOM_CAPACITY } from '../api/rooms'
+import type { CirculationCard, FlowerCode, Member, RoomHome, RoomStatus, RoomSummary } from '../api/types'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { SparkleIcon } from '../components/entry/EntryIcons'
@@ -83,12 +83,13 @@ function CheckIcon() {
 }
 
 /** 엮기 카드의 두루마리 그림 */
-function ScrollIcon() {
+/** 두루마리 아이콘. 가운데 꽃은 방장 꽃 색을 따라간다 */
+function ScrollIcon({ flower }: { flower: FlowerCode }) {
   return (
     <div className="relative h-[60px] w-[50px]" aria-hidden="true">
       <span className="absolute inset-x-0 top-0 h-2.5 rounded-full bg-ink" />
       <span className="absolute top-[11px] left-1/2 -translate-x-1/2">
-        <Flower code="ROYAL_AZALEA" size={34} />
+        <Flower code={flower} size={34} />
       </span>
       <span className="absolute inset-x-0 bottom-0 h-2.5 rounded-full bg-ink" />
     </div>
@@ -332,8 +333,6 @@ function RoomHomePage() {
   const session = getRoomSession(roomId)
   const [home, setHome] = useState<RoomHome | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [weaving, setWeaving] = useState(false)
-  const [weaveError, setWeaveError] = useState<string | null>(null)
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
   // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다 (방 참가자 누구나 같은 링크)
   const inviteToken = useRoomInvite(roomId)
@@ -378,23 +377,6 @@ function RoomHomePage() {
 
   const { room, me, members, myTodo } = home
 
-  const handleWeave = async () => {
-    setWeaving(true)
-    setWeaveError(null)
-    try {
-      const result = await closeRoom(room.id, session.memberAccessToken)
-      navigate(paths.roomWeaving(room.id, result.job.id))
-    } catch (e) {
-      // 마감 시각이 지나 서버가 이미 엮기 시작했으면(409) 엮는 화면으로 간다
-      if (e instanceof ApiError && e.status === 409) {
-        navigate(paths.roomWeaving(room.id))
-        return
-      }
-      setWeaveError('엮기를 시작하지 못했어요. 다시 시도해 주세요')
-      setWeaving(false)
-    }
-  }
-
   /** 공유 화면으로 가지 않고 바로 기기 공유창을 연다. 못 열면 글+링크를 복사하고 알려 준다 */
   const handleShareToChat = async () => {
     const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
@@ -419,8 +401,10 @@ function RoomHomePage() {
   // 두루마리가 완성된 방도 시안처럼 모두 다 본 모양(체크·꽉 찬 막대)으로 보여준다
   const grown = room.status === 'GROWING'
   const allDone = readyToWeave || grown
-  // 혼자 쓰는 방: 사진 한 장만 올려도 '모두 다 봤어요'가 되어 버려서 문구와 버튼을 따로 둔다
+  // 혼자 쓰는 방: 참여현황에 '1/1명 다 봤어요' 대신 '혼자 기록하는 중', 알릴 친구가 없어 단톡방 알리기는 숨긴다
   const solo = members.length === 1
+  // 두루마리 아이콘 꽃은 방장 꽃 색 (방장을 못 찾으면 내 꽃)
+  const hostFlower = members.find((m) => m.role === 'HOST')?.flowerCode ?? me.flowerCode
 
   return (
     // 내용이 짧으면 내 할 일 카드가 화면 아래에 붙고, 길면 페이지 전체가 함께 스크롤된다
@@ -474,11 +458,11 @@ function RoomHomePage() {
       </div>
 
       <footer className="mt-auto px-5 pb-5 [@media(min-height:900px)]:mt-2">
-        {/* 모두 다 봐서 지금 엮을 수 있으면 "언제 엮을까요?"는 숨기고 아래 "엮으러 가기" 카드 하나만 보인다 */}
-        {!readyToWeave && <WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />}
+        {/* 엮는 시각은 방장이 정한다 (모두 다 봐도 바로 엮지 않고, 정한 시각에 엮는다) */}
+        <WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />
         {grown ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
-            <ScrollIcon />
+            <ScrollIcon flower={hostFlower} />
             <p className="mt-2 text-[15px] font-bold">첫 두루마리가 완성됐어요</p>
             <p className="mt-2 text-[11px] text-sub">답가를 달면 두루마리가 계속 자라요</p>
             <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="mt-3.5 w-full">
@@ -489,48 +473,6 @@ function RoomHomePage() {
           <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="w-full">
             엮는 중 확인하기
           </Button>
-        ) : readyToWeave ? (
-          <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
-            <ScrollIcon />
-            <p className="mt-2 text-[15px] font-bold">{solo ? '혼자서도 두루마리를 엮을 수 있어요' : '모두 다 봤어요. 이제 엮을 수 있어요'}</p>
-            {/* 마감 전에 엮기(조기 마감)는 방장만 할 수 있다 */}
-            {solo ? (
-              <>
-                <p className="mt-2 text-[11px] text-sub">사진을 더 올릴수록 두루마리가 길어져요</p>
-                {weaveError && <p className="mt-2 text-[11px] text-point">{weaveError}</p>}
-                <Button onClick={handleWeave} disabled={weaving} className="mt-3.5 w-full">
-                  {weaving ? '엮는 중…' : '지금 엮기'}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => navigate(paths.photoUpload(room.id))}
-                  className="mt-3 py-1 text-[12px] text-sub active:opacity-80"
-                >
-                  더 남길 사진이 있나요? <span className="font-semibold text-point">사진 더 올리기 ›</span>
-                </button>
-              </>
-            ) : me.role === 'HOST' ? (
-              <>
-                <p className="mt-2 text-[11px] text-sub">
-                  지금 바로 엮을 수 있어요
-                </p>
-                {weaveError && <p className="mt-2 text-[11px] text-point">{weaveError}</p>}
-                <Button onClick={handleWeave} disabled={weaving} className="mt-3.5 w-full">
-                  {weaving ? '엮는 중…' : '엮으러 가기'}
-                </Button>
-              </>
-            ) : (
-              <p className="mt-2 text-[11px] text-sub">방장이 엮으면 두루마리가 나와요</p>
-            )}
-            {/* 엮기 전에 아직 남길 이야기가 있으면 더 덧붙일 수 있다고 알려 준다 */}
-            {!solo && <button
-              type="button"
-              onClick={() => navigate(paths.roomCirculation(room.id))}
-              className="mt-3 py-1 text-[12px] text-sub active:opacity-80"
-            >
-              아직 남길 이야기가 있나요? <span className="font-semibold text-point">더 덧붙이기 ›</span>
-            </button>}
-          </Card>
         ) : (
           <MyTodoCard home={home} />
         )}
