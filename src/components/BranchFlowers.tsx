@@ -138,22 +138,7 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
 
         {slides === null && <p className="py-10 text-center text-[13px] text-sub">불러오는 중…</p>}
         {slides?.length === 0 && hidden === 0 && <p className="py-10 text-center text-[13px] text-sub">아직 볼 수 있는 사진이나 이야기가 없어요</p>}
-        {hidden > 0 && (
-          <button
-            type="button"
-            onClick={() => { onClose(); navigate(paths.roomCirculation(roomId)) }}
-            className="mx-5 mb-3 flex items-center gap-2.5 rounded-[14px] bg-[#f6e3ea] px-3.5 py-2.5 text-left active:opacity-80"
-          >
-            <span aria-hidden="true" className="text-[16px]">🔒</span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold text-ink">잠긴 활동이 {hidden}개 더 있어요</span>
-              <span className="block text-[11px] text-sub">둘러보기에서 먼저 이야기를 남기면 볼 수 있어요</span>
-            </span>
-            <span className="shrink-0 text-[12px] font-semibold text-point">잠금 풀기 ›</span>
-          </button>
-        )}
-
-        {slides && slides.length > 0 && (
+        {slides && (slides.length > 0 || hidden > 0) && (
           <>
             <div
               ref={trackRef}
@@ -163,13 +148,16 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
               {slides.map((sl) => (
                 <article key={sl.photoId} className="flex w-full shrink-0 snap-center flex-col px-5">
                   <div className="min-h-0 flex-1 overflow-y-auto">
-                    <div className="flex items-center gap-3">
+                    <div className="relative">
                       {sl.imageUrl
-                        ? <img src={sl.imageUrl} alt="" className="size-20 shrink-0 rounded-[14px] bg-[#ece6dc] object-cover" />
-                        : <span className="size-20 shrink-0 rounded-[14px] bg-[#ece6dc]" aria-hidden="true" />}
-                      <p className="text-[12px] text-sub">{sl.mine ? `${person.nickname}님이 올린 사진` : `${person.nickname}님이 이야기를 남긴 사진`}</p>
+                        ? <img src={sl.imageUrl} alt="" className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-cover" />
+                        : <span className="block aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc]" aria-hidden="true" />}
+                      {/* 이 사람이 올린 사진인지, 다른 사람 사진에 이야기를 남긴 건지: 사진 위 작은 표시 */}
+                      <span className="absolute top-2 left-2 rounded-full bg-surface/90 px-2.5 py-1 text-[11px] font-semibold text-ink">
+                        {sl.mine ? '올린 사진' : '이야기를 남긴 사진'}
+                      </span>
                     </div>
-                    <ul className="mt-2 flex flex-col gap-2">
+                    <ul className="mt-2.5 flex flex-col gap-2">
                       {sl.entries.map((e) => (
                         <li key={e.id} className="rounded-[14px] border border-line bg-surface px-3.5 py-2.5">
                           <span className="text-[11px] font-semibold text-point">{e.first ? '첫 한마디' : '덧붙이기'}</span>
@@ -183,6 +171,23 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
                   </button>
                 </article>
               ))}
+              {/* 잠긴 활동은 마지막 장으로: 넘기다 보면 자연스럽게 만난다 */}
+              {hidden > 0 && (
+                <article className="flex w-full shrink-0 snap-center flex-col px-5">
+                  <div className="flex aspect-[16/10] w-full flex-col items-center justify-center rounded-[16px] bg-[#f3e6ec] text-center">
+                    <span aria-hidden="true" className="text-[34px]">🔒</span>
+                    <p className="mt-2 text-[15px] font-bold">잠긴 활동이 {hidden}개 더 있어요</p>
+                    <p className="mt-1 px-6 text-[12px] leading-[18px] text-sub">둘러보기에서 먼저 이야기를 남기면<br />{person.nickname}님의 나머지 이야기도 볼 수 있어요</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { onClose(); navigate(paths.roomCirculation(roomId)) }}
+                    className="mt-3 h-11 w-full shrink-0 rounded-full bg-point text-[14px] font-semibold text-surface active:opacity-80"
+                  >
+                    잠금 풀러 가기
+                  </button>
+                </article>
+              )}
             </div>
             <nav className="flex justify-center gap-1.5 px-5 pt-3" aria-label="넘기기">
               {slides.map((sl, i) => (
@@ -196,6 +201,17 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
                   {i + 1}
                 </button>
               ))}
+              {hidden > 0 && (
+                <button
+                  type="button"
+                  aria-label={`잠긴 활동 ${hidden}개`}
+                  aria-current={page === slides.length}
+                  onClick={() => goTo(slides.length)}
+                  className={`flex size-7 items-center justify-center rounded-full text-[12px] ${page === slides.length ? 'bg-point text-surface' : 'border border-line bg-surface'}`}
+                >
+                  🔒
+                </button>
+              )}
             </nav>
           </>
         )}

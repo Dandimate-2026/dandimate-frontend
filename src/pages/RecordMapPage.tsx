@@ -13,7 +13,7 @@ import { useSheetDrag } from '../hooks/useSheetDrag'
 import { ViewablePhoto } from '../components/PhotoViewer'
 import MoreMenu from '../components/MoreMenu'
 import PlaceSheet from '../components/PlaceSheet'
-import { setPhotoLocation, type Place } from '../api/places'
+import { removePhotoLocation, setPhotoLocation, type Place } from '../api/places'
 import { deletePhoto } from '../api/photos'
 
 // 시안 지도 그림(840×860) 크기. 그림 속 도시 위치(안동·구미·대구·포항·경주)에 맞춰 좌표 → 픽셀 식을 구했다
@@ -97,6 +97,19 @@ function PlacePhotoCard({
       setBusy(false)
     }
   }
+  const removePlace = async () => {
+    if (busy) return
+    setBusy(true)
+    setFailed(null)
+    try {
+      await removePhotoLocation(place.photoId)
+      onChanged('지도에서 뺐어요')
+    } catch {
+      setFailed('지도에서 빼지 못했어요. 다시 시도해 주세요')
+    } finally {
+      setBusy(false)
+    }
+  }
   const removePhoto = async () => {
     if (busy) return
     setBusy(true)
@@ -156,6 +169,7 @@ function PlacePhotoCard({
                   label="내 사진 메뉴"
                   items={[
                     { label: '장소 바꾸기', onSelect: () => setPlacing(true) },
+                    { label: '지도에서 빼기', onSelect: () => void removePlace() },
                     ...(completed ? [] : [{ label: '사진 지우기', onSelect: () => setConfirmDelete(true), danger: true }]),
                   ]}
                 />
