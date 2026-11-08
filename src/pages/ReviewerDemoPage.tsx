@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { activateReviewerDemo, type ReviewerDemo } from '../api/reviewerDemo'
 import Button from '../components/Button'
 import Flower from '../components/Flower'
 import { paths } from '../routes/paths'
 
 export default function ReviewerDemoPage() {
-  const [demo, setDemo] = useState<ReviewerDemo | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [demo, setDemo] = useState<ReviewerDemo | null>(() => (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo ?? null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const pending = useRef(false)
@@ -16,7 +18,11 @@ export default function ReviewerDemoPage() {
     pending.current = true
     setBusy(true)
     setError('')
-    try { setDemo(await activateReviewerDemo()) }
+    try {
+      const rooms = await activateReviewerDemo()
+      setDemo(rooms)
+      navigate(paths.reviewerDemo(), { replace: true, state: { reviewerDemo: rooms } })
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : '체험 방을 준비하지 못했어요. 다시 시도해 주세요.') }
     finally { pending.current = false; setBusy(false) }
   }
@@ -36,7 +42,7 @@ export default function ReviewerDemoPage() {
         { title: '방장으로 체험하기', detail: '경주 가을 산책 · 사진과 이야기 모으기', to: paths.roomHome(demo.hostRoomId) },
         { title: '친구로 체험하기', detail: '포항 바다의 밤 · 친구 사진에 이야기 보태기', to: paths.roomHome(demo.memberRoomId) },
         { title: '완성된 두루마리 보기', detail: '안동 하루 여행 · 함께 엮인 기억 펼치기', to: paths.roomWeaving(demo.completedRoomId) },
-      ].map(({ title, detail, to }) => <Link key={to} to={to} className="rounded-2xl border border-line bg-surface p-5">
+      ].map(({ title, detail, to }) => <Link key={to} to={to} state={{ reviewerDemo: demo }} className="rounded-2xl border border-line bg-surface p-5">
         <span className="block font-semibold">{title} →</span><span className="mt-2 block text-sm text-sub">{detail}</span>
       </Link>)}
     </nav>}
