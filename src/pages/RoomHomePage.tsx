@@ -221,7 +221,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
           {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
           <BranchFlowers status={room.status} roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-2 text-[11px] text-sub">
-            {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
+            {activityTotal(members) === 0 ? '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요' : '꽃을 누르면 친구가 올린 사진을 볼 수 있어요'}
           </p>
         </section>
 
@@ -426,7 +426,7 @@ function RoomHomePage() {
           <h2 className="text-[11px] text-sub">핀 꽃</h2>
           <BranchFlowers status={room.status} roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-1 text-[11px] text-sub">
-            {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
+            {activityTotal(members) === 0 ? '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요' : '꽃을 누르면 친구가 올린 사진을 볼 수 있어요'}
           </p>
         </section>
 
