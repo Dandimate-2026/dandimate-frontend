@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { getMockRole, USE_MOCK } from '../api/mock'
+import { enterReviewDemo, getMockRole, leaveReviewDemo, USE_MOCK } from '../api/mock'
 import { getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomPlanType, RoomStatus } from '../api/types'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
@@ -219,6 +219,15 @@ function RoomListPage() {
             )}
           </p>
           <div className="flex items-center gap-3">
+            {USE_MOCK ? (
+              <>
+                <button type="button" onClick={() => { enterReviewDemo('HOST'); window.location.reload() }} className="text-[11px] text-sub active:opacity-80">방장 시점</button>
+                <button type="button" onClick={() => { enterReviewDemo('MEMBER'); window.location.reload() }} className="text-[11px] text-sub active:opacity-80">멤버 시점</button>
+                <button type="button" onClick={() => { leaveReviewDemo(); window.location.reload() }} className="text-[11px] text-point active:opacity-80">데모 나가기</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => { enterReviewDemo('HOST'); window.location.reload() }} className="text-[11px] font-semibold text-point active:opacity-80">심사용 데모</button>
+            )}
             <button
               type="button"
               onClick={handleLogout}

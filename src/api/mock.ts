@@ -1,5 +1,6 @@
 // 백엔드가 준비되기 전, 개발 서버에서 화면을 확인하기 위한 예시 데이터
-// .env.local 에 VITE_USE_MOCK=false 를 넣으면 실제 API를 호출한다
+// 개발 환경에서는 .env.local의 VITE_USE_MOCK=true로 켤 수 있다.
+// 운영 심사에서는 로그인 후 목록에서 사용자가 직접 켜는 '심사용 데모'도 지원한다.
 import type {
   Askback,
   CloseRoomResult,
@@ -14,7 +15,20 @@ import type {
 } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
-export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
+const DEMO_MODE_KEY = 'duruduru:review-demo'
+export let USE_MOCK = (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true') ||
+  (typeof window !== 'undefined' && localStorage.getItem(DEMO_MODE_KEY) === '1')
+
+/** 심사자가 카카오 로그인 뒤에도 안전하게 예시 데이터만 둘러보도록 켠다. */
+export function enterReviewDemo(role: MockRole = 'HOST') {
+  localStorage.setItem(DEMO_MODE_KEY, '1')
+  localStorage.setItem(MOCK_AUTH_KEY, JSON.stringify({ role }))
+  USE_MOCK = true
+}
+export function leaveReviewDemo() {
+  localStorage.removeItem(DEMO_MODE_KEY)
+  USE_MOCK = false
+}
 
 let mockReweavesUsed = 0
 export function consumeMockReweave() { mockReweavesUsed++ }
