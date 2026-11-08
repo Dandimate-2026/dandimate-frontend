@@ -15,6 +15,7 @@ import { getRoomSession, listSavedRoomIds, saveRoomSession } from '../lib/sessio
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { paths } from '../routes/paths'
 import logo from '../assets/logo-scroll.webp'
+import ReviewerDemoPage from './ReviewerDemoPage'
 import { ViewablePhoto } from '../components/PhotoViewer'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
@@ -157,6 +158,14 @@ function RoomListPage() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [ongoingVisible, setOngoingVisible] = useState(ROOM_PAGE_SIZE)
   const [doneVisible, setDoneVisible] = useState(ROOM_PAGE_SIZE)
+  const [reviewerDemoEnabled, setReviewerDemoEnabled] = useState(() => {
+    try { return sessionStorage.getItem('duruduru:reviewer-demo-enabled') === 'true' } catch { return false }
+  })
+  const toggleReviewerDemo = () => {
+    const next = !reviewerDemoEnabled
+    setReviewerDemoEnabled(next)
+    try { sessionStorage.setItem('duruduru:reviewer-demo-enabled', String(next)) } catch { /* 저장소 없이도 화면 전환은 유지 */ }
+  }
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
   // 상점(크레딧 구매)에서 돌아오면 챗봇을 다시 열어 이어서 물어볼 수 있게 한다
   const location = useLocation()
@@ -193,6 +202,7 @@ function RoomListPage() {
   }
 
   const handleLogout = async () => {
+    try { sessionStorage.removeItem('duruduru:reviewer-demo-enabled') } catch { /* 저장소 사용 불가 */ }
     setLoggingOut(true)
     try {
       await logout()
@@ -203,14 +213,15 @@ function RoomListPage() {
 
   if (!homes) return <main className="flex-1 bg-bg" aria-busy="true" />
 
-  const ongoing = homes
+  const regularHomes = homes.filter((home) => !home.room.name.startsWith('[심사용]'))
+  const ongoing = regularHomes
     .filter((h) => h.room.status !== 'GROWING')
     .sort(
       (a, b) =>
         Number(hasTodo(b)) - Number(hasTodo(a)) ||
         (a.room.deadlineAt ? new Date(a.room.deadlineAt).getTime() : Infinity) - (b.room.deadlineAt ? new Date(b.room.deadlineAt).getTime() : Infinity),
     )
-  const done = homes
+  const done = regularHomes
     .filter((h) => h.room.status === 'GROWING')
     .sort((a, b) => (b.room.meetingDate ?? '').localeCompare(a.room.meetingDate ?? ''))
 
@@ -248,13 +259,17 @@ function RoomListPage() {
           </div>
         </div>
 
-        {homes.length === 0 ? (
+        <div className="mt-[clamp(28px,6dvh,48px)] flex flex-wrap items-center justify-between gap-3 px-1.5">
+          <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
+          <button type="button" role="switch" aria-checked={reviewerDemoEnabled} aria-label="심사용 데모" onClick={toggleReviewerDemo} className="flex min-h-11 items-center gap-2 text-[12px] text-sub">
+            심사용 데모
+            <span aria-hidden="true" className={`relative h-6 w-10 rounded-full transition-colors ${reviewerDemoEnabled ? 'bg-point' : 'bg-muted'}`}><span className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${reviewerDemoEnabled ? 'translate-x-4' : ''}`} /></span>
+            <span className="w-6 text-[10px] font-semibold">{reviewerDemoEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+        </div>
+        {reviewerDemoEnabled ? <ReviewerDemoPage embedded /> : regularHomes.length === 0 ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
-          <section className="mt-[clamp(28px,6dvh,48px)] px-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
-              <Link to={paths.reviewerDemo()} className="text-xs text-point underline">심사용 데모 체험하기</Link>
-            </div>
+          <section className="px-1.5">
             <div className="mt-6 flex flex-col items-center rounded-[24px] border border-dashed border-line bg-surface px-6 pt-9 pb-7 text-center">
               <div className="flex items-end gap-1" aria-hidden="true">
                 <Flower code="AZALEA" size={28} />
@@ -278,11 +293,7 @@ function RoomListPage() {
             </div>
           </section>
         ) : (
-          <section className="mt-[clamp(28px,6dvh,48px)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1.5">
-            <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
-            <Link to={paths.reviewerDemo()} className="text-xs text-point underline">심사용 데모 체험하기</Link>
-          </div>
+          <section>
           <p className="mt-2 px-1.5 text-[11px] text-sub">할 일이 있는 방이 먼저 보여요</p>
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
@@ -295,7 +306,7 @@ function RoomListPage() {
         </section>
         )}
 
-        {done.length > 0 && (
+        {!reviewerDemoEnabled && done.length > 0 && (
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             <ul className="mt-3 flex flex-col gap-[11px]">

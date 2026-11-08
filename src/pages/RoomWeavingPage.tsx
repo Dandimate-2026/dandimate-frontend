@@ -149,7 +149,7 @@ function RoomWeavingPage() {
   }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, reweavingAll, deletingReply])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
-  const backToHome = () => navigate(reviewerDemo ? paths.reviewerDemo() : paths.roomHome(roomId), { state: reviewerDemo ? { reviewerDemo } : null })
+  const backToHome = () => navigate(reviewerDemo ? paths.roomList() : paths.roomHome(roomId), { state: reviewerDemo ? { reviewerDemo } : null })
 
   async function removeReply(replyId: string) {
     if (jobId) throw new Error('진행 중인 작업이 끝난 뒤 다시 시도해 주세요')
