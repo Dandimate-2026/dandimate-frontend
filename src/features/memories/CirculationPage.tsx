@@ -5,11 +5,12 @@ import skip from '../../assets/memories/skip.svg'
 import { MemoryCard, MemoryFlower, MemoryHeader, PhotoSlot, StoryCard, TextModeToggle } from './components'
 import type { MemoryPhoto, MemoryResponse, MemoryStory } from './types'
 
-export default function CirculationPage({ photo, position, total, single = false, response, locked, busy = false, error, textOnly, onTextMode, onBack, onAdd, onPass, onNext, onDeletePhoto, onEditStory, onDeleteStory }: {
+export default function CirculationPage({ photo, position, total, single = false, readOnly = false, response, locked, busy = false, error, textOnly, onTextMode, onBack, onAdd, onPass, onNext, onDeletePhoto, onEditStory, onDeleteStory }: {
   photo: MemoryPhoto
   position: number
   total: number
   /** 사진 하나만 콕 집어 들어왔을 때: 몇 번째 표시와 다음 사진 없이 그 사진만 */
+  readOnly?: boolean
   single?: boolean
   response?: MemoryResponse
   locked?: boolean
@@ -65,8 +66,8 @@ export default function CirculationPage({ photo, position, total, single = false
     {error && <p role="alert" className="memory-error">{error}</p>}
     <footer className="memory-actions">
       {/* 덧붙임은 개수 제한 없이, 돌려보는 시간 안이면 몇 번이든 더 남길 수 있다 (시간이 끝나면 두루마리 답가로) */}
-      <Button onClick={onAdd} disabled={busy}>{response?.status === 'added' ? '더 덧붙이기' : response?.status === 'passed' ? '덧붙이기로 바꾸기' : '덧붙이기'}</Button>
-      <Button variant="outline" disabled={busy} onClick={unlocked || passed ? onNext : onPass}>{unlocked || passed ? (single ? '돌아가기' : '다음 사진') : busy ? '처리 중…' : '패스'}</Button>
+      {!readOnly && <Button onClick={onAdd} disabled={busy}>{response?.status === 'added' ? '더 덧붙이기' : response?.status === 'passed' ? '덧붙이기로 바꾸기' : '덧붙이기'}</Button>}
+      <Button variant="outline" disabled={busy} onClick={readOnly || unlocked || passed ? onNext : onPass}>{readOnly || unlocked || passed ? (single ? '돌아가기' : '다음 사진') : busy ? '처리 중…' : '패스'}</Button>
     </footer>
   </main>
 }

@@ -12,7 +12,6 @@ import BranchFlowers from '../components/BranchFlowers'
 import { participationRate, useRoomCards } from '../lib/participation'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
 import { useInviteShare } from '../hooks/useInviteShare'
-import { copyForShare, shareWithDevice } from '../lib/share'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
@@ -20,7 +19,6 @@ import { getRoomSession } from '../lib/session'
 import WeaveDatePrompt from '../components/WeaveDatePrompt'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
-import { siteUrl } from '../lib/siteUrl'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
@@ -105,11 +103,16 @@ function ScrollIcon({ flower }: { flower: FlowerCode }) {
 const sumOf = (members: Member[], key: 'photoCount' | 'storyCount') => members.reduce((n, m) => n + (m[key] ?? 0), 0)
 const activityTotal = (members: Member[]) => sumOf(members, 'photoCount') + sumOf(members, 'storyCount')
 
-function MemberProgress({ member, done, cards }: { member: Member; done: boolean; cards: CirculationCard[] | null }) {
-  // 참여율 = 참여한 사진(올린 사진 + 이야기를 남긴 사진) ÷ 방 전체 사진. 서버 값이 있으면 그걸 쓰고, 없으면 돌려보기 목록으로 센다.
-  // 모두 다 봤으면 막대를 꽉 채운다
+/** 참여율(0~1) = 참여한 고유 사진 ÷ 방 전체 사진. 서버 값이 있으면 그걸 쓰고, 없으면 돌려보기 목록으로 센다 */
+function memberRate(member: Member, cards: CirculationCard[] | null) {
   const server = member.totalPhotoCount ? (member.participatedPhotoCount ?? 0) / member.totalPhotoCount : null
-  const rate = done ? 1 : Math.min(Math.max(server ?? (cards ? participationRate(cards, member) : member.responseRate ?? 0), 0), 1)
+  return Math.min(Math.max(server ?? (cards ? participationRate(cards, member) : member.responseRate ?? 0), 0), 1)
+}
+
+function MemberProgress({ member, cards }: { member: Member; cards: CirculationCard[] | null }) {
+  // 방 상태와 상관없이 실제 참여율로 그린다. 100%가 된 사람만 체크
+  const rate = memberRate(member, cards)
+  const done = rate >= 1
   return (
     <li>
       <div className="flex items-center justify-between">
@@ -212,7 +215,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
         <section className="mt-3.5 px-1.5">
           <h2 className="text-[11px] text-sub">핀 꽃</h2>
           {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
-          <BranchFlowers roomId={room.id} members={members} cards={roomCards} />
+          <BranchFlowers status={room.status} roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-2 text-[11px] text-sub">
             {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
           </p>
@@ -383,16 +386,10 @@ function RoomHomePage() {
 
   const { room, me, members, myTodo } = home
 
-  /** 공유 화면으로 가지 않고 바로 기기 공유창을 연다. 못 열면 글+링크를 복사하고 알려 준다 */
+  /** 모든 초대 공유는 토큰이 포함된 초대 링크를 사용한다. */
   const handleShareToChat = async () => {
     const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
-    if (inviteToken) {
-      await shareInvite(text)
-      return
-    }
-    const url = siteUrl(paths.roomHome(room.id))
-    if (await shareWithDevice(text, url)) return
-    await copyForShare(text, url)
+    await shareInvite(text)
   }
 
   // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
@@ -407,6 +404,8 @@ function RoomHomePage() {
   // 두루마리가 완성된 방도 시안처럼 모두 다 본 모양(체크·꽉 찬 막대)으로 보여준다
   const grown = room.status === 'GROWING'
   const allDone = readyToWeave || grown
+  // 모든 사람이 참여율 100%면 두루마리를 만들기에 충분하다고 알려 준다 (엮는 건 방장이 정한 시각에)
+  const everyoneFull = members.length > 0 && members.every((m) => memberRate(m, roomCards) >= 1)
   // 혼자 쓰는 방: 참여현황에 '1/1명 다 봤어요' 대신 '혼자 기록하는 중', 알릴 친구가 없어 단톡방 알리기는 숨긴다
   const solo = members.length === 1
   // 두루마리 아이콘 꽃은 방장 꽃 색 (방장을 못 찾으면 내 꽃)
@@ -420,7 +419,7 @@ function RoomHomePage() {
 
         <section className="mt-2.5 px-1.5">
           <h2 className="text-[11px] text-sub">핀 꽃</h2>
-          <BranchFlowers roomId={room.id} members={members} cards={roomCards} />
+          <BranchFlowers status={room.status} roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-1 text-[11px] text-sub">
             {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
           </p>
@@ -452,14 +451,20 @@ function RoomHomePage() {
           <div className="flex items-center justify-between px-0.5 text-[11px]">
             <h2 className="text-sub">참여현황</h2>
             <p>
-              {solo ? '혼자 기록하는 중' : <>{members.length}/{room.capacity ?? ROOM_CAPACITY}명{allDone && ' 다 봤어요'}</>}
+              {solo ? '혼자 기록하는 중' : <>{members.length}/{room.capacity ?? ROOM_CAPACITY}명</>}
             </p>
           </div>
           <ul className="mt-0.5 flex flex-col gap-2.5">
             {members.map((m) => (
-              <MemberProgress key={m.id} member={m} done={allDone} cards={roomCards} />
+              <MemberProgress key={m.id} member={m} cards={roomCards} />
             ))}
           </ul>
+          {/* 모두 100%면: 두루마리를 만들기에 충분해요 (엮기는 방장이 정한 시각에) */}
+          {everyoneFull && !grown && room.status !== 'WEAVING' && (
+            <p className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-[#eef3e8] px-3 py-2 text-[12px] font-semibold text-[#4f6b3f]" role="status">
+              <span aria-hidden="true">✓</span> 모두 참여했어요. 두루마리를 만들기에 충분해요
+            </p>
+          )}
         </section>
       </div>
 

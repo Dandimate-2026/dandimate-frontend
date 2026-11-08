@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router'
 import { paths } from '../routes/paths'
-import type { CirculationCard, FlowerCode } from '../api/types'
+import type { CirculationCard, FlowerCode, RoomStatus } from '../api/types'
 import { FLOWER_COLOR } from '../lib/flower'
 import Flower from './Flower'
+import { canEditRoomRecords } from '../lib/roomState'
 
 const W = 340 // 가지 그림 가로 (viewBox)
 const H = 84 // 가지 영역 높이(px)
@@ -24,7 +25,7 @@ type Person = { id: string | number; nickname: string; flowerCode: FlowerCode; p
  * 자리는 들어온 순서대로 고정(1번째는 맨 왼쪽 칸…)이고, 아직 아무것도 남기지 않은 사람 자리는 비워 둔다.
  * 꽃의 숫자는 그 사람이 한 모든 활동(사진 + 이야기). 꽃을 누르면 참여한 사진별로 그 활동을 모아 넘겨 본다.
  */
-export default function BranchFlowers({ roomId, members, cards }: { roomId: string; members: Person[]; cards: CirculationCard[] | null }) {
+export default function BranchFlowers({ roomId, status, members, cards }: { roomId: string; status: RoomStatus; members: Person[]; cards: CirculationCard[] | null }) {
   const [open, setOpen] = useState<Person | null>(null)
 
   // 꽃의 숫자 = 그 사람이 한 모든 활동(올린 사진 + 남긴 이야기). 꽃을 누르면 그 활동들을 사진별로 모아 넘겨 본다
@@ -73,7 +74,7 @@ export default function BranchFlowers({ roomId, members, cards }: { roomId: stri
           )
         })}
       </div>
-      {open && <FlowerSheet person={open} roomId={roomId} slides={cards ? slidesFor(cards, open) : null} onClose={() => setOpen(null)} />}
+      {open && <FlowerSheet editable={canEditRoomRecords(status)} person={open} roomId={roomId} slides={cards ? slidesFor(cards, open) : null} onClose={() => setOpen(null)} />}
     </>
   )
 }
@@ -100,7 +101,7 @@ function slidesFor(cards: CirculationCard[], person: Person): Slide[] {
 type Slide = { photoId: string; imageUrl: string; at: string; entries: { id: string; first: boolean; text: string }[] }
 
 /** 꽃을 눌렀을 때: 그 사람이 올린 사진을 한 장씩 넘겨 본다. 장마다 덧붙이러 갈 수 있다 */
-function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; roomId: string; slides: Slide[] | null; onClose: () => void }) {
+function FlowerSheet({ person, roomId, slides, onClose, editable }: { editable: boolean; person: Person; roomId: string; slides: Slide[] | null; onClose: () => void }) {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -168,9 +169,9 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
                       ))}
                     </ul>
                   </div>
-                  <button type="button" onClick={() => go(sl.photoId)} className="mt-3 h-11 w-full shrink-0 rounded-full bg-ink text-[14px] font-semibold text-surface active:opacity-80">
+                  {editable && <button type="button" onClick={() => go(sl.photoId)} className="mt-3 h-11 w-full shrink-0 rounded-full bg-ink text-[14px] font-semibold text-surface active:opacity-80">
                     이 사진에 덧붙이러 가기
-                  </button>
+                  </button>}
                 </article>
               ))}
             </div>

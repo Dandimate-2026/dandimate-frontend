@@ -322,7 +322,11 @@ function CitySheet({ pin, place: focus, onClose, onChanged }: { pin: CityPin; pl
 
 /** 이 배율 이상으로 확대하면 도시 핀 대신 사진별 세부 장소 핀을 보여준다 */
 const DETAIL_SCALE = 2
+/** 이 배율까지 더 확대하면 카카오 상세 지도로 넘어간다 (세부 장소 핀을 먼저 충분히 보게) */
+const KAKAO_SCALE = 4
 const MAX_SCALE = 5
+/** 넘어갈 때 화면 가운데에서 이만큼(위경도, 약 5km) 안에 꽃 핀이 있으면 그 핀으로 맞춘다 */
+const SNAP_DEGREE = 0.05
 
 /**
  * 확대·이동되는 지도. 두 손가락(또는 휠·+/- 버튼)으로 확대하고 한 손가락으로 끌어 옮긴다.
@@ -350,6 +354,7 @@ function ZoomableMap({
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const gesture = useRef({ dist: 0, moved: 0 })
   const detailEntered = useRef(false)
+  const zoomFocus = useRef<{ x: number; y: number } | null>(null)
 
   // 지도 상자 크기를 재 둔다 (핀 위치 계산용)
   useEffect(() => {
@@ -372,6 +377,7 @@ function ZoomableMap({
   }
   const zoomAt = (factor: number, cx: number, cy: number) =>
     setView((v) => {
+      zoomFocus.current = { x: cx, y: cy }
       const s = Math.min(MAX_SCALE, Math.max(1, v.s * factor))
       const k = s / v.s
       return clamp({ s, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k })
@@ -438,30 +444,30 @@ function ZoomableMap({
   const places = detail ? pins.flatMap((pin) => groupPlaces(pin.places).map((g) => ({ pin, ...g }))) : []
 
   useEffect(() => {
-    if (view.s < DETAIL_SCALE) {
+    if (view.s < KAKAO_SCALE) {
       detailEntered.current = false
       return
     }
     if (detailEntered.current || size.w === 0 || size.h === 0) return
     detailEntered.current = true
-    const imageX = (-view.x + size.w / 2) / view.s
-    const imageY = (-view.y + size.h / 2) / view.s
+    const imageX = (-view.x + (zoomFocus.current?.x ?? size.w / 2)) / view.s
+    const imageY = (-view.y + (zoomFocus.current?.y ?? size.h / 2)) / view.s
     const viewportCenter = unproject(imageX * (MAP_W / size.w), imageY * (MAP_H / size.h))
 
-    // 상세 지도는 빈 지도의 중심이 아니라, 지금 보고 있던 꽃 핀을 중심으로 연다.
-    // 선택한 도시가 있으면 그것을 우선하고, 아니면 화면 중앙에 가장 가까운 도시를 고른다.
-    const target =
-      pins.find((pin) => pin.city === activeCity) ??
-      pins.reduce<CityPin | null>((closest, pin) => {
-        if (!closest) return pin
-        const distance = (pin.latitude - viewportCenter.lat) ** 2 + (pin.longitude - viewportCenter.lng) ** 2
-        const closestDistance =
-          (closest.latitude - viewportCenter.lat) ** 2 + (closest.longitude - viewportCenter.lng) ** 2
-        return distance < closestDistance ? pin : closest
-      }, null)
+    // 상세 지도는 지금 확대해서 보고 있던 곳(화면 가운데)으로 연다.
+    // 그 가까이(약 5km)에 꽃 핀(도시·세부 장소)이 있으면 그 핀에 맞춰서 빈 곳으로 열리지 않게 한다.
+    // (예전에는 가장 가까운 도시로 맞춰서, 포항을 키워도 가운데가 경주에 더 가까우면 경주로 갔다)
+    const spots = pins.flatMap((pin) => [
+      { lat: pin.latitude, lng: pin.longitude },
+      ...pin.places.map((place) => ({ lat: place.latitude, lng: place.longitude })),
+    ])
+    const nearest = spots.reduce<{ lat: number; lng: number; d: number } | null>((best, spot) => {
+      const d = Math.hypot(spot.lat - viewportCenter.lat, spot.lng - viewportCenter.lng)
+      return !best || d < best.d ? { ...spot, d } : best
+    }, null)
 
-    onEnterDetail(target ? { lat: target.latitude, lng: target.longitude } : viewportCenter)
-  }, [activeCity, onEnterDetail, pins, size.h, size.w, view.s, view.x, view.y])
+    onEnterDetail(nearest && nearest.d <= SNAP_DEGREE ? { lat: nearest.lat, lng: nearest.lng } : viewportCenter)
+  }, [onEnterDetail, pins, size.h, size.w, view.s, view.x, view.y])
 
   return (
     <div className="relative mx-3 mt-4">

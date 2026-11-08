@@ -16,6 +16,7 @@ import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 import { LengthNotice } from '../components/LengthNotice'
+import { canEditRoomRecords } from '../lib/roomState'
 import { clampText } from '../lib/textLimit'
 
 /** 꽃 색은 앱 공통 8색: 꽃 코드를 그대로 쓴다 */
@@ -59,6 +60,7 @@ function RoomCirculationPage() {
   const token = session?.memberAccessToken ?? ''
   // 덧붙임 녹음 최대 길이는 플랜별(20/30/60초)이라 방 한도를 불러온다
   const quotaHome = useRoomHomeForQuota(roomId, session?.memberAccessToken)
+  const editable = canEditRoomRecords(quotaHome?.room.status)
   const [cards, setCards] = useState<CirculationCard[]>([])
   const [index, setIndex] = useState(0)
   // 홈·핀 꽃에서 사진 하나를 콕 집어 들어오면 그 사진 하나만 보여 준다
@@ -112,7 +114,7 @@ function RoomCirculationPage() {
   }
 
   async function pass() {
-    if (!card || busy) return
+    if (!editable || !card || busy) return
     setBusy(true); setError('')
     try { await passPhoto(card.photo.id, token); await refresh() }
     catch (cause) { setError(cause instanceof Error ? cause.message : '패스하지 못했어요.') }
@@ -120,7 +122,7 @@ function RoomCirculationPage() {
   }
 
   async function saveAddition(contribution: MemoryContribution) {
-    if (!card) return
+    if (!editable || !card) return
     if (card.myResponse.status === 'PASSED') await undoPass(card.photo.id, token)
     if (contribution.audioBlob && contribution.transcriptionId) {
       await createEntry(card.photo.id, token, { kind: 'ADDON', inputMode: 'VOICE', transcriptionId: contribution.transcriptionId, transcript: contribution.text })
@@ -152,7 +154,7 @@ function RoomCirculationPage() {
   }
 
   async function confirmDeletion() {
-    if (!confirmDelete || !card || busy) return
+    if (!editable || !confirmDelete || !card || busy) return
     setBusy(true); setError('')
     try {
       if (confirmDelete.kind === 'photo') {
@@ -174,7 +176,7 @@ function RoomCirculationPage() {
   }
 
   async function saveEdit() {
-    if (!editing?.story.id || !editing.text.trim() || busy) return
+    if (!editable || !editing?.story.id || !editing.text.trim() || busy) return
     setBusy(true); setError('')
     try {
       await editEntry(editing.story.id, editing.text.trim())
@@ -200,11 +202,11 @@ function RoomCirculationPage() {
           </footer>
         </main>
         : done ? <CirculationComplete addedCount={cards.filter((item) => item.myResponse.status === 'ADDON').length} photoCount={cards.length} roomName={session.roomName} onBack={() => setDone(false)} onHome={backToHome} />
-          : <CirculationPage photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onNext={next}
-            onDeletePhoto={() => setConfirmDelete({ kind: 'photo' })}
-            onEditStory={(s) => setEditing({ story: s, text: s.text })}
-            onDeleteStory={(s) => setConfirmDelete({ kind: 'story', story: s })} />}
-    {confirmDelete && (
+          : <CirculationPage readOnly={!editable} photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onNext={next}
+            onDeletePhoto={editable ? () => setConfirmDelete({ kind: 'photo' }) : undefined}
+            onEditStory={editable ? (s) => setEditing({ story: s, text: s.text }) : undefined}
+            onDeleteStory={editable ? (s) => setConfirmDelete({ kind: 'story', story: s }) : undefined} />}
+    {editable && confirmDelete && (
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-8" onClick={() => setConfirmDelete(null)}>
         <div role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-[360px] rounded-[24px] bg-[#fffdf9] px-5 pt-6 pb-5 text-center text-[#2a2623]">
           <h2 id="delete-title" className="text-[16px] font-bold">{confirmDelete.kind === 'photo' ? '이 사진을 지울까요?' : '이 이야기를 지울까요?'}</h2>
@@ -220,7 +222,7 @@ function RoomCirculationPage() {
         </div>
       </div>
     )}
-    {editing && (
+    {editable && editing && (
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-6" onClick={() => setEditing(null)}>
         <div role="dialog" aria-modal="true" aria-labelledby="edit-story-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-[380px] rounded-[24px] bg-[#fffdf9] px-5 pt-6 pb-5 text-[#2a2623]">
           <h2 id="edit-story-title" className="text-center text-[16px] font-bold">이야기 고치기</h2>
@@ -234,7 +236,7 @@ function RoomCirculationPage() {
         </div>
       </div>
     )}
-    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} draftKey={`addon:${roomId}:${photo.id}`} maxLength={200} maxVoiceMs={voiceMaxMs(quotaHome?.room.quota, 'other')}
+    {editable && sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} draftKey={`addon:${roomId}:${photo.id}`} maxLength={200} maxVoiceMs={voiceMaxMs(quotaHome?.room.quota, 'other')}
       onTranscribe={(audio) => transcribe(photo.id, token, audio, 'ADDON')}
       onSave={saveAddition} onClose={() => setSheetOpen(false)} />}
   </div>
