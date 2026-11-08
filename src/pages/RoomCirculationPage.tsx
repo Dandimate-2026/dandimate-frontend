@@ -236,7 +236,7 @@ function RoomCirculationPage() {
         </div>
       </div>
     )}
-    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} maxLength={200} maxVoiceMs={voiceMaxMs(quotaHome?.room.quota, 'other')}
+    {sheetOpen && photo && <ContributionSheet kind="addition" quote={photo.firstStory.text} startWithText={textOnly} draftKey={`addon:${roomId}:${photo.id}`} maxLength={200} maxVoiceMs={voiceMaxMs(quotaHome?.room.quota, 'other')}
       onTranscribe={(audio) => transcribe(photo.id, token, audio, 'ADDON')}
       onSave={saveAddition} onClose={() => setSheetOpen(false)} />}
   </div>

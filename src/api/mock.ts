@@ -12,6 +12,7 @@ import type {
   RoomNotification,
   TranscriptionDraft,
 } from './types'
+import { MEMORY_PHOTOS } from '../features/memories/data'
 
 export const USE_MOCK = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -96,10 +97,23 @@ export function mockJoinRoom(nickname: string): JoinRoomResult {
   }
 }
 
+// 데모 방 둘러보기에 나오는 사진 (api/memories.ts의 mockPhotoCards와 같은 2장).
+// 멤버의 사진·이야기 수를 이 사진들에서 세어서, 꽃 숫자와 꽃 모달·참여현황이 서로 맞게 한다
+export const DEMO_CIRCULATION_PHOTOS = MEMORY_PHOTOS.slice(0, 2)
+
+function demoCounts(nickname: string) {
+  const photoCount = DEMO_CIRCULATION_PHOTOS.filter((p) => p.owner === nickname).length
+  const storyCount = DEMO_CIRCULATION_PHOTOS.reduce(
+    (n, p) => n + (p.firstStory.author === nickname ? 1 : 0) + p.friends.filter((f) => f.author === nickname).length,
+    0,
+  )
+  return { photoCount, storyCount }
+}
+
 const mockMembers: RoomHome['members'] = [
-  { id: 'm1', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA', photoCount: 2, storyCount: 3, responseRate: 1 },
-  { id: 'm2', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA', photoCount: 2, storyCount: 1, responseRate: 0.55 },
-  { id: 'm3', nickname: '지수', role: 'MEMBER', flowerCode: 'FORGET_ME_NOT', photoCount: 3, storyCount: 2, responseRate: 0.75 },
+  { id: 'm1', nickname: '서연', role: 'HOST', flowerCode: 'AZALEA', ...demoCounts('서연'), responseRate: 1 },
+  { id: 'm2', nickname: '민지', role: 'MEMBER', flowerCode: 'FORSYTHIA', ...demoCounts('민지'), responseRate: 0.55 },
+  { id: 'm3', nickname: '지수', role: 'MEMBER', flowerCode: 'FORGET_ME_NOT', ...demoCounts('지수'), responseRate: 0.75 },
 ]
 
 export const mockRoomHome: RoomHome = {
