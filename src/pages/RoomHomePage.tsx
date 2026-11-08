@@ -155,7 +155,7 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
         {/* 어디서 들어왔든(방 만들기·초대 링크·카톡 링크) 뒤로 가면 내 모임방 목록으로 간다 */}
         <button
           type="button"
-          onClick={() => navigate(reviewerDemo ? paths.reviewerDemo() : paths.roomList(), { state: reviewerDemo ? { reviewerDemo } : null })}
+          onClick={() => navigate(paths.roomList(), { state: reviewerDemo ? { reviewerDemo } : null })}
           className="flex items-center gap-2.5 text-[16px] font-bold"
         >
           <ChevronLeftIcon />

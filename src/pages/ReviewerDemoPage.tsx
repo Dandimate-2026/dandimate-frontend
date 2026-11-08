@@ -5,7 +5,7 @@ import Button from '../components/Button'
 import Flower from '../components/Flower'
 import { paths } from '../routes/paths'
 
-export default function ReviewerDemoPage() {
+export default function ReviewerDemoPage({ embedded = false }: { embedded?: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [demo, setDemo] = useState<ReviewerDemo | null>(() => (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo ?? null)
@@ -21,16 +21,17 @@ export default function ReviewerDemoPage() {
     try {
       const rooms = await activateReviewerDemo()
       setDemo(rooms)
-      navigate(paths.reviewerDemo(), { replace: true, state: { reviewerDemo: rooms } })
+      navigate(embedded ? paths.roomList() : paths.reviewerDemo(), { replace: true, state: { reviewerDemo: rooms } })
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : '체험 방을 준비하지 못했어요. 다시 시도해 주세요.') }
     finally { pending.current = false; setBusy(false) }
   }
 
-  return <main className="flex min-h-dvh flex-col bg-bg px-6 py-8 text-ink">
-    <Link to={paths.roomList()} className="self-start text-sm text-sub">‹ 내 모임방</Link>
-    <div className="mt-12"><Flower code="AZALEA" size={48} /></div>
-    <h1 className="mt-6 text-2xl font-bold">두루두루 체험하기</h1>
+  const Container = embedded ? 'section' : 'main'
+  return <Container className={embedded ? 'mt-6 flex flex-col text-ink' : 'flex min-h-dvh flex-col bg-bg px-6 py-8 text-ink'}>
+    {!embedded && <Link to={paths.roomList()} className="self-start text-sm text-sub">‹ 내 모임방</Link>}
+    {!embedded && <div className="mt-12"><Flower code="AZALEA" size={48} /></div>}
+    {embedded ? <h2 className="text-lg font-bold">두루두루 체험하기</h2> : <h1 className="mt-6 text-2xl font-bold">두루두루 체험하기</h1>}
     <p className="mt-3 text-sm leading-relaxed text-sub">사진과 이야기가 담긴 예시 방에서<br />방장과 친구의 입장을 체험하고, 완성된 두루마리를 펼쳐 보세요.</p>
     {!demo && <>
       <p className="mt-6 text-sm text-sub">내 계정에 체험 방 3개가 추가돼요. 다시 시작해도 같은 방을 이어서 볼 수 있어요.</p>
@@ -46,5 +47,5 @@ export default function ReviewerDemoPage() {
         <span className="block font-semibold">{title} →</span><span className="mt-2 block text-sm text-sub">{detail}</span>
       </Link>)}
     </nav>}
-  </main>
+  </Container>
 }
