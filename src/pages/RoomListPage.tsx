@@ -103,6 +103,7 @@ function RoomCard({ home, meta, reviewerDemo }: { home: RoomHome; meta: string; 
   const cover = coverSrc(room.coverImageUrl) ?? getRoomPlaceCover(room.id).coverPhoto
   return (
     <li>
+      {reviewerDemo && <p className="mb-1.5 ml-3 text-[10px] font-semibold text-sub">데모용</p>}
       <Link
         to={paths.roomHome(room.id)}
         state={reviewerDemo ? { reviewerDemo } : undefined}
@@ -257,11 +258,11 @@ function RoomListPage() {
   return (
     <main className={`flex min-h-dvh flex-col bg-bg text-ink ${BOTTOM_TABS_SPACE}`}>
       <div className="px-5 pt-[clamp(40px,8dvh,64px)] pb-6">
-        <div className="flex items-center justify-between px-[13px]">
-          <p className="flex items-center gap-2 text-[16px] font-bold">
+        <div className="flex items-center justify-between gap-3 px-1.5">
+          <p className="flex min-w-0 flex-wrap items-center gap-2 text-[16px] font-bold">
             {/* 첫 화면과 같은 두루마리 로고 */}
             <img src={logo} alt="" className="h-7 w-auto select-none" draggable={false} />
-            <span className="text-point">두루두루</span>
+            <span className="whitespace-nowrap text-point">두루두루</span>
             {/* 데모에서 지금 어떤 입장으로 보고 있는지. 바꾸려면 로그아웃하고 다시 고른다 */}
             {USE_MOCK && (
               <span className="rounded-full bg-[#f6e3ea] px-2 py-0.5 text-[10px] font-semibold text-point">
@@ -269,21 +270,15 @@ function RoomListPage() {
               </span>
             )}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="shrink-0">
             <button
               type="button"
               onClick={handleLogout}
               disabled={loggingOut}
-              className="text-[11px] text-sub active:opacity-80"
+              className="flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[12px] font-medium text-ink active:bg-line/40 disabled:opacity-50"
             >
-              로그아웃
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(paths.roomCreate())}
-              className="rounded-full bg-ink px-4 py-2 text-[13px] font-bold text-surface active:opacity-80"
-            >
-              + 새 모임방
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4H5v16h4M13 8l4 4-4 4M9 12h11" /></svg>
+              {loggingOut ? '로그아웃 중…' : '로그아웃'}
             </button>
           </div>
         </div>
@@ -296,12 +291,15 @@ function RoomListPage() {
             <span className="w-6 text-[10px] font-semibold">{reviewerDemoEnabled ? 'ON' : 'OFF'}</span>
           </button>
         </div>
+        <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-point/25 bg-surface px-4 text-[13px] font-semibold text-point transition-colors active:bg-point/5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          새 모임방 만들기
+        </button>
         {reviewerDemoEnabled && demoHomes.length === 0 && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
           <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
           {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}
         </div>}
-        {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5 rounded-[24px] border-2 border-point/60 bg-point/[0.03] p-3">
-          <h2 className="mb-3 flex items-center gap-2 px-1 text-[13px] font-bold text-point">데모용 모임방<span className="text-[11px] font-normal text-sub">진행 중</span></h2>
+        {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
           <ul className="flex flex-col gap-[11px]">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
         </section>}
         {regularHomes.length === 0 && !reviewerDemoEnabled ? (
@@ -345,8 +343,7 @@ function RoomListPage() {
         {((reviewerDemoEnabled && demoDone.length > 0) || done.length > 0) && (
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
-            {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3 rounded-[24px] border-2 border-point/60 bg-point/[0.03] p-3">
-              <h3 className="mb-3 px-1 text-[13px] font-bold text-point">데모용 두루마리</h3>
+            {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
               <ul className="flex flex-col gap-[11px]">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
             </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
