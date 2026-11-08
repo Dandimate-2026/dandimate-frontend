@@ -8,21 +8,13 @@ type Phase = 'tied' | 'untying' | 'closed' | 'dragging' | 'opening' | 'done'
 /**
  * 두루마리를 사용자가 직접 펼친다.
  * 끈을 한 번 누르면 끈이 풀리고, 이어서 두루마리가 저절로 아래로 펼쳐진다.
+ * 두루마리를 열 때마다(템플릿을 바꿨을 때도) 끈이 묶인 채로 시작한다.
  */
-/** 이 기기에서 이 두루마리를 한 번 펼쳤는지 (다시 들어올 때는 바로 펼친 채로) */
-function wasOpened(key: string) {
-  try { return localStorage.getItem(key) === '1' } catch { return false }
-}
-function rememberOpened(key: string) {
-  try { localStorage.setItem(key, '1') } catch { /* 저장 못 해도 이번 화면은 펼쳐진다 */ }
-}
-
-export default function ScrollUnroll({ showRod, rememberKey }: { showRod: boolean; rememberKey: string }) {
-  const storageKey = `duruduru:unrolled:v1:${rememberKey}`
+export default function ScrollUnroll({ showRod }: { showRod: boolean }) {
   // 위쪽 봉의 실제 위치·폭을 재서 아래 봉을 똑같이 맞춘다
   const [rod, setRod] = useState<{ top: number; left: number; width: number } | null>(null)
   const [offset, setOffset] = useState(0)
-  const [phase, setPhase] = useState<Phase>(() => (wasOpened(storageKey) ? 'done' : 'tied'))
+  const [phase, setPhase] = useState<Phase>('tied')
   const startY = useRef(0)
 
   useLayoutEffect(() => {
@@ -52,7 +44,6 @@ export default function ScrollUnroll({ showRod, rememberKey }: { showRod: boolea
     window.setTimeout(open, UNTIE_MS)
   }
   function open() {
-    rememberOpened(storageKey)
     setPhase('opening')
     setOffset(window.innerHeight)
     window.setTimeout(() => setPhase('done'), 1700)

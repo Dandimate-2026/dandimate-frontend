@@ -149,7 +149,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
     </section>})}
     {scroll.paragraphs.length > 0 && <div className="scroll-rod scroll-rod-end" aria-hidden="true" />}
-    <ScrollUnroll showRod rememberKey={`${home.room.id}:${home.me.id}:${scroll.id}`} />
+    <ScrollUnroll showRod />
     {scroll.paragraphs.length > 0 && <footer className="scroll-complete-footer">
       <div className="scroll-end-flowers" aria-hidden="true"><MemoryFlower color="pink" size={25} /><MemoryFlower color="blue" size={25} /><MemoryFlower color="orange" size={25} /></div>
       <h2>두루마리를 끝까지 읽었어요</h2><p>사진 {scroll.paragraphs.length}장 · 이야기 {storyCount}개가 엮였어요</p>

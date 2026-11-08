@@ -1,5 +1,5 @@
 import { request } from './client'
-import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK, MOCK_LIVELY_ROOM_ID, mockLivelyCards } from './mock'
+import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK, MOCK_LIVELY_ROOM_ID, mockLivelyCards, DEMO_CIRCULATION_PHOTOS } from './mock'
 import type { CirculationResponse, Entry, Job, Member, Scroll, TranscriptionDraft } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
@@ -12,7 +12,7 @@ const mockMember: Member = { id: 'mock-member', nickname: '민지', role: 'MEMBE
 const mockParagraphId = (roomId: string, index: number) => `${roomId === MOCK_SCROLL_PREVIEW_ROOM_ID ? `${roomId}:` : ''}paragraph-${index}`
 
 function mockPhotoCards(): CirculationResponse['cards'] {
-  return MEMORY_PHOTOS.slice(0, 2).map((item) => {
+  return DEMO_CIRCULATION_PHOTOS.map((item) => {
     const uploader: Member = { id: `owner-${item.id}`, nickname: item.owner, role: 'MEMBER', flowerCode: item.flower === 'blue' ? 'FORGET_ME_NOT' : 'AZALEA' }
     const photo = { id: item.id, imageUrl: item.photoUrl ?? '', uploader, displayOrder: 1 }
     const entry = (id: string, author: Member, transcript: string): Entry => ({ id, photoId: item.id, member: author, kind: 'FIRST', inputMode: 'TEXT', transcript, confirmedAt: new Date().toISOString() })

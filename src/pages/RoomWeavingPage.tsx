@@ -227,7 +227,7 @@ function RoomWeavingPage() {
         completionMessage={!jobId ? replyNotice : ''} onDismissCompletion={() => setReplyNotice('')}
         onAddStory={() => navigate(paths.photoUpload(roomId))} />
     </> : <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name ?? session?.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
-    {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} maxLength={200} maxVoiceMs={voiceMaxMs(home?.room.quota, 'other')} startWithText={reweaving} fullPage={reweaving}
+    {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} draftKey={reweaving ? undefined : `reply:${replyTarget.id}`} maxLength={200} maxVoiceMs={voiceMaxMs(home?.room.quota, 'other')} startWithText={reweaving} fullPage={reweaving}
       onTranscribe={transcribeReplyWithLimit}
       onSave={saveReply} onClose={() => setReplyTarget(null)} />}
     {voiceLimitOpen && (

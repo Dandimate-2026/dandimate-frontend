@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router'
-import { participatedCards } from '../lib/participation'
 import { paths } from '../routes/paths'
 import type { CirculationCard, FlowerCode } from '../api/types'
 import { FLOWER_COLOR } from '../lib/flower'
@@ -79,17 +78,18 @@ export default function BranchFlowers({ roomId, members, cards }: { roomId: stri
   )
 }
 
-/** 참여한 사진 한 장에 한 페이지: 그 사람이 그 사진에 남긴 이야기를 모아서, 최근 것부터 */
+/** 그 사람이 올린 사진 한 장에 한 페이지: 사진과 그 사람의 첫 한마디(그리고 직접 덧붙인 말), 최근 것부터.
+ * 다른 사람 사진에 남긴 이야기는 둘러보기에서 보도록 여기에 담지 않는다 (잠금 계산이 필요 없다) */
 function slidesFor(cards: CirculationCard[], person: Person): Slide[] {
   const isMe = (m: { id: string; nickname: string }) => String(m.id) === String(person.id) || m.nickname === person.nickname
-  return participatedCards(cards, person)
+  return cards
+    .filter((card) => isMe(card.photo.uploader))
     .map((card) => {
       const entries = [card.firstEntry, ...card.otherEntries].filter((e): e is NonNullable<typeof e> => Boolean(e) && isMe(e!.member))
       const at = entries.map((e) => e.confirmedAt).sort().pop() ?? card.firstEntry?.confirmedAt ?? ''
       return {
         photoId: card.photo.id,
         imageUrl: card.photo.imageUrl,
-        mine: isMe(card.photo.uploader),
         at,
         entries: entries.map((e) => ({ id: e.id, first: e.kind === 'FIRST', text: e.transcript })),
       }
@@ -97,9 +97,9 @@ function slidesFor(cards: CirculationCard[], person: Person): Slide[] {
     .sort((x, y) => y.at.localeCompare(x.at))
 }
 
-type Slide = { photoId: string; imageUrl: string; mine: boolean; at: string; entries: { id: string; first: boolean; text: string }[] }
+type Slide = { photoId: string; imageUrl: string; at: string; entries: { id: string; first: boolean; text: string }[] }
 
-/** 꽃을 눌렀을 때: 그 사람의 사진과 이야기를 화면 가득 한 장씩 넘겨 본다. 장마다 덧붙이러 갈 수 있다 */
+/** 꽃을 눌렀을 때: 그 사람이 올린 사진을 한 장씩 넘겨 본다. 장마다 덧붙이러 갈 수 있다 */
 function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; roomId: string; slides: Slide[] | null; onClose: () => void }) {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
@@ -110,10 +110,6 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-
-  const total = (person.photoCount ?? 0) + (person.storyCount ?? 0)
-  const visible = (slides ?? []).reduce((n, sl) => n + (sl.mine ? 1 : 0) + sl.entries.length, 0)
-  const hidden = slides ? Math.max(0, total - visible) : 0
 
   const goTo = (i: number) => trackRef.current?.scrollTo({ left: i * trackRef.current.clientWidth, behavior: 'smooth' })
   const go = (photoId: string) => { onClose(); navigate(paths.roomCirculation(roomId, photoId)) }
@@ -130,15 +126,27 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
         <header className="flex items-center gap-2.5 px-5 pt-4 pb-3">
           <Flower code={person.flowerCode} size={28} />
           <div className="min-w-0 flex-1">
-            <h2 id="flower-sheet-title" className="truncate text-[17px] font-bold">{person.nickname}님의 사진과 이야기</h2>
+            <h2 id="flower-sheet-title" className="truncate text-[17px] font-bold">{person.nickname}님이 올린 사진</h2>
+            {/* 꽃 숫자(사진 + 이야기)를 풀어서 보여 준다 */}
             <p className="text-[12px] text-sub">사진 {person.photoCount ?? 0}장 · 이야기 {person.storyCount ?? 0}개</p>
           </div>
           <button type="button" onClick={onClose} aria-label="닫기" className="flex size-9 items-center justify-center rounded-full text-[22px] text-sub active:opacity-70">×</button>
         </header>
 
         {slides === null && <p className="py-10 text-center text-[13px] text-sub">불러오는 중…</p>}
-        {slides?.length === 0 && hidden === 0 && <p className="py-10 text-center text-[13px] text-sub">아직 볼 수 있는 사진이나 이야기가 없어요</p>}
-        {slides && (slides.length > 0 || hidden > 0) && (
+        {slides?.length === 0 && (
+          <p className="px-5 py-10 text-center text-[13px] leading-5 text-sub">
+            {(person.photoCount ?? 0) > 0 ? <>{person.nickname}님이 올린 사진은 아직 첫 한마디 전이에요<br />다 남기면 여기에 올라와요</> : <>아직 {person.nickname}님이 올린 사진이 없어요</>}
+            {(person.storyCount ?? 0) > 0 && <><br />다른 사진에 남긴 이야기는 둘러보기에서 볼 수 있어요</>}
+          </p>
+        )}
+        {/* 홈 숫자는 올리기만 한 사진까지 세고, 여기는 첫 한마디까지 마쳐 공개된 사진만 보인다 */}
+        {slides && slides.length > 0 && (person.photoCount ?? 0) > slides.length && (
+          <p className="mx-5 mb-2 text-[11px] text-sub">
+            {(person.photoCount ?? 0) - slides.length}장은 아직 첫 한마디 전이라 다 남기면 여기에 올라와요
+          </p>
+        )}
+        {slides && slides.length > 0 && (
           <>
             <div
               ref={trackRef}
@@ -148,15 +156,9 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
               {slides.map((sl) => (
                 <article key={sl.photoId} className="flex w-full shrink-0 snap-center flex-col px-5">
                   <div className="min-h-0 flex-1 overflow-y-auto">
-                    <div className="relative">
-                      {sl.imageUrl
-                        ? <img src={sl.imageUrl} alt="" className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-cover" />
-                        : <span className="block aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc]" aria-hidden="true" />}
-                      {/* 이 사람이 올린 사진인지, 다른 사람 사진에 이야기를 남긴 건지: 사진 위 작은 표시 */}
-                      <span className="absolute top-2 left-2 rounded-full bg-surface/90 px-2.5 py-1 text-[11px] font-semibold text-ink">
-                        {sl.mine ? '올린 사진' : '이야기를 남긴 사진'}
-                      </span>
-                    </div>
+                    {sl.imageUrl
+                      ? <img src={sl.imageUrl} alt="" className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-cover" />
+                      : <span className="block aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc]" aria-hidden="true" />}
                     <ul className="mt-2.5 flex flex-col gap-2">
                       {sl.entries.map((e) => (
                         <li key={e.id} className="rounded-[14px] border border-line bg-surface px-3.5 py-2.5">
@@ -171,25 +173,8 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
                   </button>
                 </article>
               ))}
-              {/* 잠긴 활동은 마지막 장으로: 넘기다 보면 자연스럽게 만난다 */}
-              {hidden > 0 && (
-                <article className="flex w-full shrink-0 snap-center flex-col px-5">
-                  <div className="flex aspect-[16/10] w-full flex-col items-center justify-center rounded-[16px] bg-[#f3e6ec] text-center">
-                    <span aria-hidden="true" className="text-[34px]">🔒</span>
-                    <p className="mt-2 text-[15px] font-bold">잠긴 활동이 {hidden}개 더 있어요</p>
-                    <p className="mt-1 px-6 text-[12px] leading-[18px] text-sub">둘러보기에서 먼저 이야기를 남기면<br />{person.nickname}님의 나머지 이야기도 볼 수 있어요</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { onClose(); navigate(paths.roomCirculation(roomId)) }}
-                    className="mt-3 h-11 w-full shrink-0 rounded-full bg-point text-[14px] font-semibold text-surface active:opacity-80"
-                  >
-                    잠금 풀러 가기
-                  </button>
-                </article>
-              )}
             </div>
-            <nav className="flex justify-center gap-1.5 px-5 pt-3" aria-label="넘기기">
+            {slides.length > 1 && <nav className="flex justify-center gap-1.5 px-5 pt-3" aria-label="넘기기">
               {slides.map((sl, i) => (
                 <button
                   key={sl.photoId}
@@ -201,18 +186,7 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
                   {i + 1}
                 </button>
               ))}
-              {hidden > 0 && (
-                <button
-                  type="button"
-                  aria-label={`잠긴 활동 ${hidden}개`}
-                  aria-current={page === slides.length}
-                  onClick={() => goTo(slides.length)}
-                  className={`flex size-7 items-center justify-center rounded-full text-[12px] ${page === slides.length ? 'bg-point text-surface' : 'border border-line bg-surface'}`}
-                >
-                  🔒
-                </button>
-              )}
-            </nav>
+            </nav>}
           </>
         )}
       </section>

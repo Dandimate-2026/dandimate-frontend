@@ -506,14 +506,16 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-live .memory-more::before { content: ''; position: absolute; top: 0; left: 8px; right: 8px; border-top: 1px solid var(--color-line); }
 
 /* 말린 두루마리를 묶은 끈: 누르거나 당기면 풀리고 나서 펼쳐진다 */
+/* 끈 색은 템플릿마다 (--scroll-ribbon). 진한 쪽·밝은 쪽은 같은 색에서 섞어 만든다 */
+.scroll-unroll-tie, .scroll-unroll-bow { --ribbon: var(--scroll-ribbon, #c85570); --ribbon-dark: color-mix(in srgb, var(--ribbon) 82%, black); --ribbon-light: color-mix(in srgb, var(--ribbon) 78%, white); }
 .scroll-unroll-tie { position: absolute; left: 50%; top: -30px; width: 18px; height: 52px; transform: translateX(-50%); pointer-events: none; }
-.scroll-unroll-tie::before { content: ''; position: absolute; left: 4px; right: 4px; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(to right, #b8455f, #d9677f 50%, #b8455f); }
+.scroll-unroll-tie::before { content: ''; position: absolute; left: 4px; right: 4px; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(to right, var(--ribbon-dark), var(--ribbon-light) 50%, var(--ribbon-dark)); }
 .scroll-unroll-bow { position: absolute; left: 50%; top: 12px; width: 44px; height: 22px; transform: translateX(-50%); }
-.scroll-unroll-bow::before, .scroll-unroll-bow::after { content: ''; position: absolute; top: 0; width: 20px; height: 18px; border: 4px solid #c85570; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: transparent; }
+.scroll-unroll-bow::before, .scroll-unroll-bow::after { content: ''; position: absolute; top: 0; width: 20px; height: 18px; border: 4px solid var(--ribbon); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: transparent; }
 .scroll-unroll-bow::before { left: 0; transform: rotate(-18deg); }
 .scroll-unroll-bow::after { right: 0; transform: rotate(18deg); }
-.scroll-unroll-bow span { position: absolute; left: 50%; top: 7px; width: 9px; height: 9px; border-radius: 3px; background: #a83a54; transform: translateX(-50%); z-index: 1; }
-.scroll-unroll-bow i { position: absolute; top: 14px; width: 6px; height: 20px; background: #c85570; border-radius: 0 0 3px 3px; }
+.scroll-unroll-bow span { position: absolute; left: 50%; top: 7px; width: 9px; height: 9px; border-radius: 3px; background: var(--ribbon-dark); transform: translateX(-50%); z-index: 1; }
+.scroll-unroll-bow i { position: absolute; top: 14px; width: 6px; height: 20px; background: var(--ribbon); border-radius: 0 0 3px 3px; }
 .scroll-unroll-bow i:first-of-type { left: 15px; transform: rotate(14deg); }
 .scroll-unroll-bow i:last-of-type { right: 15px; transform: rotate(-14deg); }
 .scroll-unroll-cover.is-untying .scroll-unroll-tie { animation: scroll-untie .55s ease-in forwards; }
