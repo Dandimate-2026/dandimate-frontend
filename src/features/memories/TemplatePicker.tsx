@@ -7,7 +7,7 @@ import type { RoomHome, Scroll } from '../../api/types'
 import Button from '../../components/Button'
 import { MemoryHeader } from './components'
 import ScrollDocument from './ScrollDocument'
-import { canUseTemplate, getTemplate, saveTemplate, SCROLL_TEMPLATES, type RoomPlan, type ScrollTemplateId } from './templates'
+import { canUseTemplate, getTemplate, SCROLL_TEMPLATES, type RoomPlan, type ScrollTemplateId } from './templates'
 
 const PLAN_LABEL: Record<RoomPlan, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
 const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : 'PRO')
@@ -55,12 +55,12 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
       <MemoryHeader title="미리보기" onBack={() => setPreview(false)} />
       <div className="template-document-preview"><ScrollDocument scroll={scroll} home={home} template={selected} /></div>
       <div className="template-chips" aria-label="템플릿 바꿔 보기">{SCROLL_TEMPLATES.map((item) => <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)}><img src={item.art} alt="" />{item.name}</button>)}</div>
-      <p className="template-note">이 기기에서 고른 템플릿으로 보여요{template.plan !== 'FREE' && ` · ${template.name}는 ${PLAN_LABEL[template.plan]} 이상`}</p>
+      <p className="template-note">방장이 고른 템플릿이 모든 참여자에게 똑같이 보여요{template.plan !== 'FREE' && ` · ${template.name}는 ${PLAN_LABEL[template.plan]} 이상`}</p>
       {allowed ? <Button onClick={() => onSelect(selected)}>이걸로 펼치기</Button>
         // 플랜을 올리러 가기 전에 고른 템플릿을 기억해 둔다. 플랜이 올라가면 다시 고르지 않아도 이 템플릿으로 펼쳐진다.
         // 결제를 마치면 방 홈이 아니라 이 두루마리로 돌아온다
-        : isHost ? <Button onClick={() => { saveTemplate(home.room.id, selected); rememberPlanReturn(home.room.id, window.location.pathname + window.location.search); navigate(paths.roomPlan(home.room.id)) }}>{PLAN_LABEL[template.plan]} 플랜 보기</Button>
-        : <Button onClick={() => { saveTemplate(home.room.id, selected); void askHost(`방장님, ${home.room.name} 두루마리를 ${template.name} 템플릿으로 펼쳐 보고 싶어요. ${PLAN_LABEL[template.plan]} 플랜으로 바꿔 줄 수 있을까요?`); setAsked(true) }}>{asked ? '방장에게 부탁했어요' : '방장에게 플랜 부탁하기'}</Button>}
+        : isHost ? <Button onClick={() => { rememberPlanReturn(home.room.id, window.location.pathname + window.location.search); navigate(paths.roomPlan(home.room.id)) }}>{PLAN_LABEL[template.plan]} 플랜 보기</Button>
+        : <Button onClick={() => { void askHost(`방장님, ${home.room.name} 두루마리를 ${template.name} 템플릿으로 펼쳐 보고 싶어요. ${PLAN_LABEL[template.plan]} 플랜으로 바꿔 줄 수 있을까요?`); setAsked(true) }}>{asked ? '방장에게 부탁했어요' : '방장에게 플랜 부탁하기'}</Button>}
     </main>
   }
 
@@ -102,7 +102,7 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
 
     <div className="tp-footer">
       <p className="tp-note">{lockNote ?? `${template.name} 템플릿으로 펼쳐요`}</p>
-      <Button onClick={() => { setPreview(true); window.scrollTo(0, 0) }}>{template.name}로 펼치기</Button>
+      <Button onClick={() => { if (!isHost) { setAsked(true); void askHost(`방장님, ${home.room.name} 두루마리를 ${template.name} 템플릿으로 바꿔 보고 싶어요.`); return } setPreview(true); window.scrollTo(0, 0) }}>{isHost ? `${template.name}로 펼치기` : asked ? '방장에게 부탁했어요' : '방장에게 부탁하기'}</Button>
     </div>
   </main>
 }
