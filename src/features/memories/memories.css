@@ -223,7 +223,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-reweaving .memory-weaving-main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-top: 40px; }
 .memory-reweaving .memory-weaving-footer { padding-top: 32px; padding-bottom: 30px; }
 .memory-reweaving .memory-weaving-footer strong { color: var(--color-point); font-weight: 650; }
-.memory-reweaving .memory-loading span:nth-child(n+2) { background: var(--color-point); }
 .memory-sheet:has(.download-options) { background: var(--color-surface); }
 .memory-sheet:has(.download-options) .memory-sheet-body { padding-top: 30px; }
 .template-picker > h1 { font-size: 28px; font-weight: 750; line-height: 1.4; margin: 8px 0; }
@@ -393,12 +392,13 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-live .scroll-cover-back,
 .scroll-live.has-template .scroll-save-button { background: #fff; border: 1px solid rgba(42, 38, 35, .14); box-shadow: 0 2px 8px rgba(42, 38, 35, .14); color: var(--color-ink); }
 
-/* 엮는 중: 칸 크기는 그대로, 안쪽이 차오르는 진행 애니메이션 */
+/* 엮기·재엮기: 세 막대의 핑크색이 차례로 진해졌다 옅어진다. */
 .memory-loading span { position: relative; overflow: hidden; background: #f0d5df; animation: none; transform: none; opacity: 1; }
-.memory-loading span::after { content: ''; position: absolute; inset: 0; background: var(--color-point); transform: scaleX(0); transform-origin: left; animation: memory-weaving-fill 2.4s ease-in-out infinite; }
-.memory-loading span:nth-child(2)::after { animation-delay: .8s; }
-.memory-loading span:nth-child(3)::after { animation-delay: 1.6s; }
-@keyframes memory-weaving-fill { 0% { transform: scaleX(0); } 33%, 75% { transform: scaleX(1); } 100% { transform: scaleX(1); opacity: 0; } }
+.memory-loading span::after { content: ''; position: absolute; inset: 0; background: var(--color-point); animation: memory-weaving-bars 1.5s ease-in-out infinite; }
+.memory-loading span:nth-child(2)::after { animation-delay: .2s; }
+.memory-loading span:nth-child(3)::after { animation-delay: .4s; }
+@keyframes memory-weaving-bars { 0%, 100% { opacity: 0; } 35%, 65% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .memory-loading span::after { animation: none; opacity: .65; } }
 
 /* 두루마리 펼쳐지기: 위에서 아래로 종이가 풀려 내려온다 */
 .scroll-live { animation: scroll-unroll 1.1s cubic-bezier(.2, .7, .2, 1) both; }
@@ -588,16 +588,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-bottom-save { margin-top: 20px; }
 /* 더 보태기: 진짜 버튼처럼 테두리 */
 .scroll-live .memory-more button { height: 48px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 15px; font-weight: 650; }
-
-/* 엮는 중 막대 3개: 왼쪽부터 차례로 착·착·착 채워지고, 잠깐 멈췄다가 다시 처음부터 */
-.memory-loading span::after { animation: none; transform: scaleX(0); }
-.memory-loading span:nth-child(1)::after { animation: weave-bar-1 2.4s ease-out infinite; }
-.memory-loading span:nth-child(2)::after { animation: weave-bar-2 2.4s ease-out infinite; }
-.memory-loading span:nth-child(3)::after { animation: weave-bar-3 2.4s ease-out infinite; }
-@keyframes weave-bar-1 { 0% { transform: scaleX(0); } 15%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
-@keyframes weave-bar-2 { 0%, 22% { transform: scaleX(0); } 37%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
-@keyframes weave-bar-3 { 0%, 44% { transform: scaleX(0); } 59%, 85% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
-@media (prefers-reduced-motion: reduce) { .memory-loading span::after { animation: none !important; transform: scaleX(1); } }
 
 /* 다시 엮었어요·다운로드 안내 스낵바: 내용 사이가 아니라 화면 위쪽에 떠 있게 */
 .scroll-live .memory-toast-anchor { position: static; height: 0; }
