@@ -34,6 +34,11 @@ export function readTemplate(roomId: string): ScrollTemplateId {
   try { return getTemplate(localStorage.getItem(`duruduru:template:v1:${roomId}`)).id } catch { return 'minimal' }
 }
 
+/** 서버가 CLASSIC으로 저장하는 기본 템플릿을 화면의 minimal과 맞춘다. */
+export function fromServerTemplate(id: string | null | undefined): ScrollTemplateId {
+  return getTemplate(id === 'CLASSIC' ? 'minimal' : id?.toLowerCase()).id
+}
+
 export function saveTemplate(roomId: string, template: ScrollTemplateId) {
   try { localStorage.setItem(`duruduru:template:v1:${roomId}`, template) } catch { /* 현재 화면 선택은 유지한다. */ }
 }

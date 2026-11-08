@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Button from '../../components/Button'
 import { DownloadIcon } from '../../components/ShareIcons'
 import { rateParagraph, setAhMatda } from '../../api/memories'
+import { updateRoom } from '../../api/rooms'
 import type { RoomHome, Scroll, ScrollParagraph } from '../../api/types'
 import { getParagraphRating, rememberParagraphRating } from '../../lib/paragraphRatings'
 import { memoryFlowerColor } from '../../lib/flower'
@@ -11,7 +12,7 @@ import { ParagraphStory } from './ScrollDocument'
 import TemplatePicker from './TemplatePicker'
 import MoreMenu from '../../components/MoreMenu'
 import ScrollUnroll from './ScrollUnroll'
-import { canUseTemplate, getTemplate, readTemplate, saveTemplate, templateStyle, type ScrollTemplateId } from './templates'
+import { canUseTemplate, fromServerTemplate, getTemplate, templateStyle, type ScrollTemplateId } from './templates'
 import type { DownloadResult } from './scrollDownload'
 import type { ReweaveResult } from './types'
 import { siteUrl } from '../../lib/siteUrl'
@@ -41,7 +42,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   const [error, setError] = useState('')
   const [original, setOriginal] = useState<ScrollParagraph | null>(null)
   const [previous, setPrevious] = useState<ScrollParagraph | null>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState<ScrollTemplateId>(() => readTemplate(home.room.id))
+  const [selectedTemplate, setSelectedTemplate] = useState<ScrollTemplateId>(() => fromServerTemplate(home.room.scrollTemplateId))
   const [pickingTemplate, setPickingTemplate] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [notice, setNotice] = useState('')
@@ -55,9 +56,11 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     const timer = window.setTimeout(() => setNotice(''), 4500)
     return () => window.clearTimeout(timer)
   }, [notice])
+  useEffect(() => setSelectedTemplate(fromServerTemplate(home.room.scrollTemplateId)), [home.room.scrollTemplateId])
 
-  if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => setPickingTemplate(false)} onSelect={(id) => {
-    saveTemplate(home.room.id, id); setSelectedTemplate(id); setPickingTemplate(false); window.scrollTo(0, 0)
+  if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => setPickingTemplate(false)} onSelect={async (id) => {
+    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); setSelectedTemplate(id); setPickingTemplate(false); await onRefresh(); window.scrollTo(0, 0) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '템플릿을 저장하지 못했어요.'); setPickingTemplate(false) }
   }} />
 
   async function react(paragraph: ScrollParagraph) {

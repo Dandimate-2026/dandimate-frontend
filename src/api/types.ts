@@ -26,6 +26,8 @@ export interface Member {
   flowerCode: FlowerCode
   photoCount?: number
   storyCount?: number
+  participatedPhotoCount?: number
+  totalPhotoCount?: number
   /** 0~1, 참여현황 막대 길이 */
   responseRate?: number
 }
@@ -48,6 +50,8 @@ export interface RoomSummary {
   /** 방장을 포함한 정원 (1~8) */
   capacity?: number
   planType?: RoomPlanType
+  /** 방장이 선택해 모든 참여자에게 공유하는 두루마리 템플릿 */
+  scrollTemplateId?: string
   /** 대표 사진 주소 (서버 경로). coverSrc로 바꿔 쓴다 */
   coverImageUrl?: string | null
   /** 모임 장소 (방장이 설정에서 정한다). 정하지 않았으면 null */
