@@ -300,8 +300,8 @@ function RoomListPage() {
           <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
           {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}
         </div>}
-        {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
-          <h2 className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-point"><span aria-hidden="true">⌖</span>데모용 모임방<span className="text-[11px] font-normal text-sub">진행 중</span></h2>
+        {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5 rounded-[24px] border-2 border-point/60 bg-point/[0.03] p-3">
+          <h2 className="mb-3 flex items-center gap-2 px-1 text-[13px] font-bold text-point">데모용 모임방<span className="text-[11px] font-normal text-sub">진행 중</span></h2>
           <ul className="flex flex-col gap-[11px]">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
         </section>}
         {regularHomes.length === 0 && !reviewerDemoEnabled ? (
@@ -331,7 +331,6 @@ function RoomListPage() {
           </section>
         ) : (
           <section className="mt-5">
-          <p className="mt-2 px-1.5 text-[11px] text-sub">할 일이 있는 방이 먼저 보여요</p>
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
               {ongoing.slice(0, ongoingVisible).map((h) => (
@@ -346,8 +345,8 @@ function RoomListPage() {
         {((reviewerDemoEnabled && demoDone.length > 0) || done.length > 0) && (
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
-            {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
-              <h3 className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-point"><span aria-hidden="true">⌖</span>데모용 두루마리</h3>
+            {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3 rounded-[24px] border-2 border-point/60 bg-point/[0.03] p-3">
+              <h3 className="mb-3 px-1 text-[13px] font-bold text-point">데모용 두루마리</h3>
               <ul className="flex flex-col gap-[11px]">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
             </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
