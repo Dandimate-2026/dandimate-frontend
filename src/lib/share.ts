@@ -1,7 +1,7 @@
 /**
  * 기기 공유 시트(휴대폰·Windows·macOS 공통)로 글과 링크를 보낸다.
  * 카톡을 고르면 복사·붙여넣기와 똑같이 링크가 눌린다.
- * (그림 카드 대신 이 방식만 쓴다: 카드는 카카오 콘솔 도메인 등록 없이는 링크가 빠진다)
+ * 카카오 SDK를 사용할 수 없는 환경의 대체 공유 경로.
  * 공유 시트가 없거나 열리지 않으면 false → 호출하는 쪽에서 복사로 대신한다. 사용자가 취소한 경우는 true
  */
 export async function shareWithDevice(text: string, url: string) {
@@ -30,10 +30,10 @@ export function showToast(message: string) {
  * 공유 시트를 못 여는 곳(카톡 안 브라우저 등)에서는 글+링크를 복사하고, 복사했다고 꼭 알려 준다.
  * 아무 반응이 없으면 버튼이 고장 난 것처럼 보이기 때문
  */
-export async function copyForShare(text: string, url: string) {
+export async function copyForShare(text: string, url: string, message = '링크를 복사했어요. 단톡방에 붙여넣어 주세요') {
   try {
     await navigator.clipboard.writeText(`${text}\n${url}`)
-    showToast('링크를 복사했어요. 단톡방에 붙여넣어 주세요')
+    showToast(message)
   } catch {
     showToast('복사하지 못했어요. 링크를 길게 눌러 복사해 주세요')
   }

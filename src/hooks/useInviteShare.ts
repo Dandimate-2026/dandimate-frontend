@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { copyForShare, shareWithDevice } from '../lib/share'
+import { useEffect, useState } from 'react'
+import { copyForShare, shareWithDevice, showToast } from '../lib/share'
+import { prepareKakaoShare, shareKakaoInvitation } from '../lib/kakaoShare'
 import { inviteUrl } from '../lib/session'
 
 export const DEFAULT_SHARE_MESSAGE = '두루두루 열었어! 사진 올리고 한마디 남겨줘'
@@ -9,7 +10,12 @@ export function useInviteShare(inviteToken: string) {
   const [copied, setCopied] = useState(false)
   const link = inviteUrl(inviteToken)
 
+  useEffect(() => {
+    void prepareKakaoShare().catch(() => {})
+  }, [])
+
   const copy = async (text = DEFAULT_SHARE_MESSAGE) => {
+    if (!inviteToken) { showToast('초대 링크를 준비하고 있어요. 잠시 후 다시 눌러 주세요'); return }
     await navigator.clipboard.writeText(`${text}
 ${link}`)
     setCopied(true)
@@ -17,8 +23,24 @@ ${link}`)
   }
 
   const share = async (text = DEFAULT_SHARE_MESSAGE) => {
-    // 휴대폰: 기기 공유 시트(카톡 선택)로 글+링크를 그대로 보낸다. 복사해서 붙여넣는 것과 같아 링크가 항상 살아 있다
-    // 공유 시트가 없으면(PC 등) 글+링크를 복사한다
+    if (!inviteToken) { showToast('초대 링크를 준비하고 있어요. 잠시 후 다시 눌러 주세요'); return }
+    try {
+      const result = shareKakaoInvitation(text, link)
+      if (result === 'opened') return
+      if (result === 'loading') {
+        try {
+          await prepareKakaoShare()
+          showToast('공유 준비가 됐어요. 공유 버튼을 다시 눌러 주세요')
+        } catch {
+          await copyForShare(text, link, '카카오톡 공유를 열지 못해 초대 링크를 복사했어요. 단톡방에 붙여넣어 주세요')
+        }
+        return
+      }
+    } catch {
+      await copyForShare(text, link, '카카오톡 공유를 열지 못해 초대 링크를 복사했어요. 단톡방에 붙여넣어 주세요')
+      return
+    }
+    // 키가 없는 환경에서는 기기 공유창, 미지원 시 명시적인 복사 안내로 대체한다.
     if (await shareWithDevice(text, link)) return
     await copyForShare(text, link)
     setCopied(true)
