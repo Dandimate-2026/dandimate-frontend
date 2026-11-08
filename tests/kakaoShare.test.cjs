@@ -20,20 +20,25 @@ function sdkEnvironment(key = 'javascript-key', ready = true) {
   const module = loadModule('src/lib/kakaoShare.ts', {
     __env: { VITE_KAKAO_JS_KEY: key }, window,
     document: { createElement: () => ({ remove() {} }), head: { appendChild: (script) => scripts.push(script) } },
-  })
+  }, { './siteUrl': { siteUrl: path => `https://example.com${path}` } })
   return { module, window, sdk, sent, scripts }
 }
 
-test('사진 없이 초대 URL과 모바일/PC 클릭 목적지를 모두 보존한다', () => {
+test('로고·확정 문구·초대 URL과 모바일/PC 버튼 목적지를 보존한다', () => {
   const { module, sent } = sdkEnvironment()
   const url = 'https://example.com/invite/room-token?from=chat'
-  assert.equal(module.shareKakaoInvitation('경주 여행에 초대할게!', url), 'opened')
+  const message = '‘경주 여행’에서 사진과 이야기로\n우리만의 두루마리를 채워요.'
+  assert.equal(module.shareKakaoInvitation(message, url), 'opened')
   assert.equal(sent.length, 1)
-  assert.equal(sent[0].objectType, 'text')
-  assert.equal(sent[0].link.mobileWebUrl, url)
-  assert.equal(sent[0].link.webUrl, url)
-  assert.ok(sent[0].text.includes(url))
-  assert.equal(sent[0].buttonTitle, '초대받은 방 들어가기')
+  assert.equal(sent[0].objectType, 'feed')
+  assert.equal(sent[0].content.title, '💌 두루두루에 초대됐어요!')
+  assert.equal(sent[0].content.description, `${message}\n\n${url}`)
+  assert.equal(sent[0].content.imageUrl, 'https://example.com/og-image.png')
+  assert.equal(sent[0].content.link.mobileWebUrl, url)
+  assert.equal(sent[0].content.link.webUrl, url)
+  assert.equal(sent[0].buttons[0].title, '추억 남기러 가기')
+  assert.equal(sent[0].buttons[0].link.mobileWebUrl, url)
+  assert.equal(sent[0].buttons[0].link.webUrl, url)
 })
 
 test('키가 없으면 SDK를 로드하거나 공유하지 않는다', async () => {
@@ -44,13 +49,15 @@ test('키가 없으면 SDK를 로드하거나 공유하지 않는다', async () 
   assert.equal(sent.length, 0)
 })
 
-test('긴 문구와 URL도 200자 제한을 지키고 클릭 URL은 자르지 않는다', () => {
+test('긴 문구를 줄여도 본문의 전체 URL을 유지하고 지나치게 긴 URL은 복사로 넘긴다', () => {
   const { module, sent } = sdkEnvironment()
-  const url = `https://example.com/invite/${'a'.repeat(200)}`
+  const url = `https://example.com/invite/${'a'.repeat(80)}`
   module.shareKakaoInvitation('초대'.repeat(200), url)
-  assert.ok(sent[0].text.length <= 200)
-  assert.equal(sent[0].link.mobileWebUrl, url)
-  assert.equal(sent[0].link.webUrl, url)
+  assert.ok(sent[0].content.description.length <= 200)
+  assert.ok(sent[0].content.description.endsWith(url))
+  assert.equal(sent[0].content.link.mobileWebUrl, url)
+  assert.equal(sent[0].content.link.webUrl, url)
+  assert.throws(() => module.shareKakaoInvitation('초대', `https://example.com/${'a'.repeat(200)}`))
 })
 
 test('SDK 로드는 중복하지 않고 준비 후 새 클릭에서만 공유한다', async () => {

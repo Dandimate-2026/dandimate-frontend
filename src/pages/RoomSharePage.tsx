@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { CopyIcon } from '../components/ShareIcons'
-import { DEFAULT_SHARE_MESSAGE, useInviteShare } from '../hooks/useInviteShare'
+import { useInviteShare } from '../hooks/useInviteShare'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 import { getRoomSession } from '../lib/session'
 import NotFoundPage from './NotFoundPage'
@@ -22,12 +22,12 @@ function RoomSharePage() {
   const session = getRoomSession(roomId)
   // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다
   const inviteToken = useRoomInvite(roomId)
-  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
+  const { link, copied, copy, share, defaultMessage } = useInviteShare(inviteToken ?? '', session?.roomName)
 
   if (!session) return <NotFoundPage message="초대 링크를 찾을 수 없어요" />
   if (!inviteToken) return <main className="flex-1 bg-bg" aria-busy="true" />
   // 비워두면 기본 문구로 보낸다
-  const shareText = message.trim() || DEFAULT_SHARE_MESSAGE
+  const shareText = message.trim() || defaultMessage
 
   return (
     <main className="flex flex-1 flex-col bg-bg px-5 text-ink pt-[clamp(32px,12dvh,124px)] pb-12">
@@ -67,7 +67,7 @@ function RoomSharePage() {
             maxLength={MAX_MESSAGE_LENGTH}
             rows={2}
             onChange={(e) => setMessage(clampText(e.target.value, MAX_MESSAGE_LENGTH))}
-            placeholder={DEFAULT_SHARE_MESSAGE}
+            placeholder={defaultMessage}
             className="mt-0.5 w-full resize-none bg-transparent text-[13px] leading-[18px] outline-none placeholder:text-muted"
           />
           <LengthNotice length={message.length} max={MAX_MESSAGE_LENGTH} />

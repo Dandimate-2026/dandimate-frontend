@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { getMockRole, USE_MOCK } from '../api/mock'
 import { getMyRooms, getRoomHome } from '../api/rooms'
@@ -15,7 +15,7 @@ import { getRoomSession, listSavedRoomIds, saveRoomSession } from '../lib/sessio
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { paths } from '../routes/paths'
 import logo from '../assets/logo-scroll.webp'
-import ReviewerDemoPage from './ReviewerDemoPage'
+import { activateReviewerDemo, type ReviewerDemo } from '../api/reviewerDemo'
 import { ViewablePhoto } from '../components/PhotoViewer'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
@@ -96,7 +96,7 @@ function todoLine(home: RoomHome): { text: string; todo: boolean } | null {
   return { text: '친구들의 이야기를 기다리는 중이에요', todo: false }
 }
 
-function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
+function RoomCard({ home, meta, reviewerDemo }: { home: RoomHome; meta: string; reviewerDemo?: ReviewerDemo | null }) {
   const { room } = home
   const line = todoLine(home)
   // 서버에 올린 대표 사진을 먼저, 없으면 이 기기에서 고른 미리보기
@@ -105,6 +105,7 @@ function RoomCard({ home, meta }: { home: RoomHome; meta: string }) {
     <li>
       <Link
         to={paths.roomHome(room.id)}
+        state={reviewerDemo ? { reviewerDemo } : undefined}
         className="relative flex gap-[7px] rounded-[20px] border border-line bg-surface px-3 pt-[14px] pb-[13px] active:opacity-80"
       >
         {/* 안 읽은 방 알림 (친구의 플랜 요청·질문 등). 완성된 방은 아래 "새 답가"로 따로 보여준다 */}
@@ -169,6 +170,28 @@ function RoomListPage() {
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
   // 상점(크레딧 구매)에서 돌아오면 챗봇을 다시 열어 이어서 물어볼 수 있게 한다
   const location = useLocation()
+  const [demo, setDemo] = useState<ReviewerDemo | null>(() => (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo ?? null)
+  const activationRef = useRef<Promise<ReviewerDemo> | null>(demo ? Promise.resolve(demo) : null)
+  const [demoHomes, setDemoHomes] = useState<RoomHome[]>([])
+  const [demoError, setDemoError] = useState('')
+  const [demoRetry, setDemoRetry] = useState(0)
+  useEffect(() => {
+    if (!reviewerDemoEnabled) return
+    let cancelled = false
+    activationRef.current ??= activateReviewerDemo()
+    activationRef.current.then(async (rooms) => {
+      const loaded = await Promise.all([rooms.hostRoomId, rooms.memberRoomId, rooms.completedRoomId].map((id) => getRoomHome(id, '')))
+      if (cancelled) return
+      setDemo(rooms)
+      setDemoHomes(loaded)
+      setDemoError('')
+    }).catch((cause: unknown) => {
+      if (cancelled) return
+      activationRef.current = null
+      setDemoError(cause instanceof Error ? cause.message : '데모 방을 불러오지 못했어요. 다시 시도해 주세요.')
+    })
+    return () => { cancelled = true }
+  }, [reviewerDemoEnabled, demoRetry])
   const [chatOpen, setChatOpen] = useState(() => Boolean((location.state as { openChat?: boolean } | null)?.openChat))
 
   useEffect(() => {
@@ -197,7 +220,10 @@ function RoomListPage() {
   // 실시간 이벤트가 온 방 하나만 다시 불러와 목록에서 바꿔 끼운다
   const refreshRoom = (roomId: string) => {
     getRoomHome(roomId, '')
-      .then((fresh) => setHomes((prev) => prev?.map((h) => (h.room.id === roomId ? fresh : h)) ?? prev))
+      .then((fresh) => {
+        setHomes((prev) => prev?.map((h) => (h.room.id === roomId ? fresh : h)) ?? prev)
+        setDemoHomes((prev) => prev.map((home) => home.room.id === roomId ? fresh : home))
+      })
       .catch(() => {})
   }
 
@@ -213,7 +239,10 @@ function RoomListPage() {
 
   if (!homes) return <main className="flex-1 bg-bg" aria-busy="true" />
 
-  const regularHomes = homes.filter((home) => !home.room.name.startsWith('[심사용]'))
+  const demoIds = new Set(demo ? [demo.hostRoomId, demo.memberRoomId, demo.completedRoomId] : [])
+  const regularHomes = homes.filter((home) => !demoIds.has(home.room.id) && !home.room.name.startsWith('[심사용]'))
+  const demoOngoing = demoHomes.filter((home) => home.room.status !== 'GROWING')
+  const demoDone = demoHomes.filter((home) => home.room.status === 'GROWING')
   const ongoing = regularHomes
     .filter((h) => h.room.status !== 'GROWING')
     .sort(
@@ -267,7 +296,15 @@ function RoomListPage() {
             <span className="w-6 text-[10px] font-semibold">{reviewerDemoEnabled ? 'ON' : 'OFF'}</span>
           </button>
         </div>
-        {reviewerDemoEnabled ? <ReviewerDemoPage embedded /> : regularHomes.length === 0 ? (
+        {reviewerDemoEnabled && demoHomes.length === 0 && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
+          <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
+          {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}
+        </div>}
+        {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
+          <h2 className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-point"><span aria-hidden="true">⌖</span>데모용 모임방<span className="text-[11px] font-normal text-sub">진행 중</span></h2>
+          <ul className="flex flex-col gap-[11px]">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
+        </section>}
+        {regularHomes.length === 0 && !reviewerDemoEnabled ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
           <section className="px-1.5">
             <div className="mt-6 flex flex-col items-center rounded-[24px] border border-dashed border-line bg-surface px-6 pt-9 pb-7 text-center">
@@ -293,7 +330,7 @@ function RoomListPage() {
             </div>
           </section>
         ) : (
-          <section>
+          <section className="mt-5">
           <p className="mt-2 px-1.5 text-[11px] text-sub">할 일이 있는 방이 먼저 보여요</p>
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
@@ -306,9 +343,13 @@ function RoomListPage() {
         </section>
         )}
 
-        {!reviewerDemoEnabled && done.length > 0 && (
+        {((reviewerDemoEnabled && demoDone.length > 0) || done.length > 0) && (
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
+            {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
+              <h3 className="mb-3 flex items-center gap-2 px-1.5 text-[13px] font-semibold text-point"><span aria-hidden="true">⌖</span>데모용 두루마리</h3>
+              <ul className="flex flex-col gap-[11px]">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
+            </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
               {done.slice(0, doneVisible).map((h) => (
                 <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} />
@@ -322,7 +363,7 @@ function RoomListPage() {
       {/* 챗봇 버튼이 마지막 카드를 가리지 않게 아래에 여유를 둔다 */}
       <div className="h-24" aria-hidden="true" />
       {/* 진행 중인 방(할 일 많은 순)부터 실시간으로 지켜본다. 친구의 "방장에게 알리기" 같은 알림이 바로 배지로 뜬다 */}
-      {ongoing.slice(0, MAX_LIVE_ROOMS).map((h) => (
+      {[...(reviewerDemoEnabled ? demoOngoing : []), ...ongoing].slice(0, MAX_LIVE_ROOMS).map((h) => (
         <RoomLiveWatcher key={h.room.id} roomId={h.room.id} onChange={refreshRoom} />
       ))}
       <ChatFab onOpen={() => setChatOpen(true)} />
