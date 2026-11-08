@@ -17,6 +17,7 @@ import RecentPhotosCarousel from '../components/RecentPhotosCarousel'
 import { FLOWER_COLOR } from '../lib/flower'
 import { getRoomSession } from '../lib/session'
 import WeaveDatePrompt from '../components/WeaveDatePrompt'
+import EarlyCloseButton from '../components/EarlyCloseButton'
 import NotFoundPage from './NotFoundPage'
 import { paths } from '../routes/paths'
 import { useRoomInvite } from '../hooks/useRoomInvite'
@@ -158,6 +159,7 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
           {room.name}
         </button>
         <div className="flex items-center gap-1">
+          <button type="button" onClick={() => navigate(paths.roomAskbacks(room.id))} className="p-2 text-[12px] text-sub">내 질문</button>
           <button
             type="button"
             aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 안 읽음` : '알림'}
@@ -278,6 +280,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
             </div>
           )}
         </Card>
+        <EarlyCloseButton home={home} token={getRoomSession(room.id)?.memberAccessToken ?? ''} />
       </footer>
     </main>
   )
@@ -471,6 +474,7 @@ function RoomHomePage() {
       <footer className="mt-auto px-5 pb-5 [@media(min-height:900px)]:mt-2">
         {/* 엮는 시각은 방장이 정한다 (모두 다 봐도 바로 엮지 않고, 정한 시각에 엮는다) */}
         <WeaveDatePrompt home={home} token={token ?? ''} onSaved={reloadHome} />
+        <EarlyCloseButton home={home} token={token ?? ''} />
         {grown ? (
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon flower={hostFlower} />

@@ -79,7 +79,16 @@ export async function disablePush() {
 export async function isPushEnabled() {
   if (getPushState() !== 'granted' || !('serviceWorker' in navigator)) return false
   const registration = await navigator.serviceWorker.getRegistration()
-  return Boolean(await registration?.pushManager.getSubscription())
+  const subscription = await registration?.pushManager.getSubscription()
+  if (!subscription) return false
+  if (USE_MOCK) return true
+  // 서버 세션/등록이 사라졌어도 기존 브라우저 구독을 다시 등록하여 복구한다.
+  try {
+    await request('/push/subscriptions', { method: 'POST', body: subscription.toJSON() })
+    return true
+  } catch {
+    return false
+  }
 }
 
 const DISMISS_KEY = 'duruduru:push-banner-dismissed'
