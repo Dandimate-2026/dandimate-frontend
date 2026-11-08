@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
 import { USE_MOCK } from '../api/mock'
 import { createReply, deleteReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
@@ -18,6 +19,8 @@ import NotFoundPage from './NotFoundPage'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 
 function RoomWeavingPage() {
+  const location = useLocation()
+  const reviewerDemo = (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo
   const { roomId = '' } = useParams()
   const [params, setParams] = useSearchParams()
   const captureMode = import.meta.env.DEV && params.get('capture') === '1'
@@ -146,7 +149,7 @@ function RoomWeavingPage() {
   }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, reweavingAll, deletingReply])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
-  const backToHome = () => navigate(paths.roomHome(roomId))
+  const backToHome = () => navigate(reviewerDemo ? paths.reviewerDemo() : paths.roomHome(roomId), { state: reviewerDemo ? { reviewerDemo } : null })
 
   async function removeReply(replyId: string) {
     if (jobId) throw new Error('진행 중인 작업이 끝난 뒤 다시 시도해 주세요')

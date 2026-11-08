@@ -40,6 +40,15 @@ const PLAN_CLASS: Record<RoomPlanType, string> = {
 
 /** 목록에서 실시간으로 지켜보는 방 수. 방마다 서버 연결을 하나씩 열어서 너무 많이 열지 않는다 */
 const MAX_LIVE_ROOMS = 5
+const ROOM_PAGE_SIZE = 3
+
+function RoomListControls({ total, visible, onMore, onCollapse, label }: { total: number; visible: number; onMore: () => void; onCollapse: () => void; label: string }) {
+  if (total <= ROOM_PAGE_SIZE) return null
+  return <div className="mt-3 flex items-center justify-center gap-4">
+    {visible < total && <button type="button" onClick={onMore} aria-label={`${label} 더 보기`} className="min-h-11 rounded-full border border-line px-5 text-sm text-sub">더 보기 · {Math.min(visible, total)}/{total}</button>}
+    {visible > ROOM_PAGE_SIZE && <button type="button" onClick={onCollapse} aria-label={`${label} 접기`} className="min-h-11 px-3 text-sm text-sub underline">접기</button>}
+  </div>
+}
 
 /** 화면에 그리지 않고, 방 하나의 실시간 이벤트(알림·방장 변경·사진 등)를 받으면 그 방만 다시 불러오게 한다 */
 function RoomLiveWatcher({ roomId, onChange }: { roomId: string; onChange: (roomId: string) => void }) {
@@ -146,6 +155,8 @@ function RoomListPage() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<RoomHome[] | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [ongoingVisible, setOngoingVisible] = useState(ROOM_PAGE_SIZE)
+  const [doneVisible, setDoneVisible] = useState(ROOM_PAGE_SIZE)
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
   // 상점(크레딧 구매)에서 돌아오면 챗봇을 다시 열어 이어서 물어볼 수 있게 한다
   const location = useLocation()
@@ -275,11 +286,12 @@ function RoomListPage() {
           <p className="mt-2 px-1.5 text-[11px] text-sub">할 일이 있는 방이 먼저 보여요</p>
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
-              {ongoing.map((h) => (
+              {ongoing.slice(0, ongoingVisible).map((h) => (
                 <RoomCard key={h.room.id} home={h} meta={ongoingMeta(h)} />
               ))}
             </ul>
           )}
+          <RoomListControls total={ongoing.length} visible={ongoingVisible} label="진행 중인 방" onMore={() => setOngoingVisible((count) => count + ROOM_PAGE_SIZE)} onCollapse={() => setOngoingVisible(ROOM_PAGE_SIZE)} />
         </section>
         )}
 
@@ -287,10 +299,11 @@ function RoomListPage() {
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             <ul className="mt-3 flex flex-col gap-[11px]">
-              {done.map((h) => (
+              {done.slice(0, doneVisible).map((h) => (
                 <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} />
               ))}
             </ul>
+            <RoomListControls total={done.length} visible={doneVisible} label="완성된 두루마리" onMore={() => setDoneVisible((count) => count + ROOM_PAGE_SIZE)} onCollapse={() => setDoneVisible(ROOM_PAGE_SIZE)} />
           </section>
         )}
       </div>

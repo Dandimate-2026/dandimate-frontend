@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
+import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
 import { MAX_PHOTOS } from '../api/photos'
 import { getRoomHome, ROOM_CAPACITY } from '../api/rooms'
@@ -143,6 +144,8 @@ function MemberProgress({ member, cards }: { member: Member; cards: CirculationC
 /** 방 이름(뒤로 가기), 상태, 마감까지 남은 시간 */
 function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathering: boolean; unreadCount: number }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const reviewerDemo = (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo
   // 남은 시간은 화면을 연 시각 기준 (렌더 중에 시계를 읽지 않는다)
   const [now] = useState(() => Date.now())
   const left = deadlineText(room, now)
@@ -152,7 +155,7 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
         {/* 어디서 들어왔든(방 만들기·초대 링크·카톡 링크) 뒤로 가면 내 모임방 목록으로 간다 */}
         <button
           type="button"
-          onClick={() => navigate(paths.roomList())}
+          onClick={() => navigate(reviewerDemo ? paths.reviewerDemo() : paths.roomList(), { state: reviewerDemo ? { reviewerDemo } : null })}
           className="flex items-center gap-2.5 text-[16px] font-bold"
         >
           <ChevronLeftIcon />
