@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { groupPlaces, type CityPin, type MapPlaceItem } from '../api/recordMap'
+import { cityMarkerPosition, groupPlaces, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import Flower from './Flower'
 
@@ -21,7 +21,8 @@ interface KakaoMap {
   getLevel: () => number
   getCenter: () => LatLng
   setCenter: (latLng: LatLng) => void
-  setLevel: (level: number) => void
+  setLevel: (level: number, options?: { animate: boolean }) => void
+  panTo: (latLng: LatLng) => void
   setMaxLevel: (level: number) => void
   relayout: () => void
 }
@@ -33,7 +34,7 @@ interface KakaoMaps {
   LatLng: new (lat: number, lng: number) => LatLng
   Map: new (el: HTMLElement, options: { center: LatLng; level: number }) => KakaoMap
   CustomOverlay: new (options: { position: LatLng; content: HTMLElement; yAnchor?: number; xAnchor?: number; zIndex?: number }) => KakaoOverlay
-  event: { addListener: (target: KakaoMap, type: string, handler: () => void) => void }
+  event: { addListener: (target: KakaoMap, type: string, handler: () => void) => void; removeListener: (target: KakaoMap, type: string, handler: () => void) => void }
 }
 
 declare global {
@@ -97,27 +98,41 @@ function KakaoRecordMap({
   const mapRef = useRef<KakaoMap | null>(null)
   const [level, setLevel] = useState(DETAIL_LEVEL)
   const [markers, setMarkers] = useState<Marker[]>([])
+  const detail = level <= DETAIL_LEVEL
 
   // 지도 만들기
   useEffect(() => {
     let cancelled = false
+    let cleanup = () => {}
     loadKakaoMaps()
       .then((km) => {
         if (cancelled || !boxRef.current) return
         const map = new km.Map(boxRef.current, { center: new km.LatLng(initialCenter.lat, initialCenter.lng), level: DETAIL_LEVEL })
         map.setMaxLevel(12)
-        km.event.addListener(map, 'zoom_changed', () => {
+        const onZoom = () => {
           const nextLevel = map.getLevel()
           setLevel(nextLevel)
-          if (nextLevel >= 10) onOverview()
-        })
+        }
+        const onIdle = () => { if (map.getLevel() >= 10) onOverview() }
         // 대구·경북 밖으로 끌고 나가면 범위 안으로 되돌린다
-        km.event.addListener(map, 'dragend', () => {
+        const onDragEnd = () => {
           const c = map.getCenter()
           const lat = Math.min(BOUNDS.maxLat, Math.max(BOUNDS.minLat, c.getLat()))
           const lng = Math.min(BOUNDS.maxLng, Math.max(BOUNDS.minLng, c.getLng()))
-          if (lat !== c.getLat() || lng !== c.getLng()) map.setCenter(new km.LatLng(lat, lng))
-        })
+          if (lat !== c.getLat() || lng !== c.getLng()) map.panTo(new km.LatLng(lat, lng))
+        }
+        km.event.addListener(map, 'zoom_changed', onZoom)
+        km.event.addListener(map, 'idle', onIdle)
+        km.event.addListener(map, 'dragend', onDragEnd)
+        const observer = new ResizeObserver(() => map.relayout())
+        observer.observe(boxRef.current)
+        cleanup = () => {
+          observer.disconnect()
+          km.event.removeListener(map, 'zoom_changed', onZoom)
+          km.event.removeListener(map, 'idle', onIdle)
+          km.event.removeListener(map, 'dragend', onDragEnd)
+          mapRef.current = null
+        }
         mapRef.current = map
         setMaps(km)
       })
@@ -126,6 +141,7 @@ function KakaoRecordMap({
       })
     return () => {
       cancelled = true
+      cleanup()
     }
     // initialCenter는 커스텀 지도에서 카카오 상세 지도로 넘어오는 한 번의 위치값이다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +151,6 @@ function KakaoRecordMap({
   useEffect(() => {
     const map = mapRef.current
     if (!maps || !map) return
-    const detail = level <= DETAIL_LEVEL
     const next: Marker[] = detail
       ? pins.flatMap((pin) =>
           groupPlaces(pin.places).map(({ place, count }) => ({
@@ -149,8 +164,9 @@ function KakaoRecordMap({
         )
       : pins.map((pin) => ({ key: pin.city, kind: 'city' as const, pin, el: document.createElement('div') }))
     const overlays = next.map((m) => {
-      const lat = m.kind === 'place' ? m.place.latitude : m.pin.latitude
-      const lng = m.kind === 'place' ? m.place.longitude : m.pin.longitude
+      const position = m.kind === 'place' ? m.place : cityMarkerPosition(m.pin)
+      const lat = position.latitude
+      const lng = position.longitude
       // 핀 내용은 React가 나중에 채워서, 카카오가 크기로 계산하는 기준점(yAnchor)이 어긋나 확대할 때 핀이 제자리를 벗어났다.
       // 기준점을 좌표 그 자리(0,0)로 두고, 핀을 CSS로 "가운데 아래 = 좌표"가 되게 직접 옮긴다
       m.el.style.transform = 'translate(-50%, -100%)'
@@ -161,7 +177,7 @@ function KakaoRecordMap({
     })
     setMarkers(next)
     return () => overlays.forEach((o) => o.setMap(null))
-  }, [maps, pins, level])
+  }, [maps, pins, detail])
 
   return (
     <div className="relative mx-3 mt-4">
@@ -174,7 +190,7 @@ function KakaoRecordMap({
         </p>
       )}
       {maps && level > DETAIL_LEVEL && pins.some((p) => p.places.length > 0) && (
-        <p className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-surface/90 px-2.5 py-1 text-[10px] text-sub">
+        <p className="pointer-events-none absolute top-3 left-3 z-10 rounded-full bg-surface/90 px-2.5 py-1 text-[10px] text-sub">
           확대하면 다녀온 곳이 보여요
         </p>
       )}
@@ -184,7 +200,7 @@ function KakaoRecordMap({
           <button
             type="button"
             aria-label="확대"
-            onClick={() => mapRef.current?.setLevel(Math.max(1, mapRef.current.getLevel() - 1))}
+            onClick={() => mapRef.current?.setLevel(Math.max(1, mapRef.current.getLevel() - 1), { animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches })}
             className="size-9 text-[18px] active:bg-bg"
           >
             +
@@ -192,7 +208,7 @@ function KakaoRecordMap({
           <button
             type="button"
             aria-label="축소"
-            onClick={() => mapRef.current?.setLevel(Math.min(12, mapRef.current.getLevel() + 1))}
+            onClick={() => mapRef.current?.setLevel(Math.min(12, mapRef.current.getLevel() + 1), { animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches })}
             className="size-9 border-t border-line text-[18px] active:bg-bg"
           >
             −

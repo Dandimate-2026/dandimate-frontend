@@ -57,6 +57,16 @@ export interface MapPlaceItem {
   recordIds?: string[]
 }
 
+/** 도시 평균이 바다·산 사이에 놓이지 않도록 평균에 가장 가까운 실제 기록 장소를 대표로 쓴다. */
+export function cityMarkerPosition(pin: CityPin) {
+  const places = pin.places.filter((place) => Number.isFinite(place.latitude) && Number.isFinite(place.longitude) && Math.abs(place.latitude) <= 90 && Math.abs(place.longitude) <= 180)
+  const nearest = places.reduce<MapPlaceItem | null>((best, place) => {
+    const distance = (p: MapPlaceItem) => (p.latitude - pin.latitude) ** 2 + ((p.longitude - pin.longitude) * Math.cos(pin.latitude * Math.PI / 180)) ** 2
+    return !best || distance(place) < distance(best) ? place : best
+  }, null)
+  return nearest ?? pin
+}
+
 /** 같은 장소에서 찍은 사진을 핀 하나로 묶는다 (사진 수 포함) */
 export function groupPlaces(places: MapPlaceItem[]) {
   const groups: { place: MapPlaceItem; count: number }[] = []

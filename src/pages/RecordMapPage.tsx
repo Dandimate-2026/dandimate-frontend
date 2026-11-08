@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import { getMyRecordMap, groupPlaces, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
+import { cityMarkerPosition, getMyRecordMap, groupPlaces, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import { getMe } from '../lib/auth'
 import recordMapImage from '../assets/record-map.webp'
@@ -350,8 +350,20 @@ function ZoomableMap({
   const boxRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
   const sizeRef = useRef(size)
-  const [view, setView] = useState({ s: 1, x: 0, y: 0 })
+  const [view, setRenderedView] = useState({ s: 1, x: 0, y: 0 })
+  const viewRef = useRef(view)
+  const frameRef = useRef<number | null>(null)
+  const setView = (update: typeof view | ((previous: typeof view) => typeof view)) => {
+    viewRef.current = typeof update === 'function' ? update(viewRef.current) : update
+    if (frameRef.current !== null) return
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null
+      setRenderedView(viewRef.current)
+    })
+  }
+  useEffect(() => () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current) }, [])
   const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const [interacting, setInteracting] = useState(false)
   const gesture = useRef({ dist: 0, moved: 0 })
   const detailEntered = useRef(false)
   const zoomFocus = useRef<{ x: number; y: number } | null>(null)
@@ -394,7 +406,8 @@ function ZoomableMap({
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const rect = el.getBoundingClientRect()
-      zoomRef.current(e.deltaY < 0 ? 1.25 : 1 / 1.25, e.clientX - rect.left, e.clientY - rect.top)
+      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1)
+      zoomRef.current(Math.exp(-Math.max(-100, Math.min(100, delta)) * .002), e.clientX - rect.left, e.clientY - rect.top)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -405,8 +418,11 @@ function ZoomableMap({
     return { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
     if (pointers.current.size === 0) gesture.current = { dist: 0, moved: 0 }
     pointers.current.set(e.pointerId, local(e))
+    setInteracting(true)
+    if (!(e.target instanceof Element && e.target.closest('button'))) e.currentTarget.setPointerCapture(e.pointerId)
     gesture.current.dist = 0
   }
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -432,6 +448,7 @@ function ZoomableMap({
   }
   const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     pointers.current.delete(e.pointerId)
+    if (pointers.current.size === 0) setInteracting(false)
     gesture.current.dist = 0
   }
 
@@ -448,6 +465,7 @@ function ZoomableMap({
       detailEntered.current = false
       return
     }
+    if (interacting) return
     if (detailEntered.current || size.w === 0 || size.h === 0) return
     detailEntered.current = true
     const imageX = (-view.x + (zoomFocus.current?.x ?? size.w / 2)) / view.s
@@ -458,7 +476,7 @@ function ZoomableMap({
     // 그 가까이(약 5km)에 꽃 핀(도시·세부 장소)이 있으면 그 핀에 맞춰서 빈 곳으로 열리지 않게 한다.
     // (예전에는 가장 가까운 도시로 맞춰서, 포항을 키워도 가운데가 경주에 더 가까우면 경주로 갔다)
     const spots = pins.flatMap((pin) => [
-      { lat: pin.latitude, lng: pin.longitude },
+      { lat: cityMarkerPosition(pin).latitude, lng: cityMarkerPosition(pin).longitude },
       ...pin.places.map((place) => ({ lat: place.latitude, lng: place.longitude })),
     ])
     const nearest = spots.reduce<{ lat: number; lng: number; d: number } | null>((best, spot) => {
@@ -467,7 +485,7 @@ function ZoomableMap({
     }, null)
 
     onEnterDetail(nearest && nearest.d <= SNAP_DEGREE ? { lat: nearest.lat, lng: nearest.lng } : viewportCenter)
-  }, [onEnterDetail, pins, size.h, size.w, view.s, view.x, view.y])
+  }, [interacting, onEnterDetail, pins, size.h, size.w, view.s, view.x, view.y])
 
   return (
     <div className="relative mx-3 mt-4">
@@ -491,13 +509,14 @@ function ZoomableMap({
           alt=""
           draggable={false}
           style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})`, transformOrigin: '0 0' }}
-          className="absolute inset-0 size-full"
+          className="absolute inset-0 size-full will-change-transform"
         />
 
         {/* 멀리서: 도시 핀 */}
         {!detail &&
           pins.map((pin) => {
-            const pos = toScreen(pin.latitude, pin.longitude)
+            const position = cityMarkerPosition(pin)
+            const pos = toScreen(position.latitude, position.longitude)
             const active = activeCity === pin.city
             return (
               <button

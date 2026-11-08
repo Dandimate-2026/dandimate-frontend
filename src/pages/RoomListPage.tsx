@@ -44,9 +44,9 @@ const ROOM_PAGE_SIZE = 3
 
 function RoomListControls({ total, visible, onMore, onCollapse, label }: { total: number; visible: number; onMore: () => void; onCollapse: () => void; label: string }) {
   if (total <= ROOM_PAGE_SIZE) return null
-  return <div className="mt-3 flex items-center justify-center gap-4">
-    {visible < total && <button type="button" onClick={onMore} aria-label={`${label} 더 보기`} className="min-h-11 rounded-full border border-line px-5 text-sm text-sub">더 보기 · {Math.min(visible, total)}/{total}</button>}
-    {visible > ROOM_PAGE_SIZE && <button type="button" onClick={onCollapse} aria-label={`${label} 접기`} className="min-h-11 px-3 text-sm text-sub underline">접기</button>}
+  return <div className="mt-2 flex items-center justify-center gap-6">
+    {visible < total && <button type="button" onClick={onMore} aria-label={`${label} 더 보기`} className="flex min-h-11 items-center gap-2 px-3 text-[12px] font-medium text-sub active:opacity-60">더 보기<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
+    {visible > ROOM_PAGE_SIZE && <button type="button" onClick={onCollapse} aria-label={`${label} 접기`} className="flex min-h-11 items-center gap-2 px-3 text-[12px] font-medium text-sub active:opacity-60">접기<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
   </div>
 }
 
