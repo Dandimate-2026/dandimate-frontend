@@ -30,11 +30,15 @@ const STATUS_LABEL: Record<RoomStatus, string> = {
   GROWING: '자라는 중',
 }
 
-/** 마감까지 남은 시간 안내 문구 */
-function deadlineText(room: { deadlineAt: string | null; deadlineChangedByHost?: boolean }) {
+/** 방장이 정한 엮는 시각까지 남은 시간 ("3일 남았어요", "5시간 남았어요"). 방장이 정하기 전에는 비운다 */
+function deadlineText(room: { deadlineAt: string | null; deadlineChangedByHost?: boolean }, now: number) {
   if (!room.deadlineAt || !room.deadlineChangedByHost) return ''
-  const d = new Date(room.deadlineAt)
-  return `${d.getMonth() + 1}월 ${d.getDate()}일에 엮어요`
+  const left = new Date(room.deadlineAt).getTime() - now
+  if (left <= 0) return '곧 엮어요'
+  const hours = Math.floor(left / 3_600_000)
+  if (hours < 1) return `${Math.max(1, Math.ceil(left / 60_000))}분 남았어요`
+  if (hours < 24) return `${hours}시간 남았어요`
+  return `${Math.floor(hours / 24)}일 남았어요`
 }
 
 
@@ -102,8 +106,10 @@ const sumOf = (members: Member[], key: 'photoCount' | 'storyCount') => members.r
 const activityTotal = (members: Member[]) => sumOf(members, 'photoCount') + sumOf(members, 'storyCount')
 
 function MemberProgress({ member, done, cards }: { member: Member; done: boolean; cards: CirculationCard[] | null }) {
-  // 참여율 = 참여한 사진(올린 사진 + 이야기를 남긴 사진) ÷ 방 전체 사진. 모두 다 봤으면 막대를 꽉 채운다
-  const rate = done ? 1 : cards ? participationRate(cards, member) : Math.min(Math.max(member.responseRate ?? 0, 0), 1)
+  // 참여율 = 참여한 사진(올린 사진 + 이야기를 남긴 사진) ÷ 방 전체 사진. 서버 값이 있으면 그걸 쓰고, 없으면 돌려보기 목록으로 센다.
+  // 모두 다 봤으면 막대를 꽉 채운다
+  const server = member.totalPhotoCount ? (member.participatedPhotoCount ?? 0) / member.totalPhotoCount : null
+  const rate = done ? 1 : Math.min(Math.max(server ?? (cards ? participationRate(cards, member) : member.responseRate ?? 0), 0), 1)
   return (
     <li>
       <div className="flex items-center justify-between">
@@ -133,6 +139,9 @@ function MemberProgress({ member, done, cards }: { member: Member; done: boolean
 /** 방 이름(뒤로 가기), 상태, 마감까지 남은 시간 */
 function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathering: boolean; unreadCount: number }) {
   const navigate = useNavigate()
+  // 남은 시간은 화면을 연 시각 기준 (렌더 중에 시계를 읽지 않는다)
+  const [now] = useState(() => Date.now())
+  const left = deadlineText(room, now)
   return (
     <header className="px-1">
       <div className="flex items-center justify-between">
@@ -175,7 +184,7 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
         >
           {STATUS_LABEL[room.status]}
         </span>
-        {deadlineText(room) && <span className="text-[11px] text-sub">{deadlineText(room)}</span>}
+        {left && <span className="text-[11px] text-sub">{left}</span>}
       </div>
     </header>
   )
@@ -272,17 +281,16 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
 }
 
 /** 내 할 일: 내 사진 더 올리기, 친구 사진에 이야기 붙이기 */
-function MyTodoCard({ home }: { home: RoomHome }) {
+function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] | null }) {
   const navigate = useNavigate()
   const { room, me, members, myTodo } = home
   // 사진 한도는 플랜마다 다르다(1인 3/6/10장). 서버가 준 한도를 쓰고, 없으면 기본 3장으로 본다
   const maxPhotos = room.quota?.photosPerMember ?? MAX_PHOTOS
   const myPhotos = room.quota?.myPhotoCount ?? me.photoCount ?? 0
   const canAddPhotos = myPhotos < maxPhotos
-  // 친구 사진 수는 나를 뺀 참여자의 사진 수를 더하고, 본 수는 거기서 남은 수를 뺀다
-  const friendPhotos = members.filter((m) => m.id !== me.id).reduce((sum, m) => sum + (m.photoCount ?? 0), 0)
-  const pending = myTodo.pendingCirculationCount
-  const viewed = Math.max(friendPhotos - pending, 0)
+  // 친구 사진 수는 돌려보기 목록으로 센다 (목록을 아직 못 받았으면 서버 숫자로). 친구 사진이 있으면 늘 둘러볼 수 있다
+  const friendCards = cards?.filter((c) => c.myResponse.status !== 'OWN_PHOTO') ?? null
+  const friendPhotos = friendCards ? friendCards.length : members.filter((m) => m.id !== me.id).reduce((sum, m) => sum + (m.photoCount ?? 0), 0)
 
   return (
     <Card className="pt-[18px] pb-5">
@@ -312,14 +320,12 @@ function MyTodoCard({ home }: { home: RoomHome }) {
         )}
       </div>
       <p className="mt-2.5 text-[15px] leading-5 font-bold">
-        {pending > 0 ? `친구 사진 ${pending}장에 이야기 붙이기` : '친구 사진을 모두 봤어요'}
+        친구 사진에 이야기 붙이기
       </p>
-      <p className="text-[11px] leading-4 text-sub">
-        {viewed}/{friendPhotos}장 봤어요
-      </p>
-      {pending > 0 && (
+      {/* 사진 하나에 덧붙이는 건 그 사진 카드에서, 여기서는 언제든 방 사진 전체를 돌려본다 */}
+      {friendPhotos > 0 && (
         <Button onClick={() => navigate(paths.roomCirculation(room.id))} className="mt-3 w-full">
-          이야기 붙이기
+          친구 사진 둘러보기
         </Button>
       )}
     </Card>
@@ -420,9 +426,9 @@ function RoomHomePage() {
           </p>
         </section>
 
-        {/* 사진을 올린 방이면 상태와 관계없이 내 사진의 장소를 기록 지도에 붙일 수 있다. */}
-        {roomCards?.some((card) => card.myResponse.status === 'OWN_PHOTO') && (
-          <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} myMemberId={me.id} />
+        {/* 방에 올라온 사진(친구 사진 포함)을 최근 것부터, 여러 장이면 옆으로 넘긴다 */}
+        {roomCards && roomCards.length > 0 && (
+          <RecentPhotosCarousel roomId={room.id} token={token ?? ''} version={home} />
         )}
 
         {!allDone && myTodo.topAskback && (
@@ -474,7 +480,7 @@ function RoomHomePage() {
             엮는 중 확인하기
           </Button>
         ) : (
-          <MyTodoCard home={home} />
+          <MyTodoCard home={home} cards={roomCards} />
         )}
         {!solo && <div className="mt-4 flex justify-center">
           <button

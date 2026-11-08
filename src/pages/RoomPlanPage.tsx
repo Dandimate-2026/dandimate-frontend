@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SCROLL_TEMPLATES } from '../features/memories/templates'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { createRoom, getRoomHome } from '../api/rooms'
 import type { RoomHome } from '../api/types'
@@ -58,6 +59,44 @@ function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean;
  * - 새 방 (`/rooms/new/plan`): 방 만들기에서 입력한 내용으로, 고른 플랜을 넣어 방을 만든다
  * - 이미 있는 방 (`/rooms/{roomId}/plan`): 한도 시트의 [플랜 보기]로 들어와 플랜을 살펴본다
  */
+/** 두루마리 꾸미기를 플랜별로: 기본(모두) · 지역 템플릿(Lite부터) · 시즌 한정 특별 꾸미기(Pro). 고른 플랜에서 쓸 수 있는 줄만 진하게 */
+function DecorGuide({ planId }: { planId: string }) {
+  const rank = planId === 'pro' ? 2 : planId === 'lite' ? 1 : 0
+  const rows = [
+    { need: 0, title: '기본 미니멀', tag: '모든 플랜', desc: '사진과 이야기에 집중하는 기본 두루마리', ids: ['minimal'] },
+    { need: 1, title: '지역 템플릿 5종', tag: 'Lite부터', desc: '경주 · 안동 · 대구 · 포항 · 영천 그림으로 꾸며요', ids: ['gyeongju', 'andong', 'daegu', 'pohang', 'yeongcheon'] },
+    { need: 2, title: '시즌 한정 특별 꾸미기', tag: 'Pro', desc: '계절에 맞춰 바뀌는 시즌 맞춤 꾸미기 · 지금은 크리스마스', ids: ['christmas'] },
+  ]
+  return (
+    <section className="mt-4 rounded-[20px] border border-line bg-surface px-4 py-3.5" aria-labelledby="decor-guide-title">
+      <h2 id="decor-guide-title" className="text-[13px] font-bold">두루마리 꾸미기</h2>
+      <ul className="mt-2 flex flex-col gap-2.5">
+        {rows.map((row) => {
+          const usable = rank >= row.need
+          return (
+            <li key={row.title} className={`flex items-center gap-3 ${usable ? '' : 'opacity-40'}`}>
+              <span className="flex shrink-0 -space-x-2">
+                {row.ids.slice(0, 3).map((id) => {
+                  const t = SCROLL_TEMPLATES.find((item) => item.id === id)
+                  return t ? <img key={id} src={t.art} alt="" className="size-8 rounded-[8px] border-2 border-surface object-cover" /> : null
+                })}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-[12px] font-semibold">
+                  {row.title}
+                  <span className="rounded-full bg-bg px-1.5 py-px text-[10px] font-normal text-sub">{row.tag}</span>
+                </span>
+                <span className="block text-[11px] leading-4 text-sub">{row.desc}</span>
+              </span>
+              {usable && <span className="shrink-0 text-[12px] text-point" aria-label="이 플랜에서 쓸 수 있어요">✓</span>}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
 function RoomPlanPage() {
   const { roomId } = useParams()
   const navigate = useNavigate()
@@ -161,6 +200,7 @@ function RoomPlanPage() {
           <PlanCard key={p.id} plan={p} selected={p.id === selectedId} onSelect={() => setSelectedId(p.id)} />
         ))}
       </div>
+      <DecorGuide planId={selectedId} />
 
       <footer className="mx-[6px] mt-auto pt-8">
         {/* 서버가 결제를 아직 받지 않는 플랜(roomCreationAvailable=false)은 고를 수만 있고 넘어가지 않는다 */}

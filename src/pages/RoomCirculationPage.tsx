@@ -61,6 +61,8 @@ function RoomCirculationPage() {
   const quotaHome = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const [cards, setCards] = useState<CirculationCard[]>([])
   const [index, setIndex] = useState(0)
+  // 홈·핀 꽃에서 사진 하나를 콕 집어 들어오면 그 사진 하나만 보여 준다
+  const [single, setSingle] = useState(false)
   const [done, setDone] = useState(false)
   const [responses, setResponses] = useState<Record<string, MemoryContribution>>({})
   const audioUrls = useRef<Set<string>>(new Set())
@@ -86,9 +88,9 @@ function RoomCirculationPage() {
       const list = result
       setCards(list)
       const start = startPhotoId ? list.findIndex((card) => card.photo.id === startPhotoId) : -1
-      if (start >= 0) setIndex(start)
-      // 내 사진이거나 아직 돌려보기에 없는 사진이면 덧붙일 수 없어서 첫 사진부터 보여주고 알린다
-      else if (startPhotoId) setError('그 사진에는 덧붙일 수 없어요. 내가 올린 사진에는 덧붙일 수 없어요')
+      if (start >= 0) { setIndex(start); setSingle(true) }
+      // 아직 돌려보기에 없는 사진(지워졌거나 첫 한마디 전)이면 첫 사진부터 보여주고 알린다
+      else if (startPhotoId) setError('그 사진은 지금 볼 수 없어요. 처음 사진부터 보여 드릴게요')
     })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '사진을 불러오지 못했어요.') })
       .finally(() => { if (active) setLoading(false) })
@@ -117,14 +119,6 @@ function RoomCirculationPage() {
     finally { setBusy(false) }
   }
 
-  async function undo() {
-    if (!card || busy) return
-    setBusy(true); setError('')
-    try { await undoPass(card.photo.id, token); await refresh() }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '패스를 취소하지 못했어요.') }
-    finally { setBusy(false) }
-  }
-
   async function saveAddition(contribution: MemoryContribution) {
     if (!card) return
     if (card.myResponse.status === 'PASSED') await undoPass(card.photo.id, token)
@@ -142,6 +136,8 @@ function RoomCirculationPage() {
 
   function next() {
     setSheetOpen(false)
+    // 한 장만 보러 왔으면 다음 사진 대신 왔던 곳으로
+    if (single) { navigate(-1); return }
     if (index >= cards.length - 1) setDone(true)
     else setIndex((value) => value + 1)
     window.scrollTo(0, 0)
@@ -161,6 +157,8 @@ function RoomCirculationPage() {
     try {
       if (confirmDelete.kind === 'photo') {
         await deletePhoto(card.photo.id)
+        // 한 장만 보러 왔으면 그 사진이 없어졌으니 왔던 곳으로
+        if (single) { setConfirmDelete(null); navigate(-1); return }
         const result = await getCirculation(roomId, token)
         setCards(result)
         setIndex((i) => Math.max(0, Math.min(i, result.length - 1)))
@@ -202,7 +200,7 @@ function RoomCirculationPage() {
           </footer>
         </main>
         : done ? <CirculationComplete addedCount={cards.filter((item) => item.myResponse.status === 'ADDON').length} photoCount={cards.length} roomName={session.roomName} onBack={() => setDone(false)} onHome={backToHome} />
-          : <CirculationPage photo={photo} position={index + 1} total={cards.length} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onUndoPass={() => void undo()} onNext={next}
+          : <CirculationPage photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onNext={next}
             onDeletePhoto={() => setConfirmDelete({ kind: 'photo' })}
             onEditStory={(s) => setEditing({ story: s, text: s.text })}
             onDeleteStory={(s) => setConfirmDelete({ kind: 'story', story: s })} />}

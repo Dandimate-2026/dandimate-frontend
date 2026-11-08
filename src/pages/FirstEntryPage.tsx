@@ -356,7 +356,7 @@ function FirstEntryPage() {
             aria-modal="true"
             aria-labelledby="leave-title"
             onClick={(e) => e.stopPropagation()}
-            className="w-full rounded-[24px] bg-surface px-5 pt-6 pb-5 text-center"
+            className="w-full max-w-[340px] rounded-[24px] bg-surface px-5 pt-6 pb-5 text-center"
           >
             <h2 id="leave-title" className="text-[16px] font-bold">
               사진 올리기를 그만둘까요?
