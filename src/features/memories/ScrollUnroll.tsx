@@ -18,6 +18,9 @@ export default function ScrollUnroll({ showRod }: { showRod: boolean }) {
   const startY = useRef(0)
 
   useLayoutEffect(() => {
+    // 이전 화면에서 내려와 있던 스크롤이 남으면, 펼치기 전 화면을 잠그면서 위쪽(그림·봉·제목)으로 못 올라간다.
+    // 끈이 묶인 채로 시작할 때는 맨 위로 올린 뒤 봉 위치를 잰다
+    window.scrollTo(0, 0)
     const measure = () => {
       const top = document.querySelector('.scroll-live > .scroll-rod')?.getBoundingClientRect()
       if (top) setRod({ top: top.bottom, left: top.left, width: top.width })

@@ -53,7 +53,8 @@ const INPUT_CLASS = 'mt-2 h-11 w-full rounded-full border border-line bg-bg px-4
  * 방장에게 "두루마리를 언제 엮을까요?"를 묻는 안내 카드.
  * 홈에는 한 줄 카드만 두고, [정하기]를 누르면 시트에서 날짜·시간을 고른다.
  * 자주 쓰는 날·시간은 눌러서 고르고, [다른 날]·[직접]을 누르면 입력칸이 열려 달력·시계로 고른다.
- * 방을 만든 날로부터 1년 안에서만 고를 수 있다. 방장이 한 번 정하면 더 묻지 않고, 이후 변경은 설정 화면에서 한다.
+ * 방을 만든 날로부터 1년 안에서만 고를 수 있다.
+ * 방장이 정하면 모두에게 "O월 O일 (요일) 오후 O:OO에 두루마리를 엮어요"로 보이고, 방장은 [바꾸기]로 다시 고른다.
  */
 export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHome; token: string; onSaved: () => void }) {
   const [date, setDate] = useState('')
@@ -70,7 +71,10 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
   const { room, me } = home
 
   const open = room.status === 'COLLECTING' || room.status === 'CIRCULATING'
-  if (me.role !== 'HOST' || !open || (room.deadlineAt && room.deadlineChangedByHost)) return null
+  const isHost = me.role === 'HOST'
+  // 방장이 정한 시각 (서버가 정한 기본 마감은 보여주지 않는다)
+  const decided = room.deadlineAt && room.deadlineChangedByHost ? new Date(room.deadlineAt) : null
+  if (!open || (!isHost && !decided)) return null
 
   const latest = latestDeadline(room.createdAt)
   const at = date && time ? new Date(`${date}T${time}`) : null
@@ -83,6 +87,16 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
         : null
 
   const pickDate = (d: string, custom = false) => { setDate(d); setCustomDate(custom); setError(null) }
+  // [바꾸기]: 정해 둔 날짜·시간을 채운 채로 시트를 연다
+  const openSheet = () => {
+    if (decided && !date) {
+      setDate(dateValue(decided))
+      setCustomDate(true)
+      setTime(`${pad(decided.getHours())}:${pad(decided.getMinutes())}`)
+      setCustomTime(true)
+    }
+    setSheet(true)
+  }
   const pickTime = (t: string, custom = false) => { setTime(t); setCustomTime(custom); setError(null) }
 
   const save = async () => {
@@ -105,17 +119,34 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
 
   return (
     <>
-      {/* 방장 전용 카드: 핑크 질문 카드·흰 할 일 카드와 겹치지 않게 연한 회색 */}
+      {/* 핑크 질문 카드·흰 할 일 카드와 겹치지 않게 연한 회색 */}
       <section className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#ebe7e1] px-4 py-3.5">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-sub">방장에게만 보여요</p>
-          <h2 className="mt-0.5 text-[14px] font-bold">두루마리를 언제 엮을까요?</h2>
-          <p className="truncate text-[12px] text-sub">{at && !problem ? `${describe(at)} 고르는 중` : '아직 안 정했어요'}</p>
-        </div>
-        <button type="button" onClick={() => setSheet(true)} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 text-[13px] font-semibold text-surface active:opacity-80">
-          <ClockIcon />
-          정하기
-        </button>
+        {decided ? (
+          // 정한 뒤: 모두에게 엮는 시각을 알려 준다. 방장만 바꿀 수 있다
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className="shrink-0 text-sub"><ClockIcon size={20} /></span>
+            <div className="min-w-0">
+              <p className="text-[11px] text-sub">두루마리 엮는 날</p>
+              <h2 className="mt-0.5 text-[14px] font-bold">{describe(decided)}에 엮어요</h2>
+            </div>
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold text-sub">방장에게만 보여요</p>
+            <h2 className="mt-0.5 text-[14px] font-bold">두루마리를 언제 엮을까요?</h2>
+            <p className="truncate text-[12px] text-sub">아직 안 정했어요</p>
+          </div>
+        )}
+        {isHost && (
+          <button
+            type="button"
+            onClick={openSheet}
+            className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold active:opacity-80 ${decided ? 'border border-ink/30 bg-surface text-ink' : 'bg-ink text-surface'}`}
+          >
+            {!decided && <ClockIcon />}
+            {decided ? '바꾸기' : '정하기'}
+          </button>
+        )}
       </section>
 
       {sheet && (

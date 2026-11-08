@@ -1,5 +1,5 @@
 import { request } from './client'
-import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK, MOCK_LIVELY_ROOM_ID, mockLivelyCards, DEMO_CIRCULATION_PHOTOS } from './mock'
+import { asMockRole, consumeMockReweave, MOCK_DONE_ROOM_ID, MOCK_SCROLL_PREVIEW_ROOM_ID, mockDoneRoomHome, mockRoomHome, mockTranscribe, USE_MOCK, MOCK_LIVELY_ROOM_ID, mockLivelyCards, DEMO_CIRCULATION_PHOTOS, getMockRole } from './mock'
 import type { CirculationResponse, Entry, Job, Member, Scroll, TranscriptionDraft } from './types'
 import { MEMORY_PHOTOS } from '../features/memories/data'
 
@@ -16,7 +16,9 @@ function mockPhotoCards(): CirculationResponse['cards'] {
     const uploader: Member = { id: `owner-${item.id}`, nickname: item.owner, role: 'MEMBER', flowerCode: item.flower === 'blue' ? 'FORGET_ME_NOT' : 'AZALEA' }
     const photo = { id: item.id, imageUrl: item.photoUrl ?? '', uploader, displayOrder: 1 }
     const entry = (id: string, author: Member, transcript: string): Entry => ({ id, photoId: item.id, member: author, kind: 'FIRST', inputMode: 'TEXT', transcript, confirmedAt: new Date().toISOString() })
-    const status = mockStatuses.get(item.id) ?? 'NONE'
+    // 데모의 '나': 방장이면 서연, 멤버면 민지 (서버처럼 내가 올린 사진은 OWN_PHOTO)
+    const myNickname = getMockRole() === 'MEMBER' ? '민지' : '서연'
+    const status = item.owner === myNickname ? 'OWN_PHOTO' as const : mockStatuses.get(item.id) ?? 'NONE'
     return {
       photo,
       firstEntry: entry(`first-${item.id}`, uploader, item.firstStory.text),

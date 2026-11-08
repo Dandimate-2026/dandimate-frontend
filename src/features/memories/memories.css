@@ -617,3 +617,8 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 /* 덧붙이기·답가 녹음 듣기 / 다시 녹음 (처음 한마디 화면과 같은 모양) */
 .memory-voice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; width: 100%; }
 .memory-voice-actions > button { display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 999px; font-size: 14px; }
+
+/* 문단 아래 답가 목록: 작은 글씨, 왼쪽에 템플릿 색 선 */
+.scroll-replies { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 2px solid var(--scroll-accent, var(--color-line)); }
+.scroll-replies li { font-size: 13px; line-height: 1.5; color: var(--color-ink); }
+.scroll-replies strong { margin-right: 4px; font-size: 12px; font-weight: 700; color: var(--color-sub); }

@@ -137,7 +137,7 @@ function FlowerSheet({ person, roomId, slides, onClose }: { person: Person; room
         {slides?.length === 0 && (
           <p className="px-5 py-10 text-center text-[13px] leading-5 text-sub">
             {(person.photoCount ?? 0) > 0 ? <>{person.nickname}님이 올린 사진은 아직 첫 한마디 전이에요<br />다 남기면 여기에 올라와요</> : <>아직 {person.nickname}님이 올린 사진이 없어요</>}
-            {(person.storyCount ?? 0) > 0 && <><br />다른 사진에 남긴 이야기는 둘러보기에서 볼 수 있어요</>}
+            {(person.storyCount ?? 0) > 0 && <><br />다른 사진에 남긴 이야기는 돌려보기에서 볼 수 있어요</>}
           </p>
         )}
         {/* 홈 숫자는 올리기만 한 사진까지 세고, 여기는 첫 한마디까지 마쳐 공개된 사진만 보인다 */}
