@@ -5,6 +5,7 @@ export const paths = {
   login: (redirect?: string) => (redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login'),
   // 이 기기에 저장된 방이 없으면 방 만들기로 보낸다
   roomList: () => '/',
+  reviewerDemo: () => '/reviewer-demo',
   /** 아래 탭: 내 사진 장소를 도시별로 모은 기록 지도 */
   recordMap: () => '/map',
   /** 두루 챗봇 질문 크레딧 상점 */
