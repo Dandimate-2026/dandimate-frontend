@@ -207,7 +207,7 @@ const SHARE_BUTTON_CLASS =
 function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null }) {
   const navigate = useNavigate()
   const { room, members, myTodo } = home
-  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
+  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '', home.room.name)
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
 
@@ -350,7 +350,7 @@ function RoomHomePage() {
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
   // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다 (방 참가자 누구나 같은 링크)
   const inviteToken = useRoomInvite(roomId)
-  const { share: shareInvite } = useInviteShare(inviteToken ?? '')
+  const { share: shareInvite } = useInviteShare(inviteToken ?? '', home?.room.name)
 
   // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
   const token = session?.memberAccessToken

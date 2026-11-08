@@ -331,7 +331,7 @@ function RoomSettingsPage() {
   const [confirming, setConfirming] = useState<ConfirmTarget | null>(null)
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const inviteToken = useRoomInvite(roomId)
-  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '')
+  const { link, copied, copy, share } = useInviteShare(inviteToken ?? '', home?.room.name)
   // 대표 사진은 서버 값(coverImageUrl)을 먼저 쓰고, 없으면 이 기기에 남겨 둔 미리보기를 쓴다
   const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
   const [photoError, setPhotoError] = useState('')

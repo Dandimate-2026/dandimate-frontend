@@ -1,14 +1,22 @@
-interface TextInvitation {
-  objectType: 'text'
-  text: string
-  link: { mobileWebUrl: string; webUrl: string }
-  buttonTitle: string
+import { siteUrl } from './siteUrl'
+
+interface FeedInvitation {
+  objectType: 'feed'
+  content: {
+    title: string
+    description: string
+    imageUrl: string
+    imageWidth: number
+    imageHeight: number
+    link: { mobileWebUrl: string; webUrl: string }
+  }
+  buttons: { title: string; link: { mobileWebUrl: string; webUrl: string } }[]
 }
 
 interface KakaoSdk {
   init(key: string): void
   isInitialized(): boolean
-  Share: { sendDefault(message: TextInvitation): void }
+  Share: { sendDefault(message: FeedInvitation): void }
 }
 
 declare global {
@@ -63,17 +71,21 @@ export function shareKakaoInvitation(text: string, url: string): 'opened' | 'loa
   }
   const target = new URL(url)
   if (target.protocol !== 'https:') throw new Error('Invitation requires HTTPS')
-  const invitation = `두루두루에 초대했어요 💌\n\n${text.slice(0, 70)}\n\n함께한 사진과 이야기를 모아요. 아래 버튼으로 함께해 주세요!`
-  // 텍스트 템플릿은 최대 200자. 긴 URL도 실제 클릭 목적지에서는 자르지 않는다.
-  const message = target.href.length < 150
-    ? `${invitation.slice(0, 198 - target.href.length)}\n\n${target.href}`
-    : invitation.slice(0, 200)
-  // 텍스트 안에도 원본 주소를 남긴다. 링크/버튼에는 토큰을 포함한 같은 전체 주소를 전달한다.
+  // 본문에도 URL 전체를 남긴다. 제한을 넘는 URL은 호출부의 전체 문구 복사로 대체한다.
+  if (target.href.length > 198) throw new Error('Invitation URL exceeds description limit')
+  const message = `${text.slice(0, 198 - target.href.length)}\n\n${target.href}`
+  const link = { mobileWebUrl: target.href, webUrl: target.href }
   window.Kakao.Share.sendDefault({
-    objectType: 'text',
-    text: message,
-    link: { mobileWebUrl: target.href, webUrl: target.href },
-    buttonTitle: '초대받은 방 들어가기',
+    objectType: 'feed',
+    content: {
+      title: '💌 두루두루에 초대됐어요!',
+      description: message,
+      imageUrl: siteUrl('/og-image.png'),
+      imageWidth: 512,
+      imageHeight: 512,
+      link,
+    },
+    buttons: [{ title: '추억 남기러 가기', link }],
   })
   return 'opened'
 }
