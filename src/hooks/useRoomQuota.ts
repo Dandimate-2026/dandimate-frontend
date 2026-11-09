@@ -54,8 +54,11 @@ export function usePlanLimitAction(
   const navigate = useNavigate()
   const [notice, setNotice] = useState<string | null>(null)
   const isHost = home?.me.role === 'HOST'
+  const isPro = home?.room.planType === 'PRO'
 
-  const action = isHost
+  const action = isPro
+    ? { label: '확인', onClick: () => {} }
+    : isHost
     ? {
         label: '플랜보기',
         onClick: () => navigate(paths.roomPlan(roomId), { state: { fromLimit: true } }),

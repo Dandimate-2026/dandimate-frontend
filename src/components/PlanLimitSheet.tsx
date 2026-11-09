@@ -112,7 +112,7 @@ function PlanLimitSheet({
           </div>
         )}
 
-        {showPlans && (
+        {showPlans && current !== 'pro' && (
           <ul className={`${usage ? 'mt-2.5' : 'mt-5'} grid grid-cols-3 gap-[19px]`}>
             {PLANS.map((plan) => {
               const isCurrent = plan.id === current
