@@ -30,7 +30,20 @@ export default function EarlyCloseButton({ home, token }: { home: RoomHome; toke
     } catch (cause) { setError(cause instanceof Error ? cause.message : '마감하지 못했어요. 다시 시도해 주세요'); setBusy(false) }
   }
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="mt-4 flex min-h-11 w-full items-center justify-center gap-1.5 text-[12px] font-medium text-sub active:opacity-60">지금까지의 이야기로 엮기<span aria-hidden="true">›</span></button>
+    <section aria-label="지금 두루마리 엮기" className="mt-3 border-t border-ink/10 pt-3">
+      <div className="flex items-center gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center text-sub" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4h11a2 2 0 0 1 0 4H7M7 4a2 2 0 0 0 0 4v10a2 2 0 0 0 0 4h11a2 2 0 0 0 0-4H7M18 8v10M10 11h5M10 14h3" /></svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold text-ink">지금까지의 이야기로 엮기</p>
+          <p className="mt-1 text-[11px] leading-[17px] text-sub">모인 사진과 이야기로 지금 시작해요</p>
+        </div>
+      </div>
+      <div className="mt-2 flex justify-end">
+        <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-ink/20 bg-surface px-4 text-[12px] font-semibold text-ink active:bg-line">두루마리 엮기<span aria-hidden="true">›</span></button>
+      </div>
+    </section>
     {open && <dialog ref={dialogRef} aria-labelledby="early-close-title" aria-describedby="early-close-description" onCancel={(event) => { event.preventDefault(); if (!busy) setOpen(false) }} className="fixed inset-0 m-auto w-[calc(100%_-_48px)] max-w-[340px] rounded-[28px] border-0 bg-surface p-6 text-ink shadow-xl backdrop:bg-ink/35" onClick={(event) => { if (event.target === event.currentTarget && !busy) { const box = event.currentTarget.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) setOpen(false) } }}>
       <div className="flex justify-center pt-2" aria-hidden="true"><Flower code="AZALEA" size={36} /></div>
       <h2 id="early-close-title" className="mt-5 text-center text-[20px] font-bold leading-7">이제 두루마리로 엮을까요?</h2>

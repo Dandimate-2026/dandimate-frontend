@@ -38,6 +38,7 @@ function load(): ChatState {
 }
 
 let state: ChatState = load()
+let currentScope = (() => { try { return sessionStorage.getItem('duruduru:chat-scope') ?? 'REAL' } catch { return 'REAL' } })()
 const listeners = new Set<() => void>()
 
 function setState(next: Partial<ChatState>) {
@@ -75,9 +76,11 @@ export function setChatQuota(quota: ChatQuota) {
 export async function sendChat(text: string) {
   const message = text.trim()
   if (!message || state.sending || !canAsk(state.quota)) return
+  const conversationId = state.conversationId
   setState({ lines: [...state.lines, { from: 'me', text: message }], sending: true })
   try {
     const res = await askDuru(message, state.conversationId)
+    if (state.conversationId !== conversationId) return
     if (USE_MOCK) spendMockQuestion()
     setState({
       lines: [
@@ -86,6 +89,7 @@ export async function sendChat(text: string) {
       ],
     })
   } catch (e) {
+    if (state.conversationId !== conversationId) return
     const limited = e instanceof ApiError && (e.code === CHAT_LIMIT_CODE || e.status === 429)
     setState({
       lines: [
@@ -97,12 +101,22 @@ export async function sendChat(text: string) {
       ],
     })
   } finally {
-    setState({ sending: false })
-    void refreshChatQuota()
+    if (state.conversationId === conversationId) {
+      setState({ sending: false })
+      void refreshChatQuota()
+    }
   }
 }
 
 /** 대화를 비우고 새로 시작한다 */
 export function resetChat() {
-  setState({ conversationId: crypto.randomUUID(), lines: [], sending: false })
+  setState({ conversationId: crypto.randomUUID(), lines: [], sending: false, quota: null })
+}
+
+/** 계정의 데모 영역이 바뀌면 이전 영역의 화면·진행 중 답변을 비운다. */
+export function syncChatScope(scope: string) {
+  if (currentScope === scope) return
+  currentScope = scope
+  resetChat()
+  try { sessionStorage.setItem('duruduru:chat-scope', scope) } catch { /* 저장소 사용 불가 */ }
 }

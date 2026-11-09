@@ -4,6 +4,7 @@ import { updateRoom } from '../api/rooms'
 import type { RoomHome } from '../api/types'
 import Button from './Button'
 import { latestDeadline } from '../lib/date'
+import EarlyCloseButton from './EarlyCloseButton'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const dateValue = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
@@ -120,7 +121,8 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
   return (
     <>
       {/* 핑크 질문 카드·흰 할 일 카드와 겹치지 않게 연한 회색 */}
-      <section className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#ebe7e1] px-4 py-3.5">
+      <section className="mb-3 rounded-[20px] bg-[#ebe7e1] px-4 py-3.5">
+        <div className="flex items-center gap-3">
         {decided ? (
           // 정한 뒤: 모두에게 엮는 시각을 알려 준다. 방장만 바꿀 수 있다
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -147,6 +149,8 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
             {decided ? '바꾸기' : '정하기'}
           </button>
         )}
+        </div>
+        {isHost && <EarlyCloseButton home={home} token={token} />}
       </section>
 
       {sheet && (
