@@ -40,13 +40,23 @@ export function TextModeToggle({ value, onChange }: { value: boolean; onChange: 
 }
 
 export function StoryCard({ story, mine = false, textOnly = false }: { story: MemoryStory; mine?: boolean; textOnly?: boolean }) {
+  return <StoryCardPlayback key={`${textOnly}:${story.audioUrl ?? ''}:${story.text}`} story={story} mine={mine} textOnly={textOnly} />
+}
+
+function StoryCardPlayback({ story, mine, textOnly }: { story: MemoryStory; mine: boolean; textOnly: boolean }) {
   const [playing, setPlaying] = useState(false)
   const [message, setMessage] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
-  useEffect(() => () => { audioRef.current?.pause(); if (speechRef.current) window.speechSynthesis?.cancel() }, [])
+  const starting = useRef(false)
+  const active = useRef(true)
+  useEffect(() => {
+    active.current = true
+    return () => { active.current = false; audioRef.current?.pause(); if (speechRef.current) window.speechSynthesis?.cancel() }
+  }, [])
 
   async function play() {
+    if (starting.current) return
     if (playing) {
       audioRef.current?.pause()
       if (speechRef.current) window.speechSynthesis?.cancel()
@@ -55,10 +65,15 @@ export function StoryCard({ story, mine = false, textOnly = false }: { story: Me
       return
     }
     if (story.audioUrl) {
+      starting.current = true
+      setMessage('')
       const audio = new Audio(story.audioUrl)
       audioRef.current = audio
       audio.onended = () => setPlaying(false)
-      try { await audio.play(); setPlaying(true) } catch { setMessage('음성을 재생하지 못했어요. 글로 확인해 주세요.') }
+      audio.onerror = () => { if (active.current) { setPlaying(false); setMessage('음성을 재생하지 못했어요. 글로 확인해 주세요.') } }
+      try { await audio.play(); if (active.current) setPlaying(true); else audio.pause() }
+      catch { if (active.current) setMessage('음성을 재생하지 못했어요. 글로 확인해 주세요.') }
+      finally { starting.current = false }
     } else if ('speechSynthesis' in window && story.text) {
       window.speechSynthesis.cancel()
       const speech = new SpeechSynthesisUtterance(story.text)
@@ -73,12 +88,11 @@ export function StoryCard({ story, mine = false, textOnly = false }: { story: Me
   }
 
   return <article className={`memory-story ${story.durationLabel ? 'has-duration' : ''} ${mine ? 'is-mine' : ''} ${textOnly ? 'text-only' : ''}`}>
-    {!mine && !textOnly && <button type="button" className="memory-play" onClick={() => void play()} aria-label={`${story.author} 이야기 ${playing ? '멈추기' : '듣기'}`} aria-pressed={playing}>{playing ? <span>Ⅱ</span> : <PlayIcon />}</button>}
+    {!textOnly && <button type="button" className="memory-play" onClick={() => void play()} aria-label={`${mine ? '내 덧붙임' : story.author} 이야기 ${playing ? '멈추기' : '듣기'}`} aria-pressed={playing}>{playing ? <span>Ⅱ</span> : <PlayIcon />}</button>}
     <div className="memory-story-content">
       <div className="memory-story-author">{story.flower && <MemoryFlower color={story.flower} size={18} />}<span>{mine ? '내 덧붙임' : story.author} · {story.kind}{story.durationLabel ? ` · ${story.durationLabel}` : ''}</span></div>
       <p>{story.text || '음성으로 남긴 이야기예요.'}</p>
-      {mine && story.audioUrl && <audio controls src={story.audioUrl} aria-label="내가 남긴 녹음" />}
-      {message && <span className="memory-audio-note" role="status">{message}</span>}
+      {!textOnly && message && <span className="memory-audio-note" role="status">{message}</span>}
     </div>
   </article>
 }
