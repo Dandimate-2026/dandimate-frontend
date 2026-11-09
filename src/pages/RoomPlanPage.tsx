@@ -15,9 +15,6 @@ import { getRoomSession, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
-// 1인당 금액 안내에 쓰는 예시 인원
-const EXAMPLE_FRIENDS = 3
-
 function PlanCard({ plan, selected, current = false, disabled = false, onSelect }: { plan: Plan; selected: boolean; current?: boolean; disabled?: boolean; onSelect: () => void }) {
   return (
     <button
@@ -135,6 +132,7 @@ function RoomPlanPage() {
   const plan = plans.find((p) => p.id === selectedId) ?? plans[0]
   const roomName = isNewRoom ? draft?.name : home?.room.name ?? session?.roomName ?? '모임방'
   const capacity = isNewRoom ? draft?.capacity : home?.room.capacity
+  const memberCount = isNewRoom ? draft?.capacity : home?.members.length
 
   const handleNext = async () => {
     if (!plan.available || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))) return
@@ -226,9 +224,9 @@ function RoomPlanPage() {
         {!plan.available && (
           <p className="text-center text-[12px] text-point">유료 플랜 결제가 아직 준비되지 않았어요. 지금은 Free로 시작할 수 있어요.</p>
         )}
-        {plan.available && plan.price > 0 && (
+        {plan.available && plan.price > 0 && memberCount != null && memberCount > 0 && (
           <p className="text-center text-[11px] text-sub">
-            친구 {EXAMPLE_FRIENDS}명이면 1인당 약 {formatWon(Math.round(plan.price / EXAMPLE_FRIENDS / 10) * 10)}
+            {isNewRoom ? '모임' : '참여'} {memberCount}명 기준 · 1인당 약 {formatWon(Math.round(plan.price / memberCount))}
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
