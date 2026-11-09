@@ -645,3 +645,15 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-page.memory-weaving { min-height: 100dvh; height: 100dvh; max-height: 100dvh; overflow-y: auto; }
 .memory-weaving .memory-weaving-main { min-height: 0; flex: 1 0 auto; padding-top: 24px; padding-bottom: 24px; }
 .memory-photo > img { object-fit: contain; -webkit-touch-callout: none; user-select: none; }
+
+/* Template selection and preview share the same apply action. */
+.template-mode-tabs { display: flex; gap: 4px; padding: 4px; margin: 20px 0; border-radius: 16px; background: #eee9e2; }
+.template-mode-tabs button { flex: 1; min-height: 44px; border: 0; border-radius: 12px; font-size: 13px; color: #81776e; }
+.template-mode-tabs button[aria-selected="true"] { background: #fffdf9; color: #2a2623; font-weight: 700; box-shadow: 0 1px 5px #2a262312; }
+.paragraph-reweave-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; border: 1px solid var(--scroll-rule, #ded5ca); border-radius: 12px; background: #fffdf9; color: #504539; font-size: 12px; font-weight: 600; }
+.paragraph-reweave-button:disabled { opacity: .45; }
+.memory-chapter-actions .paragraph-reweave-button { margin-top: 8px; }
+
+.paragraph-reweave-action { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--scroll-rule, #e8e0d5); }
+.scroll-bottom-save > .template-change-button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #ded5ca; border-radius: 16px; background: #fffdf9; font-size: 13px; font-weight: 600; color: #504539; }
+.scroll-bottom-save > .template-change-button > span { font-size: 20px; font-weight: 400; }

@@ -1,4 +1,6 @@
-import { copyForShare, shareWithDevice } from '../../lib/share'
+import { useEffect } from 'react'
+import { prepareKakaoShare } from '../../lib/kakaoShare'
+import { shareRoomContent } from '../../lib/share'
 import { siteUrl } from '../../lib/siteUrl'
 import Button from '../../components/Button'
 import MoreMenu from '../../components/MoreMenu'
@@ -31,6 +33,7 @@ export default function CirculationPage({ photo, position, total, single = false
   onEditStory?: (story: MemoryStory) => void
   onDeleteStory?: (story: MemoryStory) => void
 }) {
+  useEffect(() => { void prepareKakaoShare().catch(() => {}) }, [])
   // 내가 남긴 이야기 아래에 [고치기 · 지우기]를 붙인다
   const withActions = (story: MemoryStory, key?: string, first = false) => (
     <div key={key} className="relative">
@@ -57,10 +60,10 @@ export default function CirculationPage({ photo, position, total, single = false
     {!embedded && <MemoryHeader progress={single ? undefined : `${position} / ${total}`} onBack={onBack} />}
     {!embedded && <TextModeToggle value={textOnly} onChange={onTextMode} />}
     <MemoryCard className="memory-photo-card">
-      <div className="memory-photo-owner"><span><MemoryFlower color={photo.flower} />{photo.mine ? '내가 올린 사진' : `${photo.owner} 님이 올렸어요`}</span><span className="flex items-center gap-1"><small>이야기 {1 + photo.friends.length}개</small>{photo.mine && onDeletePhoto && <MoreMenu label="내 사진 메뉴" items={[{ label: '사진 지우기', onSelect: onDeletePhoto, danger: true }]} />}</span></div>
+      <div className="memory-photo-owner"><span><MemoryFlower color={photo.flower} />{photo.mine ? '내가 올렸어요' : `${photo.owner} 님이 올렸어요`}</span><span className="flex items-center gap-1"><small>이야기 {1 + photo.friends.length}개</small>{photo.mine && onDeletePhoto && <MoreMenu label="내 사진 메뉴" items={[{ label: '사진 지우기', onSelect: onDeletePhoto, danger: true }]} />}</span></div>
       <PhotoSlot label={photo.location} date={photo.dateLabel} src={photo.photoUrl} icon onDelete={photo.mine ? onDeletePhoto : undefined} onShare={() => {
         const url = siteUrl(`${window.location.pathname}?photo=${encodeURIComponent(photo.id)}`)
-        void shareWithDevice('함께 남긴 사진과 이야기를 보세요', url).then(shared => { if (!shared) return copyForShare('함께 남긴 사진과 이야기를 보세요', url) })
+        void shareRoomContent('photo', '우리 모임방', url)
       }} />
       <p className="mt-1 text-right text-[10px] text-sub">친구들만 볼 수 있어요 · 왼쪽으로 밀어 공유{photo.mine && onDeletePhoto ? ' · 오른쪽으로 밀어 삭제' : ''}</p>
       <div className="mt-2 flex min-h-9 items-center gap-2 text-[12px] text-sub"><span className="min-w-0 break-words">{photo.location}</span>{onPlace && <button type="button" disabled={busy} onClick={onPlace} className="shrink-0 px-1 py-2 font-semibold text-point underline underline-offset-2">{photo.location === '장소 미등록' ? '추가' : '변경'}</button>}</div>

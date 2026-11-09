@@ -16,12 +16,12 @@ export function ParagraphStory({ paragraph, changes }: { paragraph: ScrollParagr
     <div className="memory-quotes">{paragraph.sources.map((source) => {
       const isReply = reply?.member.id === source.member.id && reply.text === source.quote
       return <blockquote className="memory-quote" key={source.entryId}>
-        <cite><MemoryFlower color={memoryFlowerColor(source.member.flowerCode)} size={18} />{source.member.nickname}{isReply && ' · 답가'}</cite>
+        <cite><MemoryFlower color={memoryFlowerColor(source.member.flowerCode)} size={18} />{source.member.nickname}{isReply && ' · 재엮기에 보탠 이야기'}</cite>
         <p>“{source.quote}”</p>
       </blockquote>
     })}
       {reply && !hasReplySource && <blockquote className="memory-quote">
-        <cite><MemoryFlower color={memoryFlowerColor(reply.member.flowerCode)} size={18} />{reply.member.nickname} · 답가</cite>
+        <cite><MemoryFlower color={memoryFlowerColor(reply.member.flowerCode)} size={18} />{reply.member.nickname} · 재엮기에 보탠 이야기</cite>
         <p>“{reply.text}”</p>
       </blockquote>}
     </div>
@@ -41,7 +41,7 @@ export default function ScrollDocument({ scroll, home, template, paragraph, chil
       </header>
       {(paragraph ? [paragraph] : scroll.paragraphs).map((item) => <section className="memory-chapter" key={item.id}>
         <PhotoSlot label={`${item.photo.uploader.nickname}님의 사진`} src={item.photo.imageUrl} />
-        <p className="memory-chapter-meta">{item.photo.uploader.nickname}님이 올린 사진</p>
+        <p className="memory-chapter-meta">{item.photo.uploader.id === home.me.id ? '내가 올렸어요' : `${item.photo.uploader.nickname} 님이 올렸어요`}</p>
         <ParagraphStory paragraph={item} />
       </section>)}
       <div className="scroll-rod scroll-rod-end" aria-hidden="true" />

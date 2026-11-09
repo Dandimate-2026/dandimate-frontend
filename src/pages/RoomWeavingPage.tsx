@@ -4,7 +4,7 @@ import { useLocation, useParams, useSearchParams } from 'react-router'
 import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
 import { USE_MOCK } from '../api/mock'
-import { createReply, deleteReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
+import { createReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
 import { getRoomHome } from '../api/rooms'
 import type { RoomHome, Scroll, ScrollParagraph } from '../api/types'
 import PlanLimitSheet, { VoiceLimitSheet } from '../components/PlanLimitSheet'
@@ -47,7 +47,6 @@ function RoomWeavingPage() {
   const [reweaving, setReweaving] = useState(false)
   const [pendingParagraph, setPendingParagraph] = useState<ScrollParagraph | null>(null)
   const [pendingContribution, setPendingContribution] = useState('')
-  const [deletingReply, setDeletingReply] = useState(false)
   const [reweaveResult, setReweaveResult] = useState<ReweaveResult>()
   // 예전 챗봇 링크는 문단 위치만 안내한다. 재엮기는 문단 메뉴·전체 평가에서 시작한다.
   const replyPhotoId = params.get('reply')
@@ -79,12 +78,13 @@ function RoomWeavingPage() {
   const reweavePlan = usePlanLimitAction(roomId, home, 'REWEAVE', setReplyNotice)
 
   const refresh = useCallback(async () => {
-    const result = await getScroll(roomId, token)
+    const [result, currentHome] = await Promise.all([getScroll(roomId, token), getRoomHome(roomId, token)])
+    setHome(currentHome)
     showScroll(result)
   }, [roomId, token, showScroll])
   useRoomLiveUpdates(roomId, session?.memberAccessToken, () => {
     if (jobId) return
-    void Promise.all([refresh(), getRoomHome(roomId, token).then(setHome)]).catch(() => {})
+    void refresh().catch(() => {})
   })
 
   useEffect(() => {
@@ -103,7 +103,7 @@ function RoomWeavingPage() {
             if (active) {
               setFailedWeave(job.type === 'WEAVE_SCROLL')
               setJobFailed(true)
-              setError(`${job.type === 'REPLY_REWEAVE' ? '답가 반영' : '엮기'} 작업에 실패했어요${job.errorCode ? ` (${job.errorCode})` : ''}.`)
+              setError(`${job.type === 'REPLY_REWEAVE' ? '재엮기' : '엮기'} 작업에 실패했어요${job.errorCode ? ` (${job.errorCode})` : ''}.`)
             }
             return
           }
@@ -123,9 +123,6 @@ function RoomWeavingPage() {
               setReplyNotice(`재엮기가 완료됐어요${remaining !== undefined ? ` · 재엮기 ${remaining}${limit !== undefined ? `/${limit}` : ''}회 남음` : ''}`)
               setPendingParagraph(null)
               window.scrollTo(0, 0)
-            } else if (deletingReply) {
-              setReplyNotice('답가를 삭제하고 문단을 갱신했어요')
-              setDeletingReply(false)
             } else setReplyNotice('')
             setJobId(null)
             updateJobParam(null)
@@ -139,22 +136,10 @@ function RoomWeavingPage() {
     void check()
     const interval = window.setInterval(() => void check(), 5000)
     return () => { active = false; window.clearInterval(interval) }
-  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, deletingReply])
+  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   const backToHome = () => navigate(reviewerDemo ? paths.roomList() : paths.roomHome(roomId), { state: reviewerDemo ? { reviewerDemo } : null })
-
-  async function removeReply(replyId: string) {
-    if (jobId) throw new Error('진행 중인 작업이 끝난 뒤 다시 시도해 주세요')
-    const owned = scroll?.paragraphs.some(paragraph => paragraph.replies?.some(reply => reply.id === replyId && reply.mine))
-    if (!owned) throw new Error('내가 남긴 답가만 삭제할 수 있어요')
-    const result = await deleteReply(replyId)
-    setDeletingReply(true); setJobFailed(false); setFailedWeave(false); setError('')
-    setReweaveResult(undefined)
-    setReplyNotice('답가를 삭제하고 문단을 갱신하고 있어요')
-    setJobId(result.job.id)
-    updateJobParam(result.job.id)
-  }
 
   /** 문단 메뉴와 낮은 전체 평가가 같은 문단 재엮기 화면으로 이어진다. */
   function startReweave(paragraph: ScrollParagraph) {
@@ -174,7 +159,7 @@ function RoomWeavingPage() {
 
   /** 답가 받아쓰기. 방 전체 말하기 시간을 다 썼으면 말하기 시트를 띄우고 글로 남기게 한다 */
   async function transcribeReplyWithLimit(audio: Blob) {
-    if (!replyTarget) throw new Error('답가를 남길 문단이 없어요.')
+    if (!replyTarget) throw new Error('다시 엮을 문단이 없어요.')
     if (home?.room.quota?.voiceRemainingMs === 0) {
       setVoiceLimitOpen(true)
       throw new Error('말하기 시간을 모두 썼어요. 글로 남겨 주세요.')
@@ -221,7 +206,7 @@ function RoomWeavingPage() {
     setPendingContribution(value.text)
     setError('')
     setReweaveResult(undefined)
-    setReplyNotice('답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.')
+    setReplyNotice('보탠 이야기로 다시 엮고 있어요. 완료되면 두루마리가 갱신돼요.')
     setReplyTarget(null)
     window.scrollTo(0, 0)
   }
@@ -231,7 +216,7 @@ function RoomWeavingPage() {
     {reweaving && replyTarget ? null : jobId && pendingParagraph && !jobFailed ? <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name} reweavingCount={1} remaining={home?.room.quota?.regenerationsRemaining} limit={home?.room.quota?.regenerationLimit} photoCount={scroll?.paragraphs.length} participantDetail={scroll ? `${scroll.participantCount}/${scroll.memberCount}` : undefined} error={error} /> : scroll && home ? <>
       {error && <p className="memory-error" role="alert">{error}</p>}
       <LiveScrollPage key={`${home.room.id}:${home.me.id}`} scroll={scroll} home={home} token={token} onBack={backToHome}
-        onRefresh={refresh} onDeleteReply={removeReply}
+        onRefresh={refresh}
         onReweaveLimit={() => setReweaveLimitOpen(true)}
         onReweave={startReweave}
         pendingParagraphId={jobId && !jobFailed ? pendingParagraph?.id ?? scroll.paragraphs[0]?.id : undefined} reweaveResult={reweaveResult}

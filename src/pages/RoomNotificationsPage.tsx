@@ -1,7 +1,7 @@
 import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
-import { getNotifications, markNotificationRead } from '../api/notifications'
+import { getAllNotifications, getNotifications, markNotificationRead } from '../api/notifications'
 import type { NotificationType, RoomNotification } from '../api/types'
 import { timeAgo } from '../lib/date'
 import { getRoomSession } from '../lib/session'
@@ -41,18 +41,20 @@ const PLAN_REQUEST_DETAIL: Record<string, string> = {
 function RoomNotificationsPage() {
   const { roomId = '' } = useParams()
   const navigate = useAppNavigate()
+  const global = !roomId
   const session = getRoomSession(roomId)
   const [items, setItems] = useState<RoomNotification[] | null>(null)
   const [hidden, setHidden] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(`duruduru:hidden-notifications:${roomId}`) ?? '[]') } catch { return [] } })
   const hide = (id: string) => setHidden(previous => { const next = [...previous, id]; try { localStorage.setItem(`duruduru:hidden-notifications:${roomId}`, JSON.stringify(next)) } catch { /* optional */ } return next })
   const [error, setError] = useState<string | null>(null)
-  const token = session?.memberAccessToken
+  const token = global ? '' : session?.memberAccessToken
+  const load = () => global ? getAllNotifications() : getNotifications(roomId, token ?? '')
   const sequence = useRef(0)
 
   const reload = () => {
     if (token === undefined) return
     const current = ++sequence.current
-    getNotifications(roomId, token)
+    load()
       .then((list) => {
         if (current !== sequence.current) return
         setItems([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
@@ -64,44 +66,52 @@ function RoomNotificationsPage() {
     if (token === undefined) return
     const requestState = sequence
     const current = ++requestState.current
-    getNotifications(roomId, token).then(list => {
+    const fetchItems = () => !roomId ? getAllNotifications() : getNotifications(roomId, token)
+    const update = () => { const requestId = ++requestState.current; void fetchItems().then(list => { if (requestId === requestState.current) { setItems([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt))); setError(null) } }).catch(() => { if (requestId === requestState.current) setError('알림을 불러오지 못했어요') }) }
+    const onVisible = () => { if (document.visibilityState === 'visible') update() }
+    document.addEventListener('visibilitychange', onVisible)
+    fetchItems().then(list => {
       if (current !== requestState.current) return
       setItems([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
       setError(null)
     }).catch(() => { if (current === requestState.current) setError('알림을 불러오지 못했어요') })
-    return () => { requestState.current++ }
+    return () => { requestState.current++; document.removeEventListener('visibilitychange', onVisible) }
   }, [roomId, token])
-  useRoomLiveUpdates(roomId, token, reload)
+  useRoomLiveUpdates(roomId, global ? undefined : token, reload)
 
-  if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
+  if (!global && !session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   if (error && !items) return <main className="p-5 pt-16"><p role="alert">{error}</p><button type="button" onClick={reload}>다시 불러오기</button></main>
   if (!items) return <main className="flex-1 bg-bg" aria-busy="true" />
 
   const handleOpen = (item: RoomNotification) => {
+    const targetRoomId = item.roomId ?? roomId
+    if (!targetRoomId) { setError('이 알림의 모임방을 찾을 수 없어요'); return }
     // 읽음 표시가 실패해도 이동은 막지 않는다
-    if (!item.readAt) markNotificationRead(item.id, session.memberAccessToken).catch(() => {})
-    if (item.type === 'ASKBACK_RECEIVED') navigate(paths.askback(roomId, item.resourceId))
+    if (!item.readAt) markNotificationRead(item.id, getRoomSession(targetRoomId)?.memberAccessToken ?? '').catch(() => {})
+    if (item.type === 'ASKBACK_RECEIVED') navigate(paths.askback(targetRoomId, item.resourceId))
     // 방장이 플랜 변경 요청을 누르면 플랜 화면으로 간다
-    else if (item.type === 'PLAN_UPGRADE_REQUESTED') navigate(paths.roomPlan(roomId))
-    else if (item.type === 'PHOTO_ADDON_ADDED') navigate(paths.roomCirculation(roomId, item.resourceType.toUpperCase() === 'PHOTO' ? item.resourceId : undefined))
-    else if (item.type === 'HOST_TRANSFERRED') navigate(paths.roomSettings(roomId))
-    else if (item.type === 'ROOM_PLAN_UPGRADED') navigate(paths.roomPlan(roomId))
-    else if (item.type.startsWith('ROOM_DELETION_DUE_')) navigate(paths.roomHome(roomId))
-    else navigate(paths.roomWeaving(roomId))
+    else if (item.type === 'PLAN_UPGRADE_REQUESTED') navigate(paths.roomPlan(targetRoomId))
+    else if (item.type === 'PHOTO_ADDON_ADDED') navigate(paths.roomCirculation(targetRoomId, item.resourceType.toUpperCase() === 'PHOTO' ? item.resourceId : undefined))
+    else if (item.type === 'HOST_TRANSFERRED') navigate(paths.roomSettings(targetRoomId))
+    else if (item.type === 'ROOM_PLAN_UPGRADED') navigate(paths.roomPlan(targetRoomId))
+    else if (item.type.startsWith('ROOM_DELETION_DUE_')) navigate(paths.roomHome(targetRoomId))
+    else navigate(paths.roomWeaving(targetRoomId))
   }
 
   return (
     <main className="flex min-h-dvh flex-col bg-bg px-5 pt-16 pb-8 text-ink">
-      <header className="px-1">
+      <header className="flex items-center justify-between gap-3 px-1">
         <button
           type="button"
-          onClick={() => navigate(paths.roomHome(roomId))}
+          onClick={() => navigate(global ? paths.roomList() : paths.roomHome(roomId))}
           className="flex items-center gap-2.5 text-[16px] font-bold"
         >
           <ChevronLeftIcon />
-          알림
+          {global ? '전체 알림' : '알림'}
         </button>
+        <button type="button" onClick={reload} className="min-h-11 px-3 text-[12px] font-semibold text-sub">새로고침</button>
       </header>
+      {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
 
       {items.filter(item => !hidden.includes(item.id)).length === 0 ? (
         <p className="mt-24 text-center text-[13px] text-sub">아직 온 알림이 없어요</p>
@@ -125,6 +135,7 @@ function RoomNotificationsPage() {
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-semibold">{text.title}</span>
+                    {global && item.roomName && <span className="mt-1 block text-[11px] font-semibold text-point">{item.roomName}</span>}
                     <span className="mt-0.5 block text-[11px] text-sub">
                       {item.message || (item.type === 'PLAN_UPGRADE_REQUESTED' && PLAN_REQUEST_DETAIL[item.resourceType]) || text.detail}
                     </span>

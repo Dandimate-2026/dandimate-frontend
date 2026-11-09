@@ -16,13 +16,12 @@ import type { DownloadResult } from './scrollDownload'
 import type { ReweaveResult } from './types'
 import { siteUrl } from '../../lib/siteUrl'
 
-export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh, onDeleteReply, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion }: {
+export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion }: {
   scroll: Scroll
   home: RoomHome
   token: string
   onBack: () => void
   onRefresh: () => Promise<void>
-  onDeleteReply?: (replyId: string) => Promise<void>
   onReweave?: (paragraph: ScrollParagraph) => void
   /** 재엮기를 다 썼을 때 한도 바텀시트를 띄운다 */
   onReweaveLimit?: () => void
@@ -41,15 +40,6 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
   const [error, setError] = useState('')
   const [original, setOriginal] = useState<ScrollParagraph | null>(null)
   const [previous, setPrevious] = useState<ScrollParagraph | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
-
-  const confirmReplyDeletion = async () => {
-    if (!deleteTarget || !onDeleteReply || busy || pendingParagraphId) return
-    setBusy(deleteTarget); setError('')
-    try { await onDeleteReply(deleteTarget); setDeleteTarget(null) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '답가를 삭제하지 못했어요') }
-    finally { setBusy(null) }
-  }
   // 템플릿은 방 단위로 서버에 저장된다. 방금 고른 값은 서버에서 다시 받아 올 때까지만 먼저 보여 준다
   const [chosenTemplate, setChosenTemplate] = useState<ScrollTemplateId | null>(null)
   const selectedTemplate = chosenTemplate ?? fromServerTemplate(home.room.scrollTemplateId)
@@ -69,7 +59,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
 
   if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => { try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ } setPickingTemplate(false) }} onSelect={async (id) => {
     try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ } setChosenTemplate(id); setPickingTemplate(false); await onRefresh(); setChosenTemplate(null); window.scrollTo(0, 0) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '템플릿을 저장하지 못했어요.'); setPickingTemplate(false) }
+    catch (cause) { throw cause instanceof Error ? cause : new Error('템플릿을 저장하지 못했어요.') }
   }} />
 
   // "아 맞다"를 눌렀는지: 이 화면에서 바꾼 값이 먼저, 없으면 서버가 기억하는 값
@@ -135,7 +125,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
 
   return <main className={`memory-page memory-scroll scroll-live scroll-design scroll-template-${templateId} has-template`} style={templateStyle(templateId)}>
     <button type="button" className="scroll-cover-back" onClick={onBack} aria-label="뒤로 가기">‹</button>
-    <div className="scroll-cover-actions"><button type="button" className="template-change-button" onClick={() => setPickingTemplate(true)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>템플릿 바꾸기</button>{saveButton}</div>
+    <div className="scroll-cover-actions">{saveButton}</div>
     {/* 모든 템플릿에 봉을 둔다. 지역·특별 템플릿은 그림 바로 아래에 봉이 걸린다 */}
     {templateId !== 'minimal' && <img className="scroll-template-hero" src={template.art} width={360} height={180} alt="" />}
     <div className="scroll-rod" aria-hidden="true" />
@@ -151,28 +141,19 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       // 챗봇에서 특정 문단으로 바로 올 때 이 id로 찾아 그 위치로 내린다
       return <section className="memory-chapter" key={paragraph.id} id={`paragraph-${paragraph.id}`}>
       <PhotoSlot label={`${paragraph.photo.uploader.nickname}님의 사진`} src={paragraph.photo.imageUrl} />
-      <p className="memory-chapter-meta">{paragraph.photo.uploader.nickname}님이 올린 사진</p>
+      <p className="memory-chapter-meta">{paragraph.photo.uploader.id === home.me.id ? '내가 올렸어요' : `${paragraph.photo.uploader.nickname} 님이 올렸어요`}</p>
       <div className={changes ? 'scroll-rewoven' : 'scroll-paragraph-story'}>
-      {changes && <div className="scroll-rewoven-heading"><strong>✓ 재엮기 완료 · {changes.reply.member.nickname} 님의 답가가 엮였어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
+      {changes && <div className="scroll-rewoven-heading"><strong>✓ 재엮기 완료 · 보탠 이야기가 반영됐어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
       <ParagraphStory paragraph={paragraph} changes={changes} />
-      {/* 이 문단에 남은 답가 (서버가 오래된 순으로 준다) */}
-      {paragraph.replies && paragraph.replies.length > 0 && <ul className="scroll-replies">{paragraph.replies.map((reply) => <li key={reply.id}><strong>{reply.mine ? '나' : reply.nickname}</strong> “{reply.transcript}” {reply.mine && onDeleteReply && <button type="button" disabled={busy !== null || Boolean(pendingParagraphId)} className="memory-text-link" onClick={() => setDeleteTarget(reply.id)}>삭제</button>}</li>)}</ul>}
       <div className="memory-chapter-actions">
         <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>나도 이렇게 기억해요 <strong>{paragraph.ahMatdaCount}</strong></button>
         <button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button>
-        {onReweave && !pendingParagraphId && <button type="button" className="memory-reply" onClick={() => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else onReweave(paragraph) }}>다시 엮기</button>}
+
       </div>
+      <div className="paragraph-reweave-action">{onReweave && !pendingParagraphId && <button type="button" className="paragraph-reweave-button" disabled={busy !== null} onClick={() => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else onReweave(paragraph) }}><span aria-hidden="true">↻</span> 이 문단 다시 엮기</button>}</div>
       </div>
-      {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
+      {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">보탠 이야기로 다시 엮고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
     </section>})}
-    {deleteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-      <section role="alertdialog" aria-modal="true" aria-labelledby="delete-reply-title" className="w-full max-w-sm rounded-3xl bg-surface p-6 text-center">
-        <h2 id="delete-reply-title" className="font-bold">내 답가를 삭제할까요?</h2>
-        <p className="mt-3 text-sm text-sub">삭제 후 서버가 문단을 복구하거나 다시 엮어요.</p>
-        {error && <p role="alert" className="mt-3 text-sm text-point">{error}</p>}
-        <div className="mt-5 flex gap-3"><Button variant="outline" disabled={busy !== null} onClick={() => setDeleteTarget(null)}>취소</Button><Button disabled={busy !== null || Boolean(pendingParagraphId)} onClick={() => void confirmReplyDeletion()}>{busy ? '삭제 요청 중…' : '삭제하기'}</Button></div>
-      </section>
-    </div>}
     {scroll.paragraphs.length > 0 && <div className="scroll-rod scroll-rod-end" aria-hidden="true" />}
     <ScrollUnroll showRod />
     {scroll.paragraphs.length > 0 && <footer className="scroll-complete-footer">
@@ -200,7 +181,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       }}>다시 엮기</button>
     </section>}
     {scroll.paragraphs.length > 0 && <div className="scroll-bottom-save">
-      <button type="button" className="template-change-button mb-3" onClick={() => setPickingTemplate(true)}>템플릿 변경하기</button>
+      <button type="button" className="template-change-button mb-3" onClick={() => setPickingTemplate(true)}>템플릿 변경하기<span aria-hidden="true">›</span></button>
       <div className="scroll-save-actions"><Button disabled={Boolean(pendingParagraphId)} onClick={() => setDownloading(true)}><DownloadIcon />이미지로 저장</Button><ShareMemoryButton roomName={home.room.name} label="단톡방에 공유" url={shareUrl} /></div>
     </div>}
     {reweavePicker && onReweave && <BottomSheet title="다시 엮을 문단 선택" onClose={() => setReweavePicker(false)}><p className="memory-sheet-hint">고치고 싶은 문단을 골라 주세요.</p>{reweaveTargets.map((paragraph) => <button type="button" className="reweave-paragraph-option" key={paragraph.id} onClick={() => { setReweavePicker(false); onReweave(paragraph) }}><strong>문단 {scroll.paragraphs.findIndex((item) => item.id === paragraph.id) + 1} · {paragraph.photo.uploader.nickname}님의 사진</strong><span>{paragraph.body}</span></button>)}</BottomSheet>}

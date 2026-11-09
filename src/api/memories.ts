@@ -35,15 +35,29 @@ export function recordMockAddon(photoId: string) {
   if (USE_MOCK) mockStatuses.set(photoId, 'ADDON')
 }
 
+/** Fetch a single server page; the list decides when to request the next cursor. */
+export async function getCirculationPage(roomId: string, token: string, cursor?: string, size = 6): Promise<CirculationResponse> {
+  if (USE_MOCK) {
+    const list = roomId === MOCK_LIVELY_ROOM_ID ? mockLivelyCards() : mockPhotoCards()
+    const start = Math.max(0, Number(cursor ?? 0) || 0)
+    return { cards: list.slice(start, start + size), nextCursor: start + size < list.length ? String(start + size) : null }
+  }
+  const query = new URLSearchParams({ size: String(size) })
+  if (cursor) query.set('cursor', cursor)
+  return request<CirculationResponse>(`/rooms/${roomId}/circulation?${query}`, { token })
+}
+
+/** Used where the complete room is needed, including a deep link to a particular photo. */
 export async function getCirculation(roomId: string, token: string) {
-  if (USE_MOCK) return roomId === MOCK_LIVELY_ROOM_ID ? mockLivelyCards() : mockPhotoCards()
   const cards: CirculationResponse['cards'] = []
-  let cursor: string | null | undefined
+  let cursor: string | undefined
+  const seen = new Set<string>()
   do {
-    const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''
-    const page = await request<CirculationResponse>(`/rooms/${roomId}/circulation${query}`, { token })
+    const page = await getCirculationPage(roomId, token, cursor, 50)
     cards.push(...page.cards)
-    cursor = page.nextCursor
+    cursor = page.nextCursor ?? undefined
+    if (cursor && seen.has(cursor)) throw new Error('사진 목록을 이어서 불러오지 못했어요. 다시 시도해 주세요.')
+    if (cursor) seen.add(cursor)
   } while (cursor)
   return cards
 }

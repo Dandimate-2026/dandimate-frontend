@@ -8,7 +8,7 @@ export const PREVIEW_SCREENS: { id: PreviewScreen; title: string; detail: string
   { id: 's6-5', title: '다 봤어요', detail: '참여 결과와 공유' },
   { id: 's8', title: '엮는 중', detail: '이야기를 엮는 대기 화면' },
   { id: 's9', title: '두루마리', detail: '함께 모은 기억과 서로 다른 이야기' },
-  { id: 's10', title: '답가 쓰기', detail: '두루마리에 더 남기고 싶은 이야기' },
+  { id: 's10', title: '다시 엮기', detail: '두루마리에 더 남기고 싶은 이야기' },
 ]
 
 export const MEMORY_PHOTOS: MemoryPhoto[] = [

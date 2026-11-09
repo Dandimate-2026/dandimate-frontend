@@ -298,7 +298,7 @@ export interface Job {
   updatedAt: string
 }
 
-// PLAN_UPGRADE_REQUESTED: 멤버가 방장에게 플랜을 바꿔 달라고 요청함 (TODO: 백엔드 미지원, 가정한 값)
+// PLAN_UPGRADE_REQUESTED: 멤버의 상위 플랜 요청이 방장에게 전달된다.
 export type NotificationType =
   | 'HOST_TRANSFERRED'
   | 'PHOTO_ADDON_ADDED'
@@ -315,6 +315,8 @@ export type NotificationType =
 export type PlanRequestReason = 'PHOTO' | 'VOICE' | 'REWEAVE'
 
 export interface RoomNotification {
+  roomId?: string
+  roomName?: string
   id: string
   type: NotificationType
   resourceType: string

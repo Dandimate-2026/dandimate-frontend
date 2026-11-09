@@ -164,7 +164,7 @@ function SourceCard({ source }: { source: ChatSource }) {
                     onClick={() => navigate(paths.roomScrollReply(room.roomId, photo.photoId))}
                     className="h-10 rounded-full bg-point text-[13px] font-semibold text-surface active:opacity-80"
                   >
-                    이 문단에 답가 남기기
+                    이 문단 다시 엮기
                   </button>
                 ) : (
                   <span />

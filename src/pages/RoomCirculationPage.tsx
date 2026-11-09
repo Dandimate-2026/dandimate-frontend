@@ -5,7 +5,7 @@ import { createEntry, deleteEntry, editEntry, transcribe } from '../api/entries'
 import PlaceSheet from '../components/PlaceSheet'
 import { setPhotoLocation, type Place } from '../api/places'
 import { deletePhoto } from '../api/photos'
-import { getCirculation, recordMockAddon, undoPass } from '../api/memories'
+import { getCirculation, getCirculationPage, recordMockAddon, undoPass } from '../api/memories'
 import type { CirculationCard, Entry, FlowerCode } from '../api/types'
 import Button from '../components/Button'
 import CirculationPage from '../features/memories/CirculationPage'
@@ -66,6 +66,11 @@ function RoomCirculationPage() {
   const quotaHome = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const editable = canEditRoomRecords(quotaHome?.room.status)
   const [cards, setCards] = useState<CirculationCard[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const pageLoads = useRef(1)
+  const loadSequence = useRef(0)
+  const moreLock = useRef(false)
   const [feedPage, setFeedPage] = useState(1)
   const feedTop = useRef<HTMLDivElement>(null)
   const [filter, setFilter] = useState<'friends' | 'mine' | 'all'>('friends')
@@ -84,6 +89,8 @@ function RoomCirculationPage() {
   const audioUrls = useRef<Set<string>>(new Set())
   const [textOnly, setTextOnly] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const scope = `${roomId}:${startPhotoId ?? ''}`
+  const [loadedScope, setLoadedScope] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -98,29 +105,30 @@ function RoomCirculationPage() {
 
   useEffect(() => {
     let active = true
-    getCirculation(roomId, token).then((result) => {
-      if (!active) return
+    const requestState = loadSequence
+    const sequence = ++requestState.current
+    pageLoads.current = startPhotoId ? Infinity : 1
+    const initial = startPhotoId ? getCirculation(roomId, token).then(cards => ({ cards, nextCursor: null })) : getCirculationPage(roomId, token)
+    initial.then((result) => {
+      if (!active || sequence !== loadSequence.current) return
+      setError(''); setFeedPage(1); setListing(!startPhotoId); setSingle(false)
+      setNextCursor(result.nextCursor ?? null)
       // 내 사진에도 덧붙일 수 있어서 내 사진까지 함께 돌려본다
-      const list = result
+      const list = result.cards
       setCards(list)
       const start = startPhotoId ? list.findIndex((card) => card.photo.id === startPhotoId) : -1
       if (start >= 0) { setIndex(start); setSingle(true) }
       // 아직 돌려보기에 없는 사진(지워졌거나 첫 한마디 전)이면 첫 사진부터 보여주고 알린다
       else if (startPhotoId) { setListing(true); setError('그 사진은 지금 볼 수 없어요. 목록에서 다른 사진을 골라 주세요') }
     })
-      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '사진을 불러오지 못했어요.') })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
+      .catch((cause: unknown) => { if (active && sequence === requestState.current) { setCards([]); setNextCursor(null); setError(cause instanceof Error ? cause.message : '사진을 불러오지 못했어요.') } })
+      .finally(() => { if (active && sequence === requestState.current) { setLoading(false); setLoadedScope(`${roomId}:${startPhotoId ?? ''}`) } })
+    return () => { active = false; requestState.current++ }
   }, [roomId, token, startPhotoId])
 
   useRoomLiveUpdates(roomId, session?.memberAccessToken, () => {
-    if (busy) return
-    const currentPhotoId = cards[index]?.photo.id
-    void getCirculation(roomId, token).then(result => {
-      const nextIndex = result.findIndex(item => item.photo.id === currentPhotoId)
-      setCards(result)
-      setIndex(nextIndex >= 0 ? nextIndex : Math.max(0, Math.min(index, result.length - 1)))
-    }).catch(() => {})
+    if (busy || loading || loadedScope !== scope || moreLock.current) return
+    void refresh().catch(() => {})
   })
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
@@ -144,8 +152,41 @@ function RoomCirculationPage() {
   }
 
   async function refresh() {
-    const result = await getCirculation(roomId, token)
-    setCards(result)
+    const sequence = ++loadSequence.current
+    const currentPhotoId = cards[index]?.photo.id
+    const result: CirculationCard[] = []
+    let cursor: string | undefined
+    const seen = new Set<string>()
+    for (let page = 0; page < pageLoads.current; page++) {
+      const part = await getCirculationPage(roomId, token, cursor, 6)
+      result.push(...part.cards)
+      cursor = part.nextCursor ?? undefined
+      if (!cursor || seen.has(cursor)) break
+      seen.add(cursor)
+    }
+    if (sequence !== loadSequence.current) return
+    setCards(result); setNextCursor(cursor ?? null)
+    const next = result.findIndex(item => item.photo.id === currentPhotoId)
+    setIndex(next >= 0 ? next : Math.max(0, Math.min(index, result.length - 1)))
+  }
+
+  async function loadMore() {
+    if (!nextCursor || moreLock.current || busy) return
+    moreLock.current = true; setLoadingMore(true); setError('')
+    const sequence = ++loadSequence.current
+    try {
+      const part = await getCirculationPage(roomId, token, nextCursor, 6)
+      if (sequence !== loadSequence.current) return
+      if (part.nextCursor === nextCursor) throw new Error('다음 사진을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')
+      pageLoads.current++
+      setCards(current => [...current, ...part.cards.filter(item => !current.some(old => old.photo.id === item.photo.id))])
+      setNextCursor(part.nextCursor ?? null)
+      if (part.cards.some(item => filter === 'all' || (filter === 'mine' ? item.myResponse.status === 'OWN_PHOTO' : item.myResponse.status !== 'OWN_PHOTO'))) {
+        setFeedPage(Math.floor(filteredCards.length / pageSize) + 1)
+        window.requestAnimationFrame(() => feedTop.current?.scrollIntoView({ block: 'start' }))
+      }
+    } catch (cause) { if (sequence === loadSequence.current) setError(cause instanceof Error ? cause.message : '사진을 더 불러오지 못했어요.') }
+    finally { moreLock.current = false; setLoadingMore(false) }
   }
 
   async function saveAddition(contribution: MemoryContribution) {
@@ -188,9 +229,7 @@ function RoomCirculationPage() {
         await deletePhoto(card.photo.id)
         // 한 장만 보러 왔으면 그 사진이 없어졌으니 왔던 곳으로
         if (single) { setConfirmDelete(null); navigate(-1); return }
-        const result = await getCirculation(roomId, token)
-        setCards(result)
-        setIndex((i) => Math.max(0, Math.min(i, result.length - 1)))
+        await refresh()
       } else if (confirmDelete.story.id) {
         await deleteEntry(confirmDelete.story.id)
         await refresh()
@@ -215,7 +254,7 @@ function RoomCirculationPage() {
   }
 
   return <div className="memory-app w-full">
-    {loading ? <main className="memory-page" role="status">사진을 불러오고 있어요…</main>
+    {loading || loadedScope !== scope ? <main className="memory-page" role="status">사진을 불러오고 있어요…</main>
       : listing && cards.length > 0 ? <main className="memory-page">
           <MemoryHeader title="친구 사진 둘러보기" onBack={backToHome} />
           <p className="mt-4 text-[12px] text-sub">아래로 넘기며 사진을 둘러보세요. 이야기는 펼쳐서 읽을 수 있어요.</p>
@@ -223,8 +262,8 @@ function RoomCirculationPage() {
           <div className="mt-3 flex gap-2" aria-label="사진 필터">{([{ id: 'friends', label: '친구들만' }, { id: 'mine', label: '내가 올린' }, { id: 'all', label: '전체' }] as const).map(item => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => { setFilter(item.id); setFeedPage(1) }} className={`min-h-10 rounded-full border px-4 text-[12px] ${filter === item.id ? 'border-ink bg-ink text-surface' : 'border-line bg-surface'}`}>{item.label}</button>)}</div>
           <TextModeToggle value={textOnly} onChange={setTextOnly} />
           <div ref={feedTop} className="scroll-mt-5" />
-          <p className="mt-3 text-[12px] text-sub">사진 {filteredCards.length}장 · {currentPage} / {pageCount} 페이지</p>
-          {filteredCards.length === 0 && <p className="py-8 text-center text-[13px] text-sub">아직 이 목록에 사진이 없어요. 다른 목록을 선택해 주세요.</p>}
+          <p className="mt-3 text-[12px] text-sub">{nextCursor ? '불러온 사진' : '사진'} {filteredCards.length}장 · {currentPage} / {pageCount} 페이지</p>
+          {filteredCards.length === 0 && <p className="py-8 text-center text-[13px] text-sub">{nextCursor ? '불러온 사진에는 해당하는 사진이 없어요. 사진을 더 불러오거나 다른 목록을 선택해 주세요.' : '아직 이 목록에 사진이 없어요. 다른 목록을 선택해 주세요.'}</p>}
           <ul className="mt-4 flex flex-col gap-6">
             {filteredCards.slice(pageStart, pageStart + pageSize).map((item) => { const i = cards.indexOf(item); return <li key={item.photo.id} id={`photo-${item.photo.id}`}>
               <CirculationPage embedded readOnly={!editable} photo={memoryPhoto(item, quotaHome?.me.id)} position={i + 1} total={cards.length}
@@ -240,6 +279,7 @@ function RoomCirculationPage() {
           {pageCount > 1 && <nav aria-label="사진 목록 페이지" className="mt-6 flex flex-wrap justify-center gap-2">
             {Array.from({ length: pageCount }, (_, i) => i + 1).map(page => <button key={page} type="button" aria-label={`${page}페이지`} aria-current={page === currentPage ? 'page' : undefined} onClick={() => { setFeedPage(page); feedTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} className={`flex size-11 items-center justify-center rounded-full border text-[13px] ${page === currentPage ? 'border-ink bg-ink text-surface' : 'border-line bg-surface'}`}>{page}</button>)}
           </nav>}
+          {nextCursor && <Button variant="outline" className="mt-5 w-full" disabled={loadingMore || busy} onClick={() => void loadMore()}>{loadingMore ? '사진을 불러오는 중…' : '사진 더 불러오기'}</Button>}
         </main>
       : !photo ? <main className="memory-page memory-empty">
           <MemoryHeader onBack={backToHome} />

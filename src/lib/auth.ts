@@ -73,3 +73,10 @@ export async function logout() {
   await request('/auth/logout', { method: 'POST' })
   resetCsrfToken()
 }
+
+/** The server blocks deletion while the account hosts an active room (409). */
+export async function deleteAccount() {
+  if (USE_MOCK) { localStorage.removeItem(MOCK_AUTH_KEY); return }
+  await request('/users/me', { method: 'DELETE' })
+  resetCsrfToken()
+}

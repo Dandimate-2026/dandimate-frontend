@@ -23,7 +23,7 @@ const POLICIES: Record<PolicyKind, { title: string; sections: { heading: string;
       },
       {
         heading: '4. 두루마리 만들기',
-        body: '모임방에 모인 사진과 이야기는 AI가 각자의 말을 인용해 두루마리로 엮어요. AI가 엮은 문장은 실제와 다를 수 있으니, 답가로 빠진 이야기를 보태 주세요.',
+        body: '모임방에 모인 사진과 이야기는 AI가 각자의 말을 인용해 두루마리로 엮어요. AI가 엮은 문장은 실제와 다를 수 있으니, 다시 엮기로 빠진 이야기를 보태 주세요.',
       },
       {
         heading: '5. 모임방 관리',

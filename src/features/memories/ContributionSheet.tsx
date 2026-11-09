@@ -137,9 +137,9 @@ export default function ContributionSheet({ kind, quote, initial, startWithText 
     </div>}
     {error && <p role="alert" className="memory-error">{error}</p>}
     {transcribing && <p role="status" className="memory-sheet-hint">녹음을 글로 옮기고 있어요…</p>}
-    {(mode === 'text' || audio) && <Button className="memory-save" onClick={() => void save()} disabled={(!text.trim() && !audio) || recorder.recording || starting || transcribing || saving}>{saving ? '저장 중…' : fullPage ? '이 이야기로 다시 엮기' : kind === 'reply' ? '답가 남기기' : '기억 남기기'}</Button>}
+    {(mode === 'text' || audio) && <Button className="memory-save" onClick={() => void save()} disabled={(!text.trim() && !audio) || recorder.recording || starting || transcribing || saving}>{saving ? '저장 중…' : fullPage ? '이 이야기로 다시 엮기' : kind === 'reply' ? '다시 엮기' : '기억 남기기'}</Button>}
     {!(mode === 'text' && audio) && <button type="button" className="memory-text-link memory-mode-link" disabled={starting || transcribing || saving} onClick={() => { recorder.cancel(); setMode(mode === 'voice' ? 'text' : 'voice') }}>{mode === 'voice' ? '지금 말하기 어려워요 → 글로 답하기' : '말로 답하기'}</button>}
   </>
   if (fullPage) return <main className="memory-page memory-reweave-editor"><MemoryHeader title="다시 엮기" onBack={() => { if (!saving) onClose() }} /><div className="memory-reweave-content">{content}</div></main>
-  return <BottomSheet title={kind === 'reply' ? '답가 쓰기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>{content}</BottomSheet>
+  return <BottomSheet title={kind === 'reply' ? '다시 엮기' : '덧붙이기'} onClose={() => { if (!saving) onClose() }}>{content}</BottomSheet>
 }
