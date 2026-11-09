@@ -15,6 +15,8 @@ import MoreMenu from '../components/MoreMenu'
 import PlaceSheet from '../components/PlaceSheet'
 import { removePhotoLocation, setPhotoLocation, type Place } from '../api/places'
 import { deletePhoto } from '../api/photos'
+import { getReviewerDemo } from '../api/reviewerDemo'
+import { syncChatScope } from '../lib/chatStore'
 
 // 시안 지도 그림(840×860) 크기. 그림 속 도시 위치(안동·구미·대구·포항·경주)에 맞춰 좌표 → 픽셀 식을 구했다
 const MAP_W = 840
@@ -720,9 +722,23 @@ function RecordMapPage() {
     : []
 
   useEffect(() => {
-    getMyRecordMap()
-      .then((next) => { setPins(next); setVisiblePins(next) })
-      .catch(() => setError(true))
+    let sequence = 0
+    const load = () => {
+      const current = ++sequence
+      void getReviewerDemo().then((demo) => {
+        if (current !== sequence) return
+        syncChatScope(demo.enabled ? demo.hostRoomId ?? 'REAL' : 'REAL')
+        return getMyRecordMap()
+      }).then((next) => {
+        if (!next || current !== sequence) return
+        setOpenCity(null); setOpenPlace(undefined); setRoomId(ALL_ROOMS); setDetailCenter(null)
+        setPins(next); setVisiblePins(next); setError(false)
+      }).catch(() => { if (current === sequence) { setPins(null); setVisiblePins(null); setOpenCity(null); setError(true) } })
+    }
+    load()
+    const visible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', visible)
+    return () => { sequence++; document.removeEventListener('visibilitychange', visible) }
   }, [])
 
   // 내 사진의 장소를 바꾸거나 지우면 시트를 닫고 지도를 다시 불러온다

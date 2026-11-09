@@ -11,11 +11,12 @@ import { formatDateSpaced } from '../lib/date'
 import { logout } from '../lib/auth'
 import { coverSrc } from '../api/roomCovers'
 import { getRoomPlaceCover } from '../lib/roomExtras'
-import { getRoomSession, listSavedRoomIds, saveRoomSession } from '../lib/session'
+import { getRoomSession, listSavedRoomIds, removeRoomSession, saveRoomSession } from '../lib/session'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { paths } from '../routes/paths'
 import logo from '../assets/logo-scroll.webp'
-import { activateReviewerDemo, type ReviewerDemo } from '../api/reviewerDemo'
+import { getReviewerDemo, setReviewerDemoEnabled as updateReviewerDemo, type ReviewerDemo, type ReviewerDemoState } from '../api/reviewerDemo'
+import { resetChat, syncChatScope } from '../lib/chatStore'
 import { ViewablePhoto } from '../components/PhotoViewer'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
@@ -103,11 +104,10 @@ function RoomCard({ home, meta, reviewerDemo }: { home: RoomHome; meta: string; 
   const cover = coverSrc(room.coverImageUrl) ?? getRoomPlaceCover(room.id).coverPhoto
   return (
     <li>
-      {reviewerDemo && <p className="mb-1.5 ml-3 text-[10px] font-semibold text-sub">데모용</p>}
       <Link
         to={paths.roomHome(room.id)}
         state={reviewerDemo ? { reviewerDemo } : undefined}
-        className="relative flex gap-[7px] rounded-[20px] border border-line bg-surface px-3 pt-[14px] pb-[13px] active:opacity-80"
+        className={`relative flex gap-[7px] bg-surface px-3 pt-[14px] pb-[13px] active:opacity-80 ${reviewerDemo ? '' : 'rounded-[20px] border border-line'}`}
       >
         {/* 안 읽은 방 알림 (친구의 플랜 요청·질문 등). 완성된 방은 아래 "새 답가"로 따로 보여준다 */}
         {home.unreadCount > 0 && room.status !== 'GROWING' && (
@@ -160,41 +160,69 @@ function RoomListPage() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [ongoingVisible, setOngoingVisible] = useState(ROOM_PAGE_SIZE)
   const [doneVisible, setDoneVisible] = useState(ROOM_PAGE_SIZE)
-  const [reviewerDemoEnabled, setReviewerDemoEnabled] = useState(() => {
-    try { return sessionStorage.getItem('duruduru:reviewer-demo-enabled') === 'true' } catch { return false }
-  })
-  const toggleReviewerDemo = () => {
-    const next = !reviewerDemoEnabled
-    setReviewerDemoEnabled(next)
-    try { sessionStorage.setItem('duruduru:reviewer-demo-enabled', String(next)) } catch { /* 저장소 없이도 화면 전환은 유지 */ }
-  }
+  const [reviewerDemoEnabled, setReviewerDemoEnabled] = useState(false)
+  const [demoBusy, setDemoBusy] = useState(true)
+  const changingDemo = useRef(false)
+  const demoSequence = useRef(0)
+  const lastDemoScope = useRef<string | null>(null)
+  const [listVersion, setListVersion] = useState(0)
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
   // 상점(크레딧 구매)에서 돌아오면 챗봇을 다시 열어 이어서 물어볼 수 있게 한다
   const location = useLocation()
-  const [demo, setDemo] = useState<ReviewerDemo | null>(() => (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo ?? null)
-  const activationRef = useRef<Promise<ReviewerDemo> | null>(demo ? Promise.resolve(demo) : null)
+  const [chatOpen, setChatOpen] = useState(() => Boolean((location.state as { openChat?: boolean } | null)?.openChat))
+  const [demo, setDemo] = useState<ReviewerDemo | null>(null)
   const [demoHomes, setDemoHomes] = useState<RoomHome[]>([])
   const [demoError, setDemoError] = useState('')
   const [demoRetry, setDemoRetry] = useState(0)
+  const applyDemo = async (state: ReviewerDemoState, sequence: number) => {
+    if (sequence !== demoSequence.current) return
+    const scope = state.enabled ? state.hostRoomId : 'REAL'
+    syncChatScope(scope ?? 'REAL')
+    if (lastDemoScope.current !== null && lastDemoScope.current !== scope) {
+      setChatOpen(false)
+      setListVersion((value) => value + 1)
+    }
+    lastDemoScope.current = scope
+    setReviewerDemoEnabled(state.enabled)
+    setDemoError('')
+    if (!state.enabled) { setDemo(null); setDemoHomes([]); return }
+    if (!state.hostRoomId || !state.memberRoomId || !state.completedRoomId) throw new Error('데모 방 정보를 확인하지 못했어요.')
+    setDemo({ hostRoomId: state.hostRoomId, memberRoomId: state.memberRoomId, completedRoomId: state.completedRoomId })
+    const loaded = await Promise.all([state.hostRoomId, state.memberRoomId, state.completedRoomId].map((id) => getRoomHome(id, '')))
+    if (sequence === demoSequence.current) setDemoHomes(loaded)
+  }
+  const toggleReviewerDemo = async () => {
+    if (changingDemo.current || demoBusy) return
+    changingDemo.current = true
+    setDemoBusy(true)
+    const sequence = ++demoSequence.current
+    try {
+      const state = await updateReviewerDemo(!reviewerDemoEnabled)
+      if (!state.enabled && demo) [demo.hostRoomId, demo.memberRoomId, demo.completedRoomId].forEach(removeRoomSession)
+      resetChat()
+      setChatOpen(false)
+      setDemoHomes([])
+      setListVersion((value) => value + 1)
+      navigate(paths.roomList(), { replace: true, state: null })
+      await applyDemo(state, sequence)
+    } catch (cause) { setDemoError(cause instanceof Error ? cause.message : '데모 상태를 바꾸지 못했어요.') }
+    finally { changingDemo.current = false; setDemoBusy(false) }
+  }
   useEffect(() => {
-    if (!reviewerDemoEnabled) return
     let cancelled = false
-    activationRef.current ??= activateReviewerDemo()
-    activationRef.current.then(async (rooms) => {
-      const loaded = await Promise.all([rooms.hostRoomId, rooms.memberRoomId, rooms.completedRoomId].map((id) => getRoomHome(id, '')))
-      if (cancelled) return
-      setDemo(rooms)
-      setDemoHomes(loaded)
-      setDemoError('')
-    }).catch((cause: unknown) => {
-      if (cancelled) return
-      activationRef.current = null
-      setDemoError(cause instanceof Error ? cause.message : '데모 방을 불러오지 못했어요. 다시 시도해 주세요.')
-    })
-    return () => { cancelled = true }
-  }, [reviewerDemoEnabled, demoRetry])
-  const [chatOpen, setChatOpen] = useState(() => Boolean((location.state as { openChat?: boolean } | null)?.openChat))
-
+    const load = () => {
+      if (changingDemo.current) return
+      const sequence = ++demoSequence.current
+      void getReviewerDemo().then((state) => { if (!cancelled) return applyDemo(state, sequence) }).catch((cause: unknown) => {
+        if (!cancelled && sequence === demoSequence.current) setDemoError(cause instanceof Error ? cause.message : '데모 상태를 불러오지 못했어요.')
+      }).finally(() => { if (!cancelled && sequence === demoSequence.current) setDemoBusy(false) })
+    }
+    load()
+    const visible = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', visible)
+    return () => { cancelled = true; document.removeEventListener('visibilitychange', visible) }
+    // 상태 조회는 진입·복귀·재시도 때만 수행한다. 스위치 변경은 PUT 성공 결과를 적용한다.
+  }, [demoRetry])
   useEffect(() => {
     // 로그인한 계정의 방 목록을 받아 방마다 홈 정보를 불러온다. 지워졌거나 더 들어갈 수 없는 방은 뺀다
     // (mock 모드에서는 계정이 없어서 이 기기에 저장된 방 목록을 쓴다)
@@ -216,7 +244,7 @@ function RoomListPage() {
     }
     document.addEventListener('visibilitychange', handleVisible)
     return () => document.removeEventListener('visibilitychange', handleVisible)
-  }, [])
+  }, [listVersion])
 
   // 실시간 이벤트가 온 방 하나만 다시 불러와 목록에서 바꿔 끼운다
   const refreshRoom = (roomId: string) => {
@@ -285,22 +313,24 @@ function RoomListPage() {
 
         <div className="mt-[clamp(28px,6dvh,48px)] flex flex-wrap items-center justify-between gap-3 px-1.5">
           <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
-          <button type="button" role="switch" aria-checked={reviewerDemoEnabled} aria-label="심사용 데모" onClick={toggleReviewerDemo} className="flex min-h-11 items-center gap-2 text-[12px] text-sub">
+          <button type="button" role="switch" aria-checked={reviewerDemoEnabled} aria-label="심사용 데모" aria-busy={demoBusy} disabled={demoBusy} onClick={() => void toggleReviewerDemo()} className="flex min-h-11 items-center gap-2 text-[12px] text-sub disabled:opacity-50">
             심사용 데모
             <span aria-hidden="true" className={`relative h-6 w-10 rounded-full transition-colors ${reviewerDemoEnabled ? 'bg-point' : 'bg-muted'}`}><span className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${reviewerDemoEnabled ? 'translate-x-4' : ''}`} /></span>
             <span className="w-6 text-[10px] font-semibold">{reviewerDemoEnabled ? 'ON' : 'OFF'}</span>
           </button>
         </div>
-        <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-point/25 bg-surface px-4 text-[13px] font-semibold text-point transition-colors active:bg-point/5">
+        {reviewerDemoEnabled && <p className="mt-1 px-1.5 text-[10px] leading-4 text-sub">OFF로 바꾸면 데모 방과 체험 중 남긴 기록·대화가 삭제돼요.</p>}
+        <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface active:opacity-80">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           새 모임방 만들기
         </button>
-        {reviewerDemoEnabled && demoHomes.length === 0 && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
+        {(demoError || (reviewerDemoEnabled && demoHomes.length === 0)) && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
           <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
           {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}
         </div>}
         {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
-          <ul className="flex flex-col gap-[11px]">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
+          <h2 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 모임방</h2>
+          <ul className="overflow-hidden rounded-[20px] border border-line bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
         </section>}
         {regularHomes.length === 0 && !reviewerDemoEnabled ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
@@ -344,7 +374,8 @@ function RoomListPage() {
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
-              <ul className="flex flex-col gap-[11px]">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
+              <h3 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 두루마리</h3>
+              <ul className="overflow-hidden rounded-[20px] border border-line bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
             </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
               {done.slice(0, doneVisible).map((h) => (

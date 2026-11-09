@@ -1,51 +1,7 @@
-import { useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
-import { activateReviewerDemo, type ReviewerDemo } from '../api/reviewerDemo'
-import Button from '../components/Button'
-import Flower from '../components/Flower'
+﻿import { Navigate } from 'react-router'
 import { paths } from '../routes/paths'
 
-export default function ReviewerDemoPage({ embedded = false }: { embedded?: boolean }) {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [demo, setDemo] = useState<ReviewerDemo | null>(() => (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo ?? null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const pending = useRef(false)
-
-  async function activate() {
-    if (pending.current) return
-    pending.current = true
-    setBusy(true)
-    setError('')
-    try {
-      const rooms = await activateReviewerDemo()
-      setDemo(rooms)
-      navigate(embedded ? paths.roomList() : paths.reviewerDemo(), { replace: true, state: { reviewerDemo: rooms } })
-    }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '체험 방을 준비하지 못했어요. 다시 시도해 주세요.') }
-    finally { pending.current = false; setBusy(false) }
-  }
-
-  const Container = embedded ? 'section' : 'main'
-  return <Container className={embedded ? 'mt-6 flex flex-col text-ink' : 'flex min-h-dvh flex-col bg-bg px-6 py-8 text-ink'}>
-    {!embedded && <Link to={paths.roomList()} className="self-start text-sm text-sub">‹ 내 모임방</Link>}
-    {!embedded && <div className="mt-12"><Flower code="AZALEA" size={48} /></div>}
-    {embedded ? <h2 className="text-lg font-bold">두루두루 체험하기</h2> : <h1 className="mt-6 text-2xl font-bold">두루두루 체험하기</h1>}
-    <p className="mt-3 text-sm leading-relaxed text-sub">사진과 이야기가 담긴 예시 방에서<br />방장과 친구의 입장을 체험하고, 완성된 두루마리를 펼쳐 보세요.</p>
-    {!demo && <>
-      <p className="mt-6 text-sm text-sub">내 계정에 체험 방 3개가 추가돼요. 다시 시작해도 같은 방을 이어서 볼 수 있어요.</p>
-      <Button className="mt-6 w-full" disabled={busy} onClick={() => void activate()}>{busy ? '체험 방을 준비하고 있어요…' : '체험 방 열기'}</Button>
-    </>}
-    {error && <p className="mt-4 text-sm text-point" role="alert">{error}</p>}
-    {demo && <nav className="mt-8 flex flex-col gap-3" aria-label="심사용 체험 방">
-      {[
-        { title: '방장으로 체험하기', detail: '경주 가을 산책 · 사진과 이야기 모으기', to: paths.roomHome(demo.hostRoomId) },
-        { title: '친구로 체험하기', detail: '포항 바다의 밤 · 친구 사진에 이야기 보태기', to: paths.roomHome(demo.memberRoomId) },
-        { title: '완성된 두루마리 보기', detail: '안동 하루 여행 · 함께 엮인 기억 펼치기', to: paths.roomWeaving(demo.completedRoomId) },
-      ].map(({ title, detail, to }) => <Link key={to} to={to} state={{ reviewerDemo: demo }} className="rounded-2xl border border-line bg-surface p-5">
-        <span className="block font-semibold">{title} →</span><span className="mt-2 block text-sm text-sub">{detail}</span>
-      </Link>)}
-    </nav>}
-  </Container>
+/** 기존 데모 링크도 계정 상태를 조회하는 모임방 목록으로 연결한다. */
+export default function ReviewerDemoPage() {
+  return <Navigate to={paths.roomList()} replace />
 }

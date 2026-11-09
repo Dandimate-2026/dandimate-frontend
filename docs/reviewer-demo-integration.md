@@ -1,22 +1,19 @@
-# 심사용 데모 연동
+﻿# 심사용 데모 계정 상태 연동
 
-- 진입: `/reviewer-demo`. 로그인 화면과 내 모임방의 ‘심사용 데모 체험하기’ 링크로 접근한다.
-- 카카오 로그인 후 ‘체험 방 열기’를 눌러 `POST /api/v1/reviewer-demo/activate`를 호출한다. 기존 클라이언트의 세션 쿠키와 CSRF 처리를 사용한다.
-- 응답의 `hostRoomId`, `memberRoomId`는 방 홈으로, `completedRoomId`는 두루마리 화면으로 연결한다.
-- 백엔드는 로그인 계정별 방 3개를 생성하고, 재요청 시 기존 방을 반환한다. 페이지 진입만으로 활성화 요청을 보내지 않는다.
-- 서버의 `app.reviewer-demo.enabled`가 꺼져 있으면 403 오류 메시지를 표시한다. 프런트에서 권한이나 샘플 데이터를 대체하지 않는다.
+백엔드 main `a683e52`의 ReviewerDemo API와 공개 명세를 기준으로 연동합니다.
 
-## 확인한 계약
-
-공개 OpenAPI에는 아직 심사용 엔드포인트가 없어 백엔드 main의 다음 소스를 기준으로 연결했다.
-
-- [ReviewerDemoController](https://github.com/Dandimate-2026/dandimate-backend/blob/main/src/main/java/com/dandimate/durooduroo/reviewerdemo/controller/ReviewerDemoController.java)
-- [ReviewerDemoView](https://github.com/Dandimate-2026/dandimate-backend/blob/main/src/main/java/com/dandimate/durooduroo/reviewerdemo/dto/ReviewerDemoView.java)
-- [ReviewerDemoService](https://github.com/Dandimate-2026/dandimate-backend/blob/main/src/main/java/com/dandimate/durooduroo/reviewerdemo/service/ReviewerDemoService.java)
-- [ReviewerDemoFlowTest](https://github.com/Dandimate-2026/dandimate-backend/blob/main/src/test/java/com/dandimate/durooduroo/reviewerdemo/ReviewerDemoFlowTest.java)
+- `GET /api/v1/reviewer-demo`: 진입·탭 복귀 때 계정 상태를 조회합니다. 로컬 토글 값이나 탐색 상태로 방을 자동 생성하지 않습니다.
+- `PUT /api/v1/reviewer-demo`에 `{ enabled: true | false }`를 보냅니다. 세션 쿠키와 기존 CSRF 처리를 사용하며 요청 중 스위치를 잠급니다. 실패하면 기존 상태를 유지합니다.
+- ON 성공 응답의 세 방 ID로 홈을 조회해 기본 목록 카드로 표시합니다. 체험 카드 선택은 이동만 수행합니다.
+- OFF는 서버에서 데모 방·기록·벡터·알림·데모 대화를 삭제합니다. 실제 방과 확정 사용량·구매 크레딧은 유지됩니다. 스위치 아래에 삭제 동작을 안내합니다.
+- OFF 성공 시 데모 카드·저장된 방 세션·탐색 상태·화면 대화를 비우고 방 목록을 다시 조회합니다. 모드 변경 전 진행 중이던 대화 응답·오류는 폐기합니다.
+- 지도는 전역 캐시 없이 진입·탭 복귀 때 계정 상태와 지도를 다시 조회하고 선택한 도시·방 상태를 초기화합니다.
+- 다른 기기에서 바뀐 모드도 탭 복귀 시 반영합니다. 같은 모드의 재조회는 현재 대화를 유지합니다.
+- 예전 `/reviewer-demo` 링크는 방 목록으로 연결합니다. 예전 POST 활성화 별칭은 사용하지 않습니다.
 
 ## 검증
 
-TypeScript와 변경 파일 ESLint 통과. Chromium에서 API 응답을 가로채 로그인 리디렉션, 명시적 활성화, CSRF 헤더, 비활성화 오류와 재시도, 방 3개의 이동 경로 및 페이지 오류 없음을 확인했다.
-
-실제 로그인 계정으로 운영 서버에 방을 생성하는 검증은 수행하지 않았다. 백엔드 샘플 사진은 현재 1×1 PNG라 실제 여행 사진은 표시되지 않는다.
+- TypeScript 및 변경 파일 ESLint 통과
+- 대화 영역 변경 후 지연 응답·오류 폐기 회귀 테스트 2개 통과
+- Chromium 테스트 응답으로 GET 상태 복원, 로컬 플래그 무시, PUT 실패 시 상태 유지, ON/OFF 요청, OFF 대화 초기화, 새로고침 복원 확인
+- 실제 운영 계정에서 ON/OFF로 방을 생성·삭제하는 검증은 수행하지 않았습니다.
