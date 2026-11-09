@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { answerAskback, forgetAskback, getAskback, getNextAskback, passAskback, postponeAskback, transcribeAskback } from '../api/askbacks'
 import { ApiError } from '../api/client'
 import type { Askback, AskbackQueue } from '../api/types'
@@ -41,7 +42,7 @@ function closedMessage(err: unknown) {
 /** AI가 친구들의 이야기를 읽고 나에게만 묻는 질문에 답하는 화면 */
 function AskbackDetail() {
   const { roomId = '', askbackId = '' } = useParams()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const session = getRoomSession(roomId)
   const token = session?.memberAccessToken ?? ''
 

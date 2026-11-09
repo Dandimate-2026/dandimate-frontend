@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { updateRoom } from '../api/rooms'
 import type { RoomHome } from '../api/types'
@@ -69,6 +69,13 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
   const [now] = useState(() => Date.now())
   // 고르는 칸은 시트로 띄운다. 닫아도 고른 날짜·시간은 그대로 남아서 다시 열면 이어서 고를 수 있다
   const [sheet, setSheet] = useState(false)
+  const [options, setOptions] = useState(false)
+  useEffect(() => {
+    if (!options || saving) return
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !document.querySelector('dialog[open]')) setOptions(false) }
+    window.addEventListener('keydown', escape)
+    return () => window.removeEventListener('keydown', escape)
+  }, [options, saving])
   const { room, me } = home
 
   const open = room.status === 'COLLECTING' || room.status === 'CIRCULATING'
@@ -122,36 +129,43 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
     <>
       {/* 핑크 질문 카드·흰 할 일 카드와 겹치지 않게 연한 회색 */}
       <section className="mb-3 rounded-[20px] bg-[#ebe7e1] px-4 py-3.5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
         {decided ? (
           // 정한 뒤: 모두에게 엮는 시각을 알려 준다. 방장만 바꿀 수 있다
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span className="shrink-0 text-sub"><ClockIcon size={20} /></span>
             <div className="min-w-0">
               <p className="text-[11px] text-sub">두루마리 엮는 날</p>
-              <h2 className="mt-0.5 text-[14px] font-bold">{describe(decided)}에 엮어요</h2>
+              <h2 className="mt-0.5 text-[14px] font-bold leading-5 [overflow-wrap:anywhere]">{describe(decided)}에 엮어요</h2>
             </div>
           </div>
         ) : (
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold text-sub">방장에게만 보여요</p>
-            <h2 className="mt-0.5 text-[14px] font-bold">두루마리를 언제 엮을까요?</h2>
-            <p className="truncate text-[12px] text-sub">아직 안 정했어요</p>
+            <h2 className="mt-0.5 text-[14px] font-bold">두루마리 엮는 날</h2>
           </div>
         )}
         {isHost && (
           <button
             type="button"
-            onClick={openSheet}
+            onClick={() => { setError(null); setOptions(true) }}
             className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-semibold active:opacity-80 ${decided ? 'border border-ink/30 bg-surface text-ink' : 'bg-ink text-surface'}`}
           >
-            {!decided && <ClockIcon />}
-            {decided ? '바꾸기' : '정하기'}
+            엮기 설정
           </button>
         )}
         </div>
-        {isHost && <EarlyCloseButton home={home} token={token} />}
       </section>
+
+      {options && <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40" onClick={() => { if (!saving) setOptions(false) }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="weave-options-title" className="max-h-[85dvh] w-full max-w-[430px] overflow-y-auto rounded-t-[28px] bg-bg px-5 pt-4 pb-[max(24px,env(safe-area-inset-bottom))] text-ink" onClick={(event) => event.stopPropagation()}>
+          <header className="mb-4 flex items-center justify-between gap-3"><h2 id="weave-options-title" className="text-[18px] font-bold">두루마리 엮기 설정</h2><button type="button" disabled={saving} onClick={() => setOptions(false)} aria-label="닫기" className="flex size-10 shrink-0 items-center justify-center text-2xl text-sub">×</button></header>
+          <button type="button" onClick={() => { setOptions(false); openSheet() }} className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-4 text-left active:bg-bg">
+            <span className="min-w-0"><span className="block text-[14px] font-semibold">{decided ? '예약 날짜 바꾸기' : '날짜 정해서 엮기'}</span><span className="mt-1 block text-[12px] leading-5 text-sub">정한 날까지 기록을 모아 자동으로 엮어요</span></span><span className="shrink-0 text-sub" aria-hidden="true">›</span>
+          </button>
+          <EarlyCloseButton home={home} token={token} />
+        </section>
+      </div>}
 
       {sheet && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/40" onClick={() => setSheet(false)}>

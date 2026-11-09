@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router'
+import { useLocation, useParams } from 'react-router'
 import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
 import { MAX_PHOTOS } from '../api/photos'
@@ -149,7 +150,7 @@ function MemberProgress({ member, cards }: { member: Member; cards: CirculationC
 
 /** 방 이름(뒤로 가기), 상태, 마감까지 남은 시간 */
 function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathering: boolean; unreadCount: number }) {
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const location = useLocation()
   const reviewerDemo = (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo
   // 남은 시간은 화면을 연 시각 기준 (렌더 중에 시계를 읽지 않는다)
@@ -162,12 +163,12 @@ function RoomHeader({ room, gathering, unreadCount }: { room: RoomSummary; gathe
         <button
           type="button"
           onClick={() => navigate(paths.roomList(), { state: reviewerDemo ? { reviewerDemo } : null })}
-          className="flex items-center gap-2.5 text-[16px] font-bold"
+          className="flex min-w-0 flex-1 items-center gap-2.5 pr-2 text-left text-[16px] font-bold"
         >
           <ChevronLeftIcon />
-          {room.name}
+          <span className="truncate" title={room.name}>{room.name}</span>
         </button>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 안 읽음` : '알림'}
@@ -211,7 +212,7 @@ const SHARE_BUTTON_CLASS =
 
 /** 방이 열리고 친구들이 다 모이기 전: 초대 링크 공유와 내 첫 사진 올리기 */
 function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null }) {
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const { room, members, myTodo } = home
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '', home.room.name)
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
@@ -298,7 +299,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
 
 /** 내 할 일: 내 사진 더 올리기, 친구 사진에 이야기 붙이기 */
 function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] | null }) {
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const { room, me, members, myTodo } = home
   // 사진 한도는 플랜마다 다르다(1인 3/6/10장). 서버가 준 한도를 쓰고, 없으면 기본 3장으로 본다
   const maxPhotos = room.quota?.photosPerMember ?? MAX_PHOTOS
@@ -351,7 +352,7 @@ function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] 
 /** 모임방 홈: 방 상태, 핀 꽃, 받은 질문, 참여현황, 내 할 일 */
 function RoomHomePage() {
   const { roomId = '' } = useParams()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const session = getRoomSession(roomId)
   const [home, setHome] = useState<RoomHome | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -477,8 +478,8 @@ function RoomHomePage() {
           </ul>
           {/* 모두 100%면: 두루마리를 만들기에 충분해요 (엮기는 방장이 정한 시각에) */}
           {everyoneFull && !grown && room.status !== 'WEAVING' && (
-            <p className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-[#eef3e8] px-3 py-2 text-[12px] font-semibold text-[#4f6b3f]" role="status">
-              <span aria-hidden="true">✓</span> 모두 참여했어요. 두루마리를 만들기에 충분해요
+            <p className="mt-2.5 flex items-start gap-2 rounded-2xl bg-surface px-3 py-3 text-[12px] leading-5 text-sub" role="status">
+              <span className="mt-0.5 shrink-0" aria-hidden="true"><Flower code={hostFlower} size={18} /></span><span className="font-semibold text-ink">모두 참여했어요. 두루마리를 만들기에 충분해요</span>
             </p>
           )}
         </section>

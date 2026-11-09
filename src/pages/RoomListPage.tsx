@@ -44,12 +44,15 @@ const PLAN_CLASS: Record<RoomPlanType, string> = {
 const MAX_LIVE_ROOMS = 5
 const ROOM_PAGE_SIZE = 3
 
-function RoomListControls({ total, visible, onMore, onCollapse, label }: { total: number; visible: number; onMore: () => void; onCollapse: () => void; label: string }) {
-  if (total <= ROOM_PAGE_SIZE) return null
-  return <div className="mt-2 flex items-center justify-center gap-6">
-    {visible < total && <button type="button" onClick={onMore} aria-label={`${label} 더 보기`} className="flex min-h-11 items-center gap-2 px-3 text-[12px] font-medium text-sub active:opacity-60">더 보기<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
-    {visible > ROOM_PAGE_SIZE && <button type="button" onClick={onCollapse} aria-label={`${label} 접기`} className="flex min-h-11 items-center gap-2 px-3 text-[12px] font-medium text-sub active:opacity-60">접기<svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 10 4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
-  </div>
+function RoomListContinuation({ total, visible, onMore }: { total: number; visible: number; onMore: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!ref.current || visible >= total) return
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { observer.disconnect(); onMore() } }, { rootMargin: '80px' })
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [total, visible, onMore])
+  return visible < total ? <div ref={ref} className="h-8" aria-hidden="true" /> : null
 }
 
 /** 화면에 그리지 않고, 방 하나의 실시간 이벤트(알림·방장 변경·사진 등)를 받으면 그 방만 다시 불러오게 한다 */
@@ -106,7 +109,7 @@ function RoomCard({ home, meta, reviewerDemo }: { home: RoomHome; meta: string; 
     <li>
       <Link
         to={paths.roomHome(room.id)}
-        state={reviewerDemo ? { reviewerDemo } : undefined}
+        state={{ ...(reviewerDemo ? { reviewerDemo } : {}), returnTargets: { [paths.roomList()]: window.history.state?.idx } }}
         className={`relative flex gap-[7px] bg-surface px-3 pt-[14px] pb-[13px] active:opacity-80 ${reviewerDemo ? '' : 'rounded-[20px] border border-line'}`}
       >
         {/* 안 읽은 방 알림 (친구의 플랜 요청·질문 등). 완성된 방은 아래 "새 답가"로 따로 보여준다 */}
@@ -138,15 +141,15 @@ function RoomCard({ home, meta, reviewerDemo }: { home: RoomHome; meta: string; 
               {PLAN_LABEL[room.planType ?? 'FREE']}
             </span>
             {/* 이 방에서 내가 누구인지: 내 꽃 · 닉네임 · 방장 여부 */}
-            <span className="flex items-center gap-1 text-[10px] text-sub">
+            <span className="flex min-w-0 items-center gap-1 text-[10px] text-sub">
               <Flower code={home.me.flowerCode} size={14} />
-              {home.me.nickname}
-              {home.me.role === 'HOST' && <span className="font-semibold text-point">· 방장</span>}
+              <span className="min-w-0 truncate" title={home.me.nickname}>{home.me.nickname}</span>
+              {home.me.role === 'HOST' && <span className="shrink-0 font-semibold text-point">· 방장</span>}
             </span>
           </div>
-          <p className="mt-[5px] truncate text-[16px] leading-5 font-semibold">{room.name}</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-sub">{meta}</p>
-          {line && <p className={`mt-[3px] text-[11px] leading-4 ${line.todo ? 'text-point' : 'text-sub'}`}>{line.text}</p>}
+          <p className="mt-[5px] truncate text-[16px] leading-5 font-semibold" title={room.name}>{room.name}</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-sub [overflow-wrap:anywhere]">{meta}</p>
+          {line && <p className={`mt-[3px] text-[11px] leading-4 [overflow-wrap:anywhere] ${line.todo ? 'text-point' : 'text-sub'}`}>{line.text}</p>}
         </div>
       </Link>
     </li>
@@ -160,6 +163,7 @@ function RoomListPage() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [ongoingVisible, setOngoingVisible] = useState(ROOM_PAGE_SIZE)
   const [doneVisible, setDoneVisible] = useState(ROOM_PAGE_SIZE)
+  const [roomQuery, setRoomQuery] = useState('')
   const [reviewerDemoEnabled, setReviewerDemoEnabled] = useState(false)
   const [demoBusy, setDemoBusy] = useState(true)
   const changingDemo = useRef(false)
@@ -272,14 +276,15 @@ function RoomListPage() {
   const regularHomes = homes.filter((home) => !demoIds.has(home.room.id) && !home.room.name.startsWith('[심사용]'))
   const demoOngoing = demoHomes.filter((home) => home.room.status !== 'GROWING')
   const demoDone = demoHomes.filter((home) => home.room.status === 'GROWING')
-  const ongoing = regularHomes
+  const matchingHomes = regularHomes.filter((home) => home.room.name.toLocaleLowerCase().includes(roomQuery.trim().toLocaleLowerCase()))
+  const ongoing = matchingHomes
     .filter((h) => h.room.status !== 'GROWING')
     .sort(
       (a, b) =>
         Number(hasTodo(b)) - Number(hasTodo(a)) ||
         (a.room.deadlineAt ? new Date(a.room.deadlineAt).getTime() : Infinity) - (b.room.deadlineAt ? new Date(b.room.deadlineAt).getTime() : Infinity),
     )
-  const done = regularHomes
+  const done = matchingHomes
     .filter((h) => h.room.status === 'GROWING')
     .sort((a, b) => (b.room.meetingDate ?? '').localeCompare(a.room.meetingDate ?? ''))
 
@@ -305,7 +310,9 @@ function RoomListPage() {
               disabled={loggingOut}
               className="flex min-h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[12px] font-medium text-ink active:bg-line/40 disabled:opacity-50"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4H5v16h4M13 8l4 4-4 4M9 12h11" /></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
+                <path d="M9 5H5v14h4M9 12h12m-4-4 4 4-4 4" />
+              </svg>
               {loggingOut ? '로그아웃 중…' : '로그아웃'}
             </button>
           </div>
@@ -330,8 +337,16 @@ function RoomListPage() {
         </div>}
         {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
           <h2 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 모임방</h2>
-          <ul className="overflow-hidden rounded-[20px] border border-line bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
+          <ul className="overflow-hidden rounded-[20px] border-2 border-ink/35 bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
         </section>}
+        {regularHomes.length > 3 && <div className="relative mt-5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sub" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m16 16 4.5 4.5" />
+          </svg>
+          <input type="search" aria-label="내 모임방 검색" placeholder="모임방 이름으로 찾기" value={roomQuery} onChange={(event) => { setRoomQuery(event.target.value); setOngoingVisible(ROOM_PAGE_SIZE); setDoneVisible(ROOM_PAGE_SIZE) }} className="h-11 w-full rounded-2xl border border-line bg-surface pr-4 pl-11 text-[13px] outline-none focus:border-ink/40" />
+        </div>}
+        {roomQuery && matchingHomes.length === 0 && <p className="px-2 py-6 text-center text-[13px] text-sub">일치하는 모임방이 없어요.</p>}
         {regularHomes.length === 0 && !reviewerDemoEnabled ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
           <section className="px-1.5">
@@ -366,7 +381,7 @@ function RoomListPage() {
               ))}
             </ul>
           )}
-          <RoomListControls total={ongoing.length} visible={ongoingVisible} label="진행 중인 방" onMore={() => setOngoingVisible((count) => count + ROOM_PAGE_SIZE)} onCollapse={() => setOngoingVisible(ROOM_PAGE_SIZE)} />
+          <RoomListContinuation total={ongoing.length} visible={ongoingVisible} onMore={() => setOngoingVisible((count) => count + ROOM_PAGE_SIZE)} />
         </section>
         )}
 
@@ -375,14 +390,14 @@ function RoomListPage() {
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
               <h3 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 두루마리</h3>
-              <ul className="overflow-hidden rounded-[20px] border border-line bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
+              <ul className="overflow-hidden rounded-[20px] border-2 border-ink/35 bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
             </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
               {done.slice(0, doneVisible).map((h) => (
                 <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} />
               ))}
             </ul>
-            <RoomListControls total={done.length} visible={doneVisible} label="완성된 두루마리" onMore={() => setDoneVisible((count) => count + ROOM_PAGE_SIZE)} onCollapse={() => setDoneVisible(ROOM_PAGE_SIZE)} />
+            <RoomListContinuation total={done.length} visible={doneVisible} onMore={() => setDoneVisible((count) => count + ROOM_PAGE_SIZE)} />
           </section>
         )}
       </div>

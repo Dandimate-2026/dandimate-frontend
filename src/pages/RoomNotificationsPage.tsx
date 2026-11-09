@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { getNotifications, markNotificationRead } from '../api/notifications'
 import type { NotificationType, RoomNotification } from '../api/types'
 import { timeAgo } from '../lib/date'
@@ -36,7 +37,7 @@ const PLAN_REQUEST_DETAIL: Record<string, string> = {
 /** 모임방 알림: 받은 질문, 두루마리 완성, 답가 반영 */
 function RoomNotificationsPage() {
   const { roomId = '' } = useParams()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const session = getRoomSession(roomId)
   const [items, setItems] = useState<RoomNotification[] | null>(null)
   const [error, setError] = useState<string | null>(null)

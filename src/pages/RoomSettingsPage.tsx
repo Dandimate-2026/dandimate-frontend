@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { USE_MOCK } from '../api/mock'
 import {
@@ -324,7 +325,7 @@ type ConfirmTarget = 'leave' | 'deleteRoom' | { transferTo: Member } | { kick: M
 /** 모임방 설정: 모임 정보, 초대 링크, 함께하는 사람, 약관, 나가기 */
 function RoomSettingsPage() {
   const { roomId = '' } = useParams()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const session = getRoomSession(roomId)
   const [home, setHome] = useState<RoomHome | null>(null)
   const [error, setError] = useState<string | null>(null)

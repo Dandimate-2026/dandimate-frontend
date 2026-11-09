@@ -99,6 +99,7 @@ test('알림 목록을 연 상태에서도 실시간 구독을 시작한다', as
   const dependencies = {
     react, 'react/jsx-runtime': { jsx: () => null, jsxs: () => null },
     'react-router': { useNavigate: () => () => {}, useParams: () => ({ roomId: 'test' }) },
+    '../hooks/useAppNavigate': { useAppNavigate: () => () => {} },
     '../api/notifications': { getNotifications: async () => { queries++; return [] } },
     '../lib/session': { getRoomSession: () => ({ memberAccessToken: '' }) },
     '../hooks/useRoomLiveUpdates': { useRoomLiveUpdates: () => subscriptions++ },

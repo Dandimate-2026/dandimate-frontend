@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 export function PhotoViewer({ src, alt = '', onClose }: { src: string; alt?: string; onClose: () => void }) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') { e.stopPropagation(); onClose() }
     }
     document.addEventListener('keydown', onKeyDown)
     // 보는 동안 뒤 화면이 스크롤되지 않게 막는다
