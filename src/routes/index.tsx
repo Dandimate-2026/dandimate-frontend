@@ -1,3 +1,4 @@
+import AccountPage from '../pages/AccountPage'
 import { Route, Routes } from 'react-router'
 import AskbackPage from '../pages/AskbackPage'
 import RoomAskbacksPage from '../pages/RoomAskbacksPage'
@@ -35,6 +36,8 @@ function AppRoutes() {
       <Route path={paths.privacy()} element={<PolicyPage kind="privacy" />} />
       {/* 아래 화면은 모두 로그인이 필요하다. 초대 링크로 들어온 친구도 로그인한 뒤 입장 화면으로 돌아온다 */}
       <Route element={<RequireLogin />}>
+        <Route path={paths.notifications()} element={<RoomNotificationsPage />} />
+        <Route path={paths.account()} element={<AccountPage />} />
         <Route path={paths.reviewerDemo()} element={<ReviewerDemoPage />} />
         {/* 내 모임방 목록 */}
         <Route path={paths.roomList()} element={<RoomListPage />} />

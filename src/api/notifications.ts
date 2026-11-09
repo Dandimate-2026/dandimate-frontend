@@ -1,5 +1,5 @@
 import { request } from './client'
-import { mockNotifications, USE_MOCK } from './mock'
+import { mockNotifications, mockRoomHome, USE_MOCK } from './mock'
 import type { EventToken, RoomNotification } from './types'
 
 /** 이 방에서 나에게 온 알림 목록 */
@@ -20,6 +20,6 @@ export function issueEventToken(roomId: string, token: string) {
 
 /** 참여 중인 모든 모임방의 알림. */
 export function getAllNotifications() {
-  if (USE_MOCK) return Promise.resolve(mockNotifications)
+  if (USE_MOCK) return Promise.resolve(mockNotifications.map(item => ({ ...item, roomId: mockRoomHome.room.id, roomName: mockRoomHome.room.name })))
   return request<(RoomNotification & { roomId: string; roomName: string })[]>('/notifications')
 }

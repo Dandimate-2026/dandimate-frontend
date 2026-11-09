@@ -55,3 +55,19 @@ export async function saveRecordingDraft(roomId: string, id: string, recording?:
   const items = await readPhotoDraft(roomId)
   await savePhotoDraft(roomId, items.map(item => item.id === id ? { ...item, recording } : item))
 }
+
+/** Remove only this account's cached files after account deletion succeeds. */
+export async function clearAccountPhotoDrafts(userId: string) {
+  const prefix = `${userId}:`
+  for (const key of memory.keys()) if (key.startsWith(prefix)) memory.delete(key)
+  try {
+    const db = await open()
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction('rooms', 'readwrite')
+      const cursor = transaction.objectStore('rooms').openCursor()
+      cursor.onsuccess = () => { const item = cursor.result; if (!item) return; if (String(item.key).startsWith(prefix)) item.delete(); item.continue() }
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+    })
+  } catch { /* A blocked local database must not prevent logout after successful deletion. */ }
+}
