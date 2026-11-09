@@ -17,12 +17,11 @@ import type { DownloadResult } from './scrollDownload'
 import type { ReweaveResult } from './types'
 import { siteUrl } from '../../lib/siteUrl'
 
-export default function LiveScrollPage({ scroll, home, token, onBack, onReply, onRefresh, onDeleteReply, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion, onAddStory }: {
+export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh, onDeleteReply, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion }: {
   scroll: Scroll
   home: RoomHome
   token: string
   onBack: () => void
-  onReply: (paragraph: ScrollParagraph) => void
   onRefresh: () => Promise<void>
   onDeleteReply?: (replyId: string) => Promise<void>
   onReweave?: (paragraph: ScrollParagraph) => void
@@ -32,12 +31,12 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   reweaveResult?: ReweaveResult
   completionMessage?: string
   onDismissCompletion?: () => void
-  onAddStory?: () => void
 }) {
   const [liked, setLiked] = useState<Record<string, boolean>>({})
   const [ratings, setRatings] = useState<Record<string, number>>({})
   const [ratingRetry, setRatingRetry] = useState<{ score: number; paragraphs: ScrollParagraph[] } | null>(null)
   const [ratingError, setRatingError] = useState('')
+  const [reweavePicker, setReweavePicker] = useState(false)
   const ratingSaving = useRef(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -65,7 +64,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
   const storyCount = new Set(scroll.paragraphs.flatMap((paragraph) => paragraph.sources.map((source) => source.entryId))).size
   useEffect(() => {
     if (!notice) return
-    const timer = window.setTimeout(() => setNotice(''), 4500)
+    const timer = window.setTimeout(() => setNotice(''), 12_000)
     return () => window.clearTimeout(timer)
   }, [notice])
 
@@ -94,7 +93,8 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     finally { setBusy(null) }
   }
 
-  const unratedParagraphs = scroll.paragraphs.filter((paragraph) => ratingOf(paragraph) === undefined)
+  const scores = scroll.paragraphs.map(ratingOf)
+  const selectedRating = ratingRetry?.score ?? (scores.length > 0 && scores.every((score) => score === scores[0]) ? scores[0] : undefined)
   const reweaveTargets = scroll.paragraphs.filter((paragraph) => {
     const score = ratingOf(paragraph)
     return score !== undefined && score <= 2
@@ -106,7 +106,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
     setBusy('scroll-rating'); setRatingError('')
     try {
       const targets = ratingRetry ? ratingRetry.paragraphs.filter((target) =>
-        scroll.paragraphs.some((paragraph) => paragraph.id === target.id && paragraph.version === target.version)) : unratedParagraphs
+        scroll.paragraphs.some((paragraph) => paragraph.id === target.id && paragraph.version === target.version)) : scroll.paragraphs.filter((paragraph) => ratingOf(paragraph) !== score)
       const savedScore = ratingRetry?.score ?? score
       const results = await Promise.allSettled(targets.map(async (paragraph) => {
         await rateParagraph(paragraph.id, token, savedScore)
@@ -115,16 +115,15 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       }))
       const failed = targets.filter((_, index) => results[index].status === 'rejected')
       setRatingRetry(failed.length ? { score: savedScore, paragraphs: failed } : null)
-      // 다 평가하면 평가 카드만 사라진다 (감사 문구는 띄우지 않는다)
       if (failed.length) setRatingError('일부 평가를 저장하지 못했어요. 다시 시도해 주세요.')
     } finally { ratingSaving.current = false; setBusy(null) }
   }
 
   async function shareDownload() {
     const saved = savedDownload.current
-    const file = saved ? new File([saved.blob], saved.name, { type: saved.blob.type }) : undefined
+    const files = saved ? (saved.files ?? [saved]).map((file) => new File([file.blob], file.name, { type: file.blob.type })) : []
     try {
-      if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ title: home.room.name, files: [file] })
+      if (files.length && navigator.canShare?.({ files })) await navigator.share({ title: home.room.name, files })
       else if (navigator.share) await navigator.share({ title: home.room.name, text: '함께 모은 기억을 확인해 주세요.', url: shareUrl })
       else if (navigator.clipboard) { await navigator.clipboard.writeText(shareUrl); setNotice('공유 링크를 복사했어요') }
       else setError('이 브라우저에서는 공유를 사용할 수 없어요. 주소를 복사해 주세요.')
@@ -160,8 +159,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       {/* 이 문단에 남은 답가 (서버가 오래된 순으로 준다) */}
       {paragraph.replies && paragraph.replies.length > 0 && <ul className="scroll-replies">{paragraph.replies.map((reply) => <li key={reply.id}><strong>{reply.mine ? '나' : reply.nickname}</strong> “{reply.transcript}” {reply.mine && onDeleteReply && <button type="button" disabled={busy !== null || Boolean(pendingParagraphId)} className="memory-text-link" onClick={() => setDeleteTarget(reply.id)}>삭제</button>}</li>)}</ul>}
       <div className="memory-chapter-actions">
-        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>아 맞다 ! <strong>{paragraph.ahMatdaCount}</strong></button>
-        <button type="button" className="memory-reply" disabled={Boolean(pendingParagraphId)} onClick={() => onReply(paragraph)}>답가 남기기 {paragraph.replyCount > 0 && `· ${paragraph.replyCount}`}</button>
+        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>나도 이렇게 기억해요 <strong>{paragraph.ahMatdaCount}</strong></button>
         <button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button>
         {onReweave && !pendingParagraphId && <span className="scroll-paragraph-more"><MoreMenu label="문단 더 보기" items={[{
           label: '다시 엮기',
@@ -185,31 +183,31 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onReply, o
       <div className="scroll-end-flowers" aria-hidden="true"><MemoryFlower color="pink" size={25} /><MemoryFlower color="blue" size={25} /><MemoryFlower color="orange" size={25} /></div>
       <h2>두루마리를 끝까지 읽었어요</h2><p>사진 {scroll.paragraphs.length}장 · 이야기 {storyCount}개가 엮였어요</p>
     </footer>}
-    {(unratedParagraphs.length > 0 || ratingRetry) && <MemoryCard className="memory-rating scroll-bottom-rating">
+    {scroll.paragraphs.length > 0 && <MemoryCard className="memory-rating scroll-bottom-rating">
       <h2>AI가 내 이야기를 잘 옮겼나요?</h2>
       <p>두루마리의 문단 {scroll.paragraphs.length}개 기준이에요</p>
       <fieldset><legend className="sr-only">두루마리 평가</legend>
-          <div className="memory-rating-options">{[1, 2, 3, 4, 5].map((score) => <label key={score}><input type="radio" name="scroll-rating" value={score} checked={ratingRetry?.score === score} disabled={busy !== null || Boolean(pendingParagraphId) || Boolean(ratingRetry)} onChange={() => void rate(score)} aria-label={`${score}점`} /><span /></label>)}</div>
+          <div className="memory-rating-options">{[1, 2, 3, 4, 5].map((score) => <label key={score}><input type="radio" name="scroll-rating" value={score} checked={selectedRating === score} disabled={busy !== null || Boolean(pendingParagraphId) || Boolean(ratingRetry)} onChange={() => void rate(score)} aria-label={`${score}점`} /><span /></label>)}</div>
           <div className="memory-rating-scale"><span>다르게 옮겼어요</span><span>딱 내 말이에요</span></div>
       </fieldset>
       {busy === 'scroll-rating' && <p role="status">평가를 저장하고 있어요.</p>}
+      {busy !== 'scroll-rating' && selectedRating !== undefined && !ratingRetry && <p role="status">선택한 평가: {selectedRating}점 · 다시 선택해서 바꿀 수 있어요.</p>}
+      {selectedRating === undefined && scores.some((score) => score !== undefined) && <p>문단별 평가가 달라요. 점수를 선택하면 전체 평가를 바꿀 수 있어요.</p>}
       {ratingError && <p role="alert">{ratingError}</p>}
       {ratingRetry && <button type="button" className="memory-text-link" disabled={busy !== null || Boolean(pendingParagraphId)} onClick={() => void rate(ratingRetry.score)}>평가 저장 다시 시도</button>}
     </MemoryCard>}
     {reweaveTargets.length > 0 && onReweave && <section className="scroll-bottom-reweave">
       <p>AI가 빠뜨린 이야기가 있나요?</p>
-      <button type="button" className="scroll-reweave-chip" disabled={Boolean(pendingParagraphId)} onClick={() => {
+      <button type="button" className="scroll-reweave-chip" disabled={busy !== null || Boolean(ratingRetry) || Boolean(pendingParagraphId)} onClick={() => {
         if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) { onReweaveLimit(); return }
-        // 고르는 시트 없이 바로 재엮기 화면으로: 가장 낮게 평가한 문단부터 (다른 문단은 문단 ⋮ 메뉴로)
-        const score = (item: ScrollParagraph) => ratingOf(item) ?? 5
-        onReweave([...reweaveTargets].sort((a, b) => score(a) - score(b))[0])
+        setReweavePicker(true)
       }}>다시 엮기</button>
     </section>}
     {scroll.paragraphs.length > 0 && <div className="scroll-bottom-save">
       <div className="scroll-save-actions"><Button disabled={Boolean(pendingParagraphId)} onClick={() => setDownloading(true)}><DownloadIcon />이미지로 저장</Button><ShareMemoryButton roomName={home.room.name} label="단톡방에 공유" url={shareUrl} /></div>
     </div>}
-    {onAddStory && <section className="memory-more"><h2>더 보태고 싶은 이야기가 있나요?</h2><Button onClick={onAddStory}>사진·이야기 더 올리기</Button></section>}
-    {downloading && <DownloadSheet scroll={scroll} home={home} template={templateId} onClose={() => setDownloading(false)} onComplete={(result) => { savedDownload.current = result; setDownloading(false); onDismissCompletion?.(); setNotice('파일 다운로드를 시작했어요'); window.scrollTo(0, 0) }} />}
+    {reweavePicker && onReweave && <BottomSheet title="다시 엮을 문단 선택" onClose={() => setReweavePicker(false)}><p className="memory-sheet-hint">고치고 싶은 문단을 골라 주세요.</p>{reweaveTargets.map((paragraph) => <button type="button" className="reweave-paragraph-option" key={paragraph.id} onClick={() => { setReweavePicker(false); onReweave(paragraph) }}><strong>문단 {scroll.paragraphs.findIndex((item) => item.id === paragraph.id) + 1} · {paragraph.photo.uploader.nickname}님의 사진</strong><span>{paragraph.body}</span></button>)}</BottomSheet>}
+    {downloading && <DownloadSheet scroll={scroll} home={home} template={templateId} onClose={() => setDownloading(false)} onComplete={(result) => { savedDownload.current = result; onDismissCompletion?.(); setNotice('파일을 준비했어요. 저장 또는 공유를 눌러 주세요.'); }} />}
     {previous && <BottomSheet title="이전 버전" onClose={() => setPrevious(null)}><p className="memory-narrative">{previous.body}</p><button type="button" className="memory-text-link" onClick={() => setPrevious(null)}>닫기</button></BottomSheet>}
     {original && <BottomSheet title="함께 남긴 원문" onClose={() => setOriginal(null)}><div className="memory-original-stories">
       {original.sources.map((source) => <StoryCard key={source.entryId} textOnly story={{ author: source.member.nickname, flower: memoryFlowerColor(source.member.flowerCode), kind: '원문', text: source.quote }} />)}
