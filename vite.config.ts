@@ -22,6 +22,7 @@ export default defineConfig({
         lang: 'ko',
         start_url: '/',
         scope: '/',
+        launch_handler: { client_mode: 'navigate-existing' },
         display: 'standalone',
         theme_color: '#F7F3EC',
         background_color: '#F7F3EC',

@@ -14,6 +14,7 @@ import {
   updateRoom,
 } from '../api/rooms'
 import type { Member, RoomHome } from '../api/types'
+import WeaveDatePrompt from '../components/WeaveDatePrompt'
 import Card from '../components/Card'
 import Flower from '../components/Flower'
 import { CopyIcon, ShareIcon } from '../components/ShareIcons'
@@ -21,7 +22,7 @@ import { coverSrc, uploadRoomCover } from '../api/roomCovers'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
-import { formatDateSpaced, formatDateTime, latestDeadline, toLocalDateTimeInput } from '../lib/date'
+import { formatDateSpaced, latestDeadline, toLocalDateTimeInput } from '../lib/date'
 import { objectParticle } from '../lib/plans'
 import { getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
@@ -30,8 +31,6 @@ import { paths } from '../routes/paths'
 import { ViewablePhoto } from '../components/PhotoViewer'
 import { LengthNotice } from '../components/LengthNotice'
 import { clampText } from '../lib/textLimit'
-import PlaceSheet from '../components/PlaceSheet'
-import type { Place } from '../api/places'
 
 function ChevronLeftIcon() {
   return (
@@ -65,7 +64,7 @@ function InfoRow({
   return (
     <li className="flex min-h-[52px] items-center gap-2 px-1 py-2">
       <span className="w-[76px] shrink-0 text-[12px] text-sub">{label}</span>
-      <span className="min-w-0 flex-1 truncate text-[14px]">{children}</span>
+      <span className="min-w-0 flex-1 break-words text-[14px]">{children}</span>
       {editable && (
         <button type="button" onClick={onEdit} aria-label={`${label} 변경`} className={EDIT_BUTTON_CLASS}>
           변경
@@ -91,7 +90,7 @@ type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname' | 'capa
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
   roomName: { title: '모임 이름 바꾸기', maxLength: MAX_ROOM_NAME_LENGTH },
-  meetingDate: { title: '모임 날짜 바꾸기' },
+  meetingDate: { title: '모임 시작일 바꾸기' },
   deadlineAt: { title: '첫 두루마리 날 바꾸기' },
   nickname: { title: '내 이름 바꾸기', maxLength: MAX_NICKNAME_LENGTH },
   capacity: { title: '함께할 인원 바꾸기' },
@@ -152,7 +151,7 @@ function EditDialog({
         aria-labelledby="edit-title"
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[320px] rounded-[20px] bg-surface px-6 pt-6 pb-5 text-ink"
+        className="min-w-0 w-full max-w-[320px] max-h-[85dvh] overflow-y-auto rounded-[20px] bg-surface px-6 pt-6 pb-5 text-ink"
       >
         <h2 id="edit-title" className="text-center text-[16px] font-bold">
           {title}
@@ -206,7 +205,7 @@ function EditDialog({
               max={target === 'deadlineAt' && maxDeadline ? toLocalDateTimeInput(maxDeadline.toISOString()) : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className="h-[52px] w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
+              className="h-[52px] min-w-0 max-w-full w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
             />
           )}
         </div>
@@ -295,7 +294,7 @@ function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-title"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[320px] rounded-[20px] bg-surface px-6 pt-6 pb-5 text-center text-ink"
+        className="min-w-0 w-full max-w-[320px] max-h-[85dvh] overflow-y-auto rounded-[20px] bg-surface px-6 pt-6 pb-5 text-center text-ink"
       >
         <h2 id="confirm-title" className="text-[16px] font-bold">
           {title}
@@ -337,9 +336,6 @@ function RoomSettingsPage() {
   const [placeCover, setPlaceCover] = useState(() => getRoomPlaceCover(roomId))
   const [photoError, setPhotoError] = useState('')
   const photoInputRef = useRef<HTMLInputElement>(null)
-  // 모임 장소: 장소 검색 시트로 고르고, 서버 방 정보에 저장한다
-  const [placeOpen, setPlaceOpen] = useState(false)
-  const [placeError, setPlaceError] = useState('')
 
   const updatePlaceCover = (next: typeof placeCover) => {
     if (!saveRoomPlaceCover(roomId, next)) {
@@ -400,7 +396,7 @@ function RoomSettingsPage() {
       // 입력칸은 기기 시간대 기준이라 서버에는 ISO 시각으로 바꿔 보낸다
       const deadlineAt = new Date(value).toISOString()
       await updateRoom(room.id, { deadlineAt }, session.memberAccessToken)
-      setHome({ ...home, room: { ...room, deadlineAt } })
+      setHome({ ...home, room: { ...room, deadlineAt, deadlineChangedByHost: true } })
     } else if (editing === 'capacity') {
       const capacity = Number(value)
       await updateRoom(room.id, { capacity }, session.memberAccessToken)
@@ -422,20 +418,6 @@ function RoomSettingsPage() {
       })
     }
     setEditing(null)
-  }
-
-  const savePlace = async (next: Place | null) => {
-    setPlaceError('')
-    const place = next
-      ? { placeName: next.placeName, address: next.address, latitude: next.latitude, longitude: next.longitude }
-      : null
-    try {
-      await updateRoom(room.id, { place }, session.memberAccessToken)
-      setHome({ ...home, room: { ...room, place } })
-      setPlaceOpen(false)
-    } catch (e) {
-      setPlaceError(e instanceof ApiError && e.status < 500 && e.message ? e.message : '모임 장소를 저장하지 못했어요. 다시 시도해 주세요')
-    }
   }
 
   const handleLeave = async () => {
@@ -495,22 +477,8 @@ function RoomSettingsPage() {
           <InfoRow label="함께할 인원" editable={isHost} onEdit={() => setEditing('capacity')}>
             {room.capacity ?? ROOM_CAPACITY}명 <span className="text-[12px] text-sub">· 지금 {members.length}명</span>
           </InfoRow>
-          <InfoRow label="모임 날짜" editable={isHost} onEdit={() => setEditing('meetingDate')}>
+          <InfoRow label="모임 시작일" editable={isHost} onEdit={() => setEditing('meetingDate')}>
             {room.meetingDate ? formatDateSpaced(room.meetingDate) : <Empty>정하지 않았어요</Empty>}
-          </InfoRow>
-          <InfoRow label="모임 장소" editable={isHost} onEdit={() => setPlaceOpen(true)}>
-            {room.place ? (
-              <span className="flex items-center gap-2">
-                <span className="truncate">📍 {room.place.placeName}</span>
-                {isHost && (
-                  <button type="button" onClick={() => void savePlace(null)} className="shrink-0 text-[11px] text-sub underline underline-offset-2">
-                    지우기
-                  </button>
-                )}
-              </span>
-            ) : (
-              <Empty>정하지 않았어요</Empty>
-            )}
           </InfoRow>
           <InfoRow label="대표 사진" editable={isHost} onEdit={() => photoInputRef.current?.click()}>
             {/* 대표 사진은 줄 안에서 작은 썸네일로 바로 보여준다 */}
@@ -523,13 +491,6 @@ function RoomSettingsPage() {
               {!coverImage && <Empty>없어요</Empty>}
             </span>
           </InfoRow>
-          {/* 엮기를 시작하기 전까지만 첫 두루마리 시각을 바꿀 수 있다 */}
-          {canChangeDeadline && (
-            // 첫 두루마리 시각은 엮기 전까지 횟수 제한 없이 바꿀 수 있다
-            <InfoRow label="첫 두루마리" editable={isHost} onEdit={() => setEditing('deadlineAt')}>
-              {room.deadlineAt ? formatDateTime(room.deadlineAt) : '아직 안 정했어요'}
-            </InfoRow>
-          )}
         </ul>
         {isHost && (
           <input
@@ -544,16 +505,23 @@ function RoomSettingsPage() {
             }}
           />
         )}
-        {placeError && (
-          <p className="mt-2 text-[11px] text-point" role="alert">
-            {placeError}
-          </p>
-        )}
         {photoError && (
           <p className="mt-2 text-[11px] text-point" role="alert">
             {photoError}
           </p>
         )}
+      </Section>
+
+      {canChangeDeadline && <Section title="첫 두루마리">
+        <p className="mb-3 text-[12px] leading-5 text-sub">사진과 이야기를 충분히 모은 뒤 엮어요. 날짜를 예약하거나, 준비됐을 때 직접 시작할 수 있어요.</p>
+        <WeaveDatePrompt home={home} token={session.memberAccessToken} onSaved={() => { void getRoomHome(roomId, session.memberAccessToken).then(setHome).catch(() => setError('설정을 다시 불러오지 못했어요')) }} />
+      </Section>}
+
+      <Section title="현재 플랜">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <p className="text-[15px] font-semibold">{room.planType ?? 'FREE'} <span className="text-[12px] font-normal text-sub">이용 중</span></p>
+          {isHost && <Link to={paths.roomPlan(roomId)} className={`${EDIT_BUTTON_CLASS} inline-flex min-h-9 items-center`}>변경하기</Link>}
+        </div>
       </Section>
 
       {/* 초대 링크는 고정이고 방 참가자 누구나 볼 수 있다 (이 기기에 없으면 서버에서 받아 온다) */}
@@ -578,11 +546,11 @@ function RoomSettingsPage() {
       <Section title={`함께하는 사람 ${members.length}명`}>
         <ul className="flex flex-col gap-2.5">
           {members.map((m) => (
-            <li key={m.id} className="flex items-center gap-2 text-[13px]">
+            <li key={m.id} className="flex flex-wrap items-center gap-2 text-[13px]">
               <Flower code={m.flowerCode} size={24} />
-              {m.nickname}
+              <span className="min-w-0 flex-1 truncate">{m.nickname}</span>
               {m.id === me.id && <span className="text-[11px] text-sub">나</span>}
-              <span className="ml-auto flex items-center gap-2">
+              <span className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
                 {m.role === 'HOST' && <span className="text-[11px] text-sub">방장</span>}
                 {m.id === me.id && (
                   <button type="button" onClick={() => setEditing('nickname')} className={EDIT_BUTTON_CLASS}>
@@ -641,7 +609,7 @@ function RoomSettingsPage() {
               : editing === 'meetingDate'
                 ? (room.meetingDate ?? '')
                 : editing === 'deadlineAt'
-                  ? (room.deadlineAt ? toLocalDateTimeInput(room.deadlineAt) : '')
+                  ? (room.deadlineAt && room.deadlineChangedByHost ? toLocalDateTimeInput(room.deadlineAt) : '')
                   : editing === 'capacity'
                     ? String(room.capacity ?? ROOM_CAPACITY)
                     : me.nickname
@@ -712,16 +680,7 @@ function RoomSettingsPage() {
           onConfirm={handleDeleteRoom}
         />
       )}
-      {placeOpen && (
-        <PlaceSheet
-          title="어디에서 모이나요?"
-          recent={[]}
-          onClose={() => setPlaceOpen(false)}
-          onSelect={(_, detail) => {
-            if (detail) void savePlace(detail)
-          }}
-        />
-      )}
+
     </main>
   )
 }

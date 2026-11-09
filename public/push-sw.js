@@ -26,13 +26,14 @@ self.addEventListener('push', (event) => {
 // 알림을 누르면 이미 열린 앱 창이 있으면 그 창을 그 주소로, 없으면 새로 연다
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href
+  let target
+  try { target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin) } catch { target = new URL('/', self.location.origin) }
+  const url = target.origin === self.location.origin ? target.href : self.location.origin + '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       for (const client of windows) {
-        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-          client.navigate(url)
-          return client.focus()
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          return client.navigate(url).then((navigated) => (navigated || client).focus())
         }
       }
       return self.clients.openWindow(url)

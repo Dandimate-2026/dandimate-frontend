@@ -28,10 +28,10 @@ export async function uploadPhotos(
     idempotent: true,
   })
 
-  await Promise.all(
+  const results = await Promise.allSettled(
     uploads.map(async (ticket) => {
       const file = files.find((f) => f.request.clientFileId === ticket.clientFileId)
-      if (!file) return
+      if (!file) throw new Error('사진 업로드 정보를 확인하지 못했어요')
       // uploadUrl에 권한이 담겨 있어 Authorization 헤더는 보내지 않는다
       const res = await fetch(devProxyUrl(ticket.uploadUrl), {
         method: 'PUT',
@@ -42,6 +42,11 @@ export async function uploadPhotos(
       await request(`/photos/${ticket.photoId}/complete`, { method: 'POST', token, idempotent: true })
     }),
   )
+  const failure = results.find((result) => result.status === 'rejected')
+  if (failure?.status === 'rejected') {
+    await Promise.allSettled(uploads.map((ticket) => deletePhoto(ticket.photoId)))
+    throw failure.reason
+  }
   return files.map((f) => uploads.find((u) => u.clientFileId === f.request.clientFileId)?.photoId ?? '')
 }
 

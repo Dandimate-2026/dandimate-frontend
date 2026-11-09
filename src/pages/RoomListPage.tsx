@@ -14,6 +14,7 @@ import { getRoomPlaceCover } from '../lib/roomExtras'
 import { getRoomSession, listSavedRoomIds, removeRoomSession, saveRoomSession } from '../lib/session'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
 import { paths } from '../routes/paths'
+import { JoinByInviteLink } from '../components/InviteLinkHelp'
 import logo from '../assets/logo-scroll.webp'
 import { getReviewerDemo, setReviewerDemoEnabled as updateReviewerDemo, type ReviewerDemo, type ReviewerDemoState } from '../api/reviewerDemo'
 import { resetChat, syncChatScope } from '../lib/chatStore'
@@ -327,10 +328,11 @@ function RoomListPage() {
           </button>
         </div>
         {reviewerDemoEnabled && <p className="mt-1 px-1.5 text-[10px] leading-4 text-sub">OFF로 바꾸면 데모 방과 체험 중 남긴 기록·대화가 삭제돼요.</p>}
-        <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface active:opacity-80">
+        <JoinByInviteLink />
+        {(regularHomes.length > 0 || reviewerDemoEnabled) && <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface active:opacity-80">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           새 모임방 만들기
-        </button>
+        </button>}
         {(demoError || (reviewerDemoEnabled && demoHomes.length === 0)) && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
           <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
           {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}

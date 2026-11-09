@@ -181,6 +181,7 @@ export default function WeaveDatePrompt({ home, token, onSaved }: { home: RoomHo
               <h2 id="weave-date-title" className="flex items-center gap-1.5 text-[17px] font-bold"><span className="text-point"><ClockIcon size={18} /></span>두루마리를 언제 엮을까요?</h2>
               <button type="button" onClick={() => setSheet(false)} aria-label="닫기" className="-mt-1 flex size-9 items-center justify-center text-[22px] text-sub">×</button>
             </div>
+            <p className="mt-2 rounded-xl bg-bg px-3 py-2 text-[13px] font-semibold">현재 {room.planType ?? 'FREE'} 플랜으로 엮어요</p>
             <p className="mt-0.5 text-[12px] leading-[18px] text-sub">그때까지 모인 사진과 이야기로 엮어요. 나중에 설정에서 바꿀 수 있어요</p>
 
             <p className="mt-3.5 text-[12px] font-semibold">날짜</p>

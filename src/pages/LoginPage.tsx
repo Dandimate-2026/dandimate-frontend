@@ -4,6 +4,7 @@ import { type MockRole, USE_MOCK } from '../api/mock'
 import { getInvitePreview } from '../api/rooms'
 import { getMe, loginWithKakao, takeLoginRedirect } from '../lib/auth'
 import { paths } from '../routes/paths'
+import { InviteLinkHelp } from '../components/InviteLinkHelp'
 import WelcomeView, { KakaoButton } from './WelcomeView'
 
 /** 로그인 뒤 돌아갈 주소. 다른 사이트로 넘어가지 않도록 앱 안 경로만 허용한다 */
@@ -57,7 +58,7 @@ function LoginPage() {
         invite
         inviteRoomName={inviteRoomName}
         inviterNickname={inviterNickname}
-        actions={<KakaoButton disabled={loggingIn} onClick={() => handleLogin('MEMBER')} />}
+        actions={<><KakaoButton disabled={loggingIn} onClick={() => handleLogin('MEMBER')} /><InviteLinkHelp invitePath={redirect} /></>}
       />
     )
   }

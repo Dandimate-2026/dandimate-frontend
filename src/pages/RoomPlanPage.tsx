@@ -17,12 +17,13 @@ import NotFoundPage from './NotFoundPage'
 // 1인당 금액 안내에 쓰는 예시 인원
 const EXAMPLE_FRIENDS = 3
 
-function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean; onSelect: () => void }) {
+function PlanCard({ plan, selected, current = false, disabled = false, onSelect }: { plan: Plan; selected: boolean; current?: boolean; disabled?: boolean; onSelect: () => void }) {
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
+      disabled={disabled}
       className={`w-full rounded-[18px] border bg-surface px-[26px] py-[13px] text-left shadow-[0_1px_2px_#2a26230d] transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-point ${
         selected ? 'border-point bg-[#fbe9f0]' : 'border-line'
       }`}
@@ -30,7 +31,7 @@ function PlanCard({ plan, selected, onSelect }: { plan: Plan; selected: boolean;
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2">
           <span className="text-[17px] leading-6 font-bold">{plan.name}</span>
-          {plan.price === 0 && (
+          {current && (
             <span className="rounded-full bg-[#efe9df] px-2 py-0.5 text-[10px] text-sub">지금</span>
           )}
           {plan.id === RECOMMENDED_PLAN_ID && plan.available && (
@@ -132,7 +133,7 @@ function RoomPlanPage() {
   const capacity = isNewRoom ? draft?.capacity : home?.room.capacity
 
   const handleNext = async () => {
-    if (!plan.available) return
+    if (!plan.available || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))) return
     // 유료 플랜은 결제 화면으로 간다 (새 방은 결제 뒤에 방을 만든다)
     if (plan.price > 0) {
       navigate(isNewRoom ? paths.roomCreateCheckout(plan.id) : paths.roomCheckout(roomId, plan.id))
@@ -164,7 +165,9 @@ function RoomPlanPage() {
     else navigate(paths.roomList())
   }
 
-  const buttonLabel = !plan.available
+  const buttonLabel = !isNewRoom && home?.room.planType?.toLowerCase() === plan.id
+    ? '현재 이용 중인 플랜이에요'
+    : !plan.available
     ? `${plan.name} 결제 준비 중이에요`
     : plan.price === 0
       ? creating
@@ -195,9 +198,10 @@ function RoomPlanPage() {
           : home && <span className="shrink-0 text-sub">· 참여 {home.members.length}명</span>}
       </div>
 
+      {!isNewRoom && <p className="mt-3 text-[13px] text-sub">현재 플랜: {home?.room.planType ?? '확인 중…'} · 상위 플랜으로 변경할 수 있어요</p>}
       <div className="mt-3 flex flex-col gap-3">
         {plans.map((p) => (
-          <PlanCard key={p.id} plan={p} selected={p.id === selectedId} onSelect={() => setSelectedId(p.id)} />
+          <PlanCard key={p.id} plan={p} selected={p.id === selectedId} current={!isNewRoom && home?.room.planType?.toLowerCase() === p.id} disabled={!isNewRoom && (!home || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(p.id))} onSelect={() => setSelectedId(p.id)} />
         ))}
       </div>
       <DecorGuide planId={selectedId} />
@@ -213,7 +217,7 @@ function RoomPlanPage() {
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
-        <Button onClick={() => void handleNext()} disabled={!plan.available || creating} className="mt-3 w-full text-[16px] font-bold">
+        <Button onClick={() => void handleNext()} disabled={!plan.available || creating || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-3 w-full text-[16px] font-bold">
           {buttonLabel}
         </Button>
       </footer>

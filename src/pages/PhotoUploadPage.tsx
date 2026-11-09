@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { USE_MOCK } from '../api/mock'
-import { MAX_PHOTOS, uploadPhotos } from '../api/photos'
+import { MAX_PHOTOS } from '../api/photos'
 import Button from '../components/Button'
 import PlanLimitSheet from '../components/PlanLimitSheet'
 import { isLimitError, usePlanLimitAction, useRoomHomeForQuota } from '../hooks/useRoomQuota'
-import { isAcceptedType, prepareImage } from '../lib/image'
+import { isAcceptedType } from '../lib/image'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import type { FirstEntryState } from './FirstEntryPage'
@@ -59,9 +58,6 @@ function LockIcon() {
 }
 
 /** 이야기를 남길 사진을 1~3장 고르고 올리는 화면 */
-/** 데모에서 한 번에 고를 수 있는 장수 (사실상 제한 없음) */
-const DEMO_MAX_PHOTOS = 99
-
 const PLAN_NAME: Record<string, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
 const planName = (plan?: string) => PLAN_NAME[plan ?? 'FREE'] ?? 'Free'
 
@@ -86,8 +82,8 @@ function PhotoUploadPage() {
   const quota = home?.room.quota
   /** 1인당 사진 한도 (플랜별 3/6/10장) */
   const perMember = quota?.photosPerMember ?? MAX_PHOTOS
-  /** 이번에 더 고를 수 있는 장수. 데모에서는 화면을 계속 보려고 사실상 제한 없이 고를 수 있게 한다 */
-  const maxPhotos = USE_MOCK ? DEMO_MAX_PHOTOS : (quota?.myPhotosRemaining ?? MAX_PHOTOS)
+  /** 이번에 더 고를 수 있는 장수. 이미 올린 사진도 플랜 한도에 포함한다 */
+  const maxPhotos = Math.max(0, quota?.myPhotosRemaining ?? (perMember - (quota?.myPhotoCount ?? home?.me.photoCount ?? 0)))
 
   // 화면을 떠날 때 미리보기용 URL을 정리한다
   const photosRef = useRef(photos)
@@ -112,7 +108,7 @@ function PhotoUploadPage() {
     const accepted = picked.filter((f) => isAcceptedType(f.type))
     if (accepted.length < picked.length) setError('JPEG, PNG, HEIC 사진만 올릴 수 있어요')
 
-    const room = maxPhotos - photos.length
+    const room = Math.max(0, maxPhotos - photos.length)
     if (accepted.length > room) setLimitOpen(true)
 
     const next = accepted.slice(0, room).map((file) => ({
@@ -181,21 +177,12 @@ function PhotoUploadPage() {
   }
 
   const handleNext = async () => {
-    if (photos.length === 0 || uploading) return
+    if (!home || photos.length === 0 || photos.length > maxPhotos || uploading) return
     setUploading(true)
     setError(null)
     try {
-      const files = await Promise.all(
-        photos.map(async (p, i) => {
-          const { blob, contentType } = await prepareImage(p.file)
-          return {
-            blob,
-            request: { clientFileId: p.id, fileName: p.file.name, contentType, sizeBytes: blob.size, displayOrder: i + 1 },
-          }
-        }),
-      )
-      const photoIds = await uploadPhotos(roomId, session.memberAccessToken, files)
-      const state: FirstEntryState = { photos: photos.map((p, i) => ({ photoId: photoIds[i], file: p.file })) }
+      // Keep files local until the user confirms a photo in the writing screen.
+      const state: FirstEntryState = { photos: photos.map((p) => ({ photoId: p.id, file: p.file, pending: true })) }
       navigate(paths.firstEntry(roomId), { state })
     } catch (err) {
       if (isLimitError(err)) setLimitOpen(true)
@@ -217,7 +204,7 @@ function PhotoUploadPage() {
         골라주세요.
       </h1>
       <p className="mt-3.5 px-[7px] text-[11px] text-sub">
-        {USE_MOCK ? '1장부터 괜찮아요 · 데모라 장수 제한 없이 골라 볼 수 있어요' : `1장부터 괜찮아요 · 최대 ${maxPhotos}장`}
+        {maxPhotos > 0 ? `이번에 ${maxPhotos}장 더 올릴 수 있어요 · 총 ${perMember}장까지` : `사진 ${perMember}장을 모두 올렸어요`}
       </p>
 
       <ul ref={listRef} className="mt-4 grid grid-cols-3 gap-[9px]">
@@ -318,7 +305,7 @@ function PhotoUploadPage() {
       <div className="mt-auto pt-[clamp(32px,10dvh,96px)]">
         {/* 다음 화면에서 사진마다 장소부터 고른다 */}
         <p className="mb-2 text-center text-[11px] text-sub">📍 사진마다 고른 장소는 기록 지도에 표시돼요</p>
-        <Button onClick={handleNext} disabled={photos.length === 0 || uploading} className="w-full">
+        <Button onClick={handleNext} disabled={!home || photos.length === 0 || photos.length > maxPhotos || uploading} className="w-full">
           {uploading ? '사진 올리는 중…' : '다음 : 장소 고르러 가기'}
         </Button>
       </div>
