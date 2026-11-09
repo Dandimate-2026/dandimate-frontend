@@ -5,6 +5,7 @@ import type { CirculationCard, FlowerCode, RoomStatus } from '../api/types'
 import { FLOWER_COLOR } from '../lib/flower'
 import Flower from './Flower'
 import { canEditRoomRecords } from '../lib/roomState'
+import { ViewablePhoto } from './PhotoViewer'
 
 const W = 340 // 가지 그림 가로 (viewBox)
 const H = 84 // 가지 영역 높이(px)
@@ -158,7 +159,7 @@ function FlowerSheet({ person, roomId, slides, onClose, editable }: { editable: 
                 <article key={sl.photoId} className="flex w-full shrink-0 snap-center flex-col px-5">
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     {sl.imageUrl
-                      ? <img src={sl.imageUrl} alt="" className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-cover" />
+                      ? <ViewablePhoto src={sl.imageUrl} alt={`${person.nickname}님이 올린 사진`} className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-cover" />
                       : <span className="block aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc]" aria-hidden="true" />}
                     <ul className="mt-2.5 flex flex-col gap-2">
                       {sl.entries.map((e) => (

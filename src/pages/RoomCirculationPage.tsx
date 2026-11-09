@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import { createEntry, deleteEntry, editEntry, transcribe } from '../api/entries'
 import { deletePhoto } from '../api/photos'
 import { getCirculation, passPhoto, recordMockAddon, undoPass } from '../api/memories'
@@ -53,7 +54,7 @@ function memoryPhoto(card: CirculationCard, myMemberId?: string): MemoryPhoto {
 
 function RoomCirculationPage() {
   const { roomId = '' } = useParams()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   // 챗봇에서 특정 사진에 덧붙이러 왔으면 그 사진부터 연다
   const [searchParams] = useSearchParams()
   const startPhotoId = searchParams.get('photo')

@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useLocation, useParams, useSearchParams } from 'react-router'
 import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
 import { USE_MOCK } from '../api/mock'
@@ -30,9 +31,9 @@ function RoomWeavingPage() {
       if (id) next.set('job', id)
       else next.delete('job')
       return next
-    }, { replace: true })
-  }, [setParams])
-  const navigate = useNavigate()
+    }, { replace: true, state: location.state })
+  }, [setParams, location.state])
+  const navigate = useAppNavigate()
   const session = getRoomSession(roomId)
   const token = session?.memberAccessToken ?? ''
   const [jobId, setJobId] = useState(params.get('job'))

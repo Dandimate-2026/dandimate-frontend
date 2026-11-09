@@ -1,22 +1,14 @@
-import { siteUrl } from './siteUrl'
-
-interface FeedInvitation {
-  objectType: 'feed'
-  content: {
-    title: string
-    description: string
-    imageUrl: string
-    imageWidth: number
-    imageHeight: number
-    link: { mobileWebUrl: string; webUrl: string }
-  }
+interface TextInvitation {
+  objectType: 'text'
+  text: string
+  link: { mobileWebUrl: string; webUrl: string }
   buttons: { title: string; link: { mobileWebUrl: string; webUrl: string } }[]
 }
 
 interface KakaoSdk {
   init(key: string): void
   isInitialized(): boolean
-  Share: { sendDefault(message: FeedInvitation): void }
+  Share: { sendDefault(message: TextInvitation): void }
 }
 
 declare global {
@@ -72,19 +64,15 @@ export function shareKakaoInvitation(text: string, url: string): 'opened' | 'loa
   const target = new URL(url)
   if (target.protocol !== 'https:') throw new Error('Invitation requires HTTPS')
   // 본문에도 URL 전체를 남긴다. 제한을 넘는 URL은 호출부의 전체 문구 복사로 대체한다.
-  if (target.href.length > 198) throw new Error('Invitation URL exceeds description limit')
-  const message = `${text.slice(0, 198 - target.href.length)}\n\n${target.href}`
+  const title = '💌 두루두루에 초대됐어요!'
+  const available = 200 - title.length - target.href.length - 4
+  if (available < 0) throw new Error('Invitation URL exceeds text limit')
+  const message = `${title}\n\n${text.slice(0, available)}\n\n${target.href}`
   const link = { mobileWebUrl: target.href, webUrl: target.href }
   window.Kakao.Share.sendDefault({
-    objectType: 'feed',
-    content: {
-      title: '💌 두루두루에 초대됐어요!',
-      description: message,
-      imageUrl: siteUrl('/og-image.png'),
-      imageWidth: 512,
-      imageHeight: 512,
-      link,
-    },
+    objectType: 'text',
+    text: message,
+    link,
     buttons: [{ title: '추억 남기러 가기', link }],
   })
   return 'opened'

@@ -1,5 +1,5 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
 import { cityMarkerPosition, getMyRecordMap, groupPlaces, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import { getMe } from '../lib/auth'
@@ -238,7 +238,7 @@ function CitySheet({ pin, place: focus, onClose, onChanged }: { pin: CityPin; pl
   const placeName = focus?.placeName
   // 세부 장소를 눌러 열었으면 그 장소에서 찍은 사진만 (AI 요약은 도시 단위라 보여주지 않는다)
   const places = focus ? pin.places.filter((p) => samePlace(p, focus)) : pin.places
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const sheetDrag = useSheetDrag(onClose)
   // 내 사진에는 덧붙이기 대신 안내를 보여주려고 내 계정 id를 알아 둔다
   const [myUserId, setMyUserId] = useState<string | null>(null)
@@ -261,8 +261,8 @@ function CitySheet({ pin, place: focus, onClose, onChanged }: { pin: CityPin; pl
           <span className="h-1 w-9 rounded-full bg-line" />
         </div>
         <h2 id="city-sheet-title" className="mt-5 flex items-baseline gap-2">
-          <span className="text-[24px] font-bold">📍 {placeName ?? pin.city}</span>
-          <span className="text-[13px] text-sub">
+          <span className="min-w-0 text-[22px] font-bold leading-8 [overflow-wrap:anywhere]">📍 {placeName ?? pin.city}</span>
+          <span className="shrink-0 text-[12px] text-sub">
             {placeName
               ? `${pin.city} · 사진 ${places.length}장`
               : `기록 ${pin.recordCount}개 · 모임방 ${pin.rooms.length}개`}
@@ -647,17 +647,18 @@ function RoomFilter({
 }) {
   const [open, setOpen] = useState(false)
   const label = value === ALL_ROOMS ? '전체 모임방' : (rooms.find((r) => r.roomId === value)?.name ?? '전체 모임방')
-  const options = [{ roomId: ALL_ROOMS, name: '전체 모임방' }, ...rooms]
+  const [query, setQuery] = useState('')
+  const options = [{ roomId: ALL_ROOMS, name: '전체 모임방' }, ...rooms].filter((room) => room.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   return (
-    <div className="relative mt-2.5 inline-block">
+    <div className="relative mt-2.5 inline-block max-w-full">
       <button
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-[13px] font-semibold shadow-[0_2px_10px_rgba(42,38,35,0.06)]"
+        className="flex max-w-full items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-[13px] font-semibold shadow-[0_2px_10px_rgba(42,38,35,0.06)]"
       >
-        {label}
+        <span className="min-w-0 truncate" title={label}>{label}</span>
         <svg
           width="14"
           height="14"
@@ -668,16 +669,15 @@ function RoomFilter({
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden="true"
-          className={`text-sub transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-sub transition-transform ${open ? 'rotate-180' : ''}`}
         >
           <path d="M4 6l4 4 4-4" />
         </svg>
       </button>
       {open && (
-        <ul
-          role="listbox"
-          className="absolute top-full left-0 z-30 mt-1.5 max-h-64 min-w-[180px] overflow-y-auto rounded-[16px] border border-line bg-surface p-1.5 shadow-[0_8px_24px_rgba(42,38,35,0.12)]"
-        >
+        <div className="absolute top-full left-0 z-30 mt-1.5 w-[min(280px,calc(100vw-64px))] rounded-[16px] border border-line bg-surface p-1.5 shadow-[0_8px_24px_rgba(42,38,35,0.12)]">
+          {rooms.length > 6 && <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="지도 모임방 검색" placeholder="모임방 이름 검색" className="mb-1 w-full rounded-xl bg-bg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-line" />}
+          <ul role="listbox" aria-label="지도 모임방 선택" className="max-h-56 overflow-y-auto">
           {options.map((o) => (
             <li key={o.roomId} role="option" aria-selected={o.roomId === value}>
               <button
@@ -686,7 +686,7 @@ function RoomFilter({
                   onChange(o.roomId)
                   setOpen(false)
                 }}
-                className={`w-full truncate rounded-[12px] px-3 py-2 text-left text-[13px] ${
+                className={`w-full rounded-[12px] px-3 py-2 text-left text-[13px] leading-5 [overflow-wrap:anywhere] ${
                   o.roomId === value ? 'bg-point/15 font-semibold text-point' : ''
                 }`}
               >
@@ -694,7 +694,9 @@ function RoomFilter({
               </button>
             </li>
           ))}
-        </ul>
+          </ul>
+          {options.length === 0 && <p className="px-3 py-3 text-[12px] text-sub">일치하는 모임방이 없어요.</p>}
+        </div>
       )}
     </div>
   )

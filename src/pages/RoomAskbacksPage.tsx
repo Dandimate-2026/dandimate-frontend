@@ -1,5 +1,6 @@
+import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { getMyAskbacks, getNextAskback, runAskbackAnalysis } from '../api/askbacks'
 import { getJob } from '../api/memories'
 import { USE_MOCK } from '../api/mock'
@@ -17,7 +18,7 @@ const STATUS: Record<AskbackStatus, string> = {
 
 export default function RoomAskbacksPage() {
   const { roomId = '' } = useParams()
-  const navigate = useNavigate()
+  const navigate = useAppNavigate()
   const token = getRoomSession(roomId)?.memberAccessToken
   const home = useRoomHomeForQuota(roomId, token)
   const [items, setItems] = useState<Askback[] | null>(null)
