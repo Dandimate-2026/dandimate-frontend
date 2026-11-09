@@ -17,3 +17,9 @@ export function markNotificationRead(notificationId: string, token: string) {
 export function issueEventToken(roomId: string, token: string) {
   return request<EventToken>(`/rooms/${roomId}/event-token`, { method: 'POST', token })
 }
+
+/** 참여 중인 모든 모임방의 알림. */
+export function getAllNotifications() {
+  if (USE_MOCK) return Promise.resolve(mockNotifications)
+  return request<(RoomNotification & { roomId: string; roomName: string })[]>('/notifications')
+}

@@ -190,6 +190,7 @@ export interface TranscriptionDraft {
 }
 
 export interface Photo {
+  location?: { placeName: string; address?: string | null; city?: string | null; placeId?: string | null; latitude?: number | null; longitude?: number | null } | null
   id: string
   imageUrl: string
   uploader: Member
@@ -299,6 +300,9 @@ export interface Job {
 
 // PLAN_UPGRADE_REQUESTED: 멤버가 방장에게 플랜을 바꿔 달라고 요청함 (TODO: 백엔드 미지원, 가정한 값)
 export type NotificationType =
+  | 'HOST_TRANSFERRED'
+  | 'PHOTO_ADDON_ADDED'
+  | 'ROOM_PLAN_UPGRADED'
   | 'ASKBACK_RECEIVED'
   | 'SCROLL_READY'
   | 'REPLY_APPLIED'

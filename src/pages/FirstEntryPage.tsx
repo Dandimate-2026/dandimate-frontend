@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { createEntry, skipFirstEntry, transcribe } from '../api/entries'
 import { USE_MOCK } from '../api/mock'
-import { deletePhoto } from '../api/photos'
+import { deletePhoto, uploadPhotos } from '../api/photos'
 import { setPhotoLocation, type Place } from '../api/places'
-import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
+import AnswerForm from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon } from '../components/entry/EntryIcons'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
 import PlaceSheet from '../components/PlaceSheet'
@@ -14,12 +14,13 @@ import { formatVoiceLimit, isLimitError, usePlanLimitAction, useRoomHomeForQuota
 import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { addRecentPlace, getRecentPlaces } from '../lib/roomExtras'
 import { getRoomSession } from '../lib/session'
+import { prepareImage } from '../lib/image'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
 /** 사진 올리기 화면에서 넘겨받는 값 */
 export interface FirstEntryState {
-  photos: { photoId: string; file?: File }[]
+  photos: { photoId: string; file?: File; pending?: boolean }[]
 }
 
 // 첫 한마디 음성은 5초부터 플랜별 최대 30/60/120초, 글은 300자까지 (백엔드 명세)
@@ -29,15 +30,7 @@ const MAX_TEXT_LENGTH = 300
 // mock 모드에서 사진 올리기를 거치지 않고 바로 들어왔을 때 보여줄 사진
 const MOCK_PHOTOS: FirstEntryState['photos'] = [{ photoId: 'mock-1' }, { photoId: 'mock-2' }, { photoId: 'mock-3' }]
 
-/**
- * 화면 상태
- * - idle: 마이크 버튼 대기
- * - recording: 녹음 중
- * - transcribing: 녹음을 글로 받아 적는 중
- * - review: 받아 적은 글 확인·수정
- * - text: 말하기 대신 글로 직접 쓰기
- */
-type Step = 'idle' | 'recording' | 'transcribing' | 'review' | 'text'
+type Step = 'idle' | 'recording' | 'recorded' | 'text'
 
 /** 고른 사진마다 "이 사진, 왜 골랐어요?"에 음성(또는 글)으로 답하는 화면 */
 function FirstEntryPage() {
@@ -47,10 +40,42 @@ function FirstEntryPage() {
   const session = getRoomSession(roomId)
   const photos = (location.state as FirstEntryState | null)?.photos ?? (USE_MOCK ? MOCK_PHOTOS : [])
 
+  const uploaded = useRef(new Map<string, string>())
+  const committed = useRef(new Set<string>())
+  const alive = useRef(true)
+  const writeLock = useRef(false)
+  useEffect(() => {
+    alive.current = true
+    const pending = uploaded.current
+    const saved = committed.current
+    return () => {
+      alive.current = false
+      for (const id of pending.values()) if (!saved.has(id)) void deletePhoto(id).catch(() => {})
+    }
+  }, [])
+
+  async function ensureUploaded(item: FirstEntryState['photos'][number]) {
+    if (!item.pending || !item.file) return item.photoId
+    const existing = uploaded.current.get(item.photoId)
+    if (existing) return existing
+    const { blob, contentType } = await prepareImage(item.file)
+    if (!alive.current) throw new Error('사진 작성을 취소했어요')
+    const [id] = await uploadPhotos(roomId, session?.memberAccessToken ?? '', [{ blob, request: {
+      clientFileId: item.photoId, fileName: item.file.name, contentType, sizeBytes: blob.size, displayOrder: photos.findIndex(p => p.photoId === item.photoId) + 1,
+    } }])
+    uploaded.current.set(item.photoId, id)
+    if (!alive.current) {
+      await deletePhoto(id)
+      throw new Error('사진 작성을 취소했어요')
+    }
+    return id
+  }
+
   const [index, setIndex] = useState(0)
   const [step, setStep] = useState<Step>('idle')
   const [transcript, setTranscript] = useState('')
-  const [draft, setDraft] = useState<VoiceDraft | null>(null)
+  const [localRecording, setLocalRecording] = useState<(Recording & { audioUrl: string }) | null>(null)
+  useEffect(() => () => { if (localRecording) URL.revokeObjectURL(localRecording.audioUrl) }, [localRecording])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // 방 전체 말하기 시간을 다 썼을 때 띄우는 시트
@@ -59,7 +84,6 @@ function FirstEntryPage() {
   const [places, setPlaces] = useState<Record<number, Place | 'skipped'>>({})
   const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
   const [confirmSkipPlace, setConfirmSkipPlace] = useState(false)
-  const [savingPlace, setSavingPlace] = useState(false)
   // 한마디를 확정했거나 '나중에'로 넘긴 사진 (뒤로 가면 나머지 사진은 올리지 않은 것으로 지운다)
   const [finished, setFinished] = useState<Set<number>>(() => new Set())
   const [confirmLeave, setConfirmLeave] = useState(false)
@@ -73,7 +97,6 @@ function FirstEntryPage() {
   const isLast = index === photos.length - 1
   const previewUrl = useMemo(() => (photo?.file ? URL.createObjectURL(photo.file) : null), [photo])
   useEffect(() => () => void (previewUrl && URL.revokeObjectURL(previewUrl)), [previewUrl])
-  useEffect(() => () => void (draft && URL.revokeObjectURL(draft.audioUrl)), [draft])
 
   const handleRecorded = async ({ blob, durationMs }: Recording) => {
     if (durationMs < MIN_VOICE_MS) {
@@ -81,22 +104,8 @@ function FirstEntryPage() {
       setStep('idle')
       return
     }
-    setStep('transcribing')
-    try {
-      const result = await transcribe(photo.photoId, session?.memberAccessToken ?? '', blob)
-      setDraft({ transcriptionId: result.transcriptionId, durationMs, audioUrl: URL.createObjectURL(blob) })
-      setTranscript(result.transcript)
-      setStep('review')
-    } catch (e) {
-      if (isLimitError(e)) {
-        setStep('idle')
-        setVoiceLimitOpen(true)
-        return
-      }
-      // 받아 적기에 실패해도 글로 이어서 남길 수 있게 한다
-      setError('받아 적지 못했어요. 글로 남겨 주세요')
-      setStep('text')
-    }
+    setLocalRecording({ blob, durationMs, audioUrl: URL.createObjectURL(blob) })
+    setStep('recorded')
   }
 
   const recorder = useVoiceRecorder({ maxMs: maxVoiceMs, onFinish: handleRecorded })
@@ -106,19 +115,10 @@ function FirstEntryPage() {
 
   const placeChoice = places[index]
 
-  const handlePickPlace = async (place: Place) => {
+  const handlePickPlace = (place: Place) => {
     setPlaceSheetOpen(false)
-    setSavingPlace(true)
-    setError(null)
-    try {
-      await setPhotoLocation(photo.photoId, place)
-      setPlaces((prev) => ({ ...prev, [index]: place }))
-      addRecentPlace(place.city)
-    } catch {
-      setError('장소를 저장하지 못했어요. 다시 골라 주세요')
-    } finally {
-      setSavingPlace(false)
-    }
+    setPlaces((prev) => ({ ...prev, [index]: place }))
+    addRecentPlace(place.city)
   }
 
   const skipPlace = () => {
@@ -130,7 +130,7 @@ function FirstEntryPage() {
     setConfirmSkipPlace(false)
     setStep('idle')
     setTranscript('')
-    setDraft(null)
+    setLocalRecording(null)
     setError(null)
   }
 
@@ -162,54 +162,95 @@ function FirstEntryPage() {
 
   const handleConfirm = async () => {
     const text = transcript.trim()
-    if (!text || saving) return
+    if (!text || saving || writeLock.current) return
+    writeLock.current = true
     setSaving(true)
     setError(null)
     try {
+      const photoId = await ensureUploaded(photo)
+      const selected = places[index]
+      if (selected && selected !== 'skipped') await setPhotoLocation(photoId, selected)
+      if (!alive.current) return
       await createEntry(
-        photo.photoId,
+        photoId,
         session.memberAccessToken,
-        step === 'review' && draft
-          ? { kind: 'FIRST', inputMode: 'VOICE', transcriptionId: draft.transcriptionId, transcript: text }
-          : { kind: 'FIRST', inputMode: 'TEXT', transcript: text },
+        { kind: 'FIRST', inputMode: 'TEXT', transcript: text },
       )
+      committed.current.add(uploaded.current.get(photo.photoId) ?? photo.photoId)
       goNext()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '저장하지 못했어요. 다시 시도해 주세요')
     } finally {
+      writeLock.current = false
+      setSaving(false)
+    }
+  }
+
+  const handleVoiceConfirm = async () => {
+    if (!localRecording || writeLock.current) return
+    writeLock.current = true
+    setSaving(true)
+    setError(null)
+    try {
+      const photoId = await ensureUploaded(photo)
+      const selected = places[index]
+      if (selected && selected !== 'skipped') await setPhotoLocation(photoId, selected)
+      if (!alive.current) return
+      const result = await transcribe(photoId, session.memberAccessToken, localRecording.blob)
+      if (!alive.current) return
+      await createEntry(photoId, session.memberAccessToken, { kind: 'FIRST', inputMode: 'VOICE', transcriptionId: result.transcriptionId, transcript: result.transcript })
+      committed.current.add(photoId)
+      goNext()
+    } catch (cause) {
+      if (isLimitError(cause)) setVoiceLimitOpen(true)
+      else setError(cause instanceof Error ? cause.message : '사진과 녹음을 저장하지 못했어요. 다시 시도해 주세요')
+    } finally {
+      writeLock.current = false
       setSaving(false)
     }
   }
 
   const handleSkip = async () => {
+    if (writeLock.current) return
+    writeLock.current = true
+    setSaving(true)
     recorder.cancel()
     try {
-      await skipFirstEntry(photo.photoId, session.memberAccessToken)
-    } catch {
-      // 건너뛰기가 실패해도 다음 사진으로는 넘어간다
+      const photoId = await ensureUploaded(photo)
+      const selected = places[index]
+      if (selected && selected !== 'skipped') await setPhotoLocation(photoId, selected)
+      if (!alive.current) return
+      await skipFirstEntry(photoId, session.memberAccessToken)
+      committed.current.add(photoId)
+      goNext()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '저장하지 못했어요. 다시 시도해 주세요')
+    } finally {
+      writeLock.current = false
+      setSaving(false)
     }
-    goNext()
   }
 
-  const showAnswerCard = step === 'review' || step === 'text'
+  const showAnswerCard = step === 'text'
   const unfinishedCount = photos.length - finished.size
 
-  // 뒤로 가기: 한마디를 안 남긴 사진은 이미 서버에 올라가 있어서, 지워야 "안 올린" 상태로 돌아간다
+  // 확정 도중 실패해 서버에 임시로 남은 사진도 이탈 시 정리한다.
   const leaveAndDelete = async () => {
     setLeaving(true)
     recorder.cancel()
-    await Promise.allSettled(photos.filter((_, i) => !finished.has(i)).map((p) => deletePhoto(p.photoId)))
+    await Promise.allSettled(photos.filter((_, i) => !finished.has(i)).flatMap((p) => { const id = uploaded.current.get(p.photoId) ?? (!p.pending ? p.photoId : null); return id ? [deletePhoto(id)] : [] }))
     navigate(-1)
   }
 
   return (
     // 화면 높이에 맞춰 사진 영역이 늘었다 줄었다 해서, 아래 버튼이 항상 한 화면에 보이게 한다
-    <main className="flex h-dvh min-h-[600px] flex-col bg-bg px-5 pt-12 pb-8 text-ink">
+    <main className="flex min-h-dvh flex-col bg-bg px-5 pt-12 pb-[max(32px,env(safe-area-inset-bottom))] text-ink">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-[18px]">
           {/* TODO: 뒤로 가기 목적지 확정 필요 (지금은 브라우저 히스토리 기준) */}
           <button
             type="button"
+            disabled={saving}
             onClick={() => (unfinishedCount > 0 ? setConfirmLeave(true) : navigate(-1))}
             className="flex items-center gap-2 text-[17px] font-bold"
           >
@@ -298,11 +339,10 @@ function FirstEntryPage() {
             <>
               <button
                 type="button"
-                disabled={savingPlace}
                 onClick={() => setPlaceSheetOpen(true)}
                 className="mt-6 h-[52px] w-full rounded-full bg-ink text-[15px] font-semibold text-surface active:opacity-80 disabled:opacity-50"
               >
-                {savingPlace ? '저장하는 중…' : '📍 장소 고르기'}
+                📍 장소 고르기
               </button>
               <button
                 type="button"
@@ -314,19 +354,28 @@ function FirstEntryPage() {
             </>
           )}
         </section>
+      ) : step === 'recorded' && localRecording ? (
+        <section className="flex flex-1 flex-col pt-6">
+          <h2 className="text-[17px] font-bold">녹음을 확인하고 올려 주세요</h2>
+          <audio controls src={localRecording.audioUrl} className="mt-4 w-full" aria-label="올리기 전 내 녹음 확인" />
+          <p className="mt-3 text-[12px] leading-5 text-sub">확정하면 사진과 녹음을 올리고, 받아 적은 글을 첫 한마디로 저장해요.</p>
+          {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
+          <button type="button" disabled={saving} onClick={() => { setLocalRecording(null); setStep('idle') }} className="mt-4 min-h-11 text-[13px] text-sub">다시 녹음하기</button>
+          <button type="button" disabled={saving} onClick={() => { setLocalRecording(null); setStep('text') }} className="min-h-11 text-[13px] text-point">글로 남기기</button>
+          <button type="button" disabled={saving} onClick={() => void handleVoiceConfirm()} className="mt-auto min-h-[52px] rounded-full bg-ink px-4 text-[15px] font-semibold text-surface disabled:opacity-50">{saving ? '사진과 녹음 저장 중…' : '확정하고 사진 올리기'}</button>
+        </section>
       ) : showAnswerCard ? (
         <section className="flex flex-1 flex-col pt-8">
           <h2 className="px-[11px] text-[17px] font-bold">이 사진, 왜 골랐어요?</h2>
           <AnswerForm
             transcript={transcript}
             maxLength={MAX_TEXT_LENGTH}
-            voice={step === 'review' ? draft : null}
+            voice={null}
             error={error}
             saving={saving}
             confirmLabel={isLast ? '확정하고 마치기' : '확정하고 다음 사진'}
             onChange={setTranscript}
             onRetry={() => {
-              setDraft(null)
               setTranscript('')
               setError(null)
               setStep('idle')
@@ -362,9 +411,9 @@ function FirstEntryPage() {
               사진 올리기를 그만둘까요?
             </h2>
             <p className="mt-2 text-[13px] leading-5 text-sub">
-              아직 한마디를 남기지 않은 사진 {unfinishedCount}장은
+              아직 확정하지 않은 사진 {unfinishedCount}장은
               <br />
-              올리지 않은 것으로 지워져요.
+              공개되지 않고 취소돼요.
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
@@ -448,7 +497,6 @@ function VoiceSection({
       <div className={step === 'recording' ? 'mt-3' : 'mt-[42px]'}>
         <RecordButton
           recording={step === 'recording'}
-          disabled={step === 'transcribing'}
           onStart={onMicClick}
           onStop={onStop}
         />
@@ -458,9 +506,7 @@ function VoiceSection({
         {error ??
           (step === 'recording'
             ? '다시 누르면 녹음이 멈춰요'
-            : step === 'transcribing'
-              ? '받아 적는 중이에요…'
-              : `눌러서 한두 문장만 말해 주세요 · 최대 ${formatVoiceLimit(maxMs)}`)}
+            : `눌러서 한두 문장만 말해 주세요 · 최대 ${formatVoiceLimit(maxMs)}`)}
       </p>
       <button type="button" onClick={onWrite} className="mt-5 text-[11px] text-point">
         지금 말하기 어려워요 → 글로 답하기

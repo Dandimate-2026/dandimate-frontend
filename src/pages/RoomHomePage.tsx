@@ -214,6 +214,7 @@ const SHARE_BUTTON_CLASS =
 function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null }) {
   const navigate = useAppNavigate()
   const { room, members, myTodo } = home
+  const canAddPhotos = (room.quota?.myPhotosRemaining ?? ((room.quota?.photosPerMember ?? MAX_PHOTOS) - (room.quota?.myPhotoCount ?? home.me.photoCount ?? 0))) > 0
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '', home.room.name)
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
@@ -268,11 +269,13 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
           <p className="mt-1 text-[15px] font-bold">
             {myTodo.needsFirstEntry ? '사진 올리고 한 마디 남기기' : '친구들이 모이길 기다리고 있어요'}
           </p>
-          {myTodo.needsFirstEntry && (
+          {canAddPhotos && (
             <Button onClick={() => navigate(paths.photoUpload(room.id))} className="mt-3 w-full">
-              사진 고르기
+              사진 추가하기
             </Button>
           )}
+
+          {members.some(member => (member.photoCount ?? 0) > 0) && <Button variant="outline" onClick={() => navigate(paths.roomCirculation(room.id))} className="mt-3 w-full">친구 사진 둘러보기</Button>}
 
           {/* 친구를 부르는 것도 지금 할 일: 고정 초대 링크와 공유 버튼 */}
           {inviteToken && (
@@ -304,7 +307,7 @@ function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] 
   // 사진 한도는 플랜마다 다르다(1인 3/6/10장). 서버가 준 한도를 쓰고, 없으면 기본 3장으로 본다
   const maxPhotos = room.quota?.photosPerMember ?? MAX_PHOTOS
   const myPhotos = room.quota?.myPhotoCount ?? me.photoCount ?? 0
-  const canAddPhotos = myPhotos < maxPhotos
+  const canAddPhotos = (room.quota?.myPhotosRemaining ?? (maxPhotos - myPhotos)) > 0
   // 친구 사진 수는 돌려보기 목록으로 센다 (목록을 아직 못 받았으면 서버 숫자로). 친구 사진이 있으면 늘 둘러볼 수 있다
   const friendCards = cards?.filter((c) => c.myResponse.status !== 'OWN_PHOTO') ?? null
   const friendPhotos = friendCards ? friendCards.length : members.filter((m) => m.id !== me.id).reduce((sum, m) => sum + (m.photoCount ?? 0), 0)
@@ -332,7 +335,7 @@ function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] 
             // 시안처럼 버튼 가운데를 제목 줄에 맞춘다
             className="-mt-2.5 h-[39px] shrink-0 rounded-full border border-ink px-[25px] text-[13px] active:opacity-80"
           >
-            사진 고르기
+            사진 추가하기
           </button>
         )}
       </div>
@@ -340,7 +343,7 @@ function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] 
         친구 사진에 이야기 붙이기
       </p>
       {/* 사진 하나에 덧붙이는 건 그 사진 카드에서, 여기서는 언제든 방 사진 전체를 돌려본다 */}
-      {friendPhotos > 0 && (
+      {(friendPhotos > 0 || myPhotos > 0) && (
         <Button onClick={() => navigate(paths.roomCirculation(room.id))} className="mt-3 w-full">
           친구 사진 둘러보기
         </Button>

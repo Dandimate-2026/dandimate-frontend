@@ -11,21 +11,10 @@ import { canUseTemplate, getTemplate, SCROLL_TEMPLATES, type RoomPlan, type Scro
 const PLAN_LABEL: Record<RoomPlan, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
 const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : 'PRO')
 
-/** 모임 장소(주소·장소 이름)나 방 이름에 지역 이름이 들어 있으면 그 지역 템플릿을 추천한다 (예: "경북 경주시 …" → 경주) */
-function recommendFor(...texts: (string | null | undefined)[]): ScrollTemplateId | null {
-  for (const text of texts) {
-    if (!text) continue
-    const region = SCROLL_TEMPLATES.find((item) => item.plan === 'LITE' && text.includes(item.name))
-    if (region) return region.id
-  }
-  return null
-}
-
 export default function TemplatePicker({ scroll, home, value, onSelect, onClose }: {
   scroll: Scroll; home: RoomHome; value: ScrollTemplateId; onSelect: (id: ScrollTemplateId) => void; onClose: () => void
 }) {
-  const recommended = recommendFor(home.room.place?.address, home.room.place?.placeName, home.room.name)
-  const [selected, setSelected] = useState<ScrollTemplateId>(value === 'minimal' && recommended ? recommended : value)
+  const [selected, setSelected] = useState<ScrollTemplateId>(value)
   const [preview, setPreview] = useState(false)
   const [asked, setAsked] = useState('')
   const [asking, setAsking] = useState(false)
@@ -37,7 +26,7 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
   const allowed = canUseTemplate(selected, plan)
   const storyCount = new Set(scroll.paragraphs.flatMap((paragraph) => paragraph.sources.map((source) => source.entryId))).size
   const lockNote = allowed ? null : `${template.name} 템플릿은 ${PLAN_LABEL[template.plan]} 이상 플랜에서 쓸 수 있어요 · 지금은 ${PLAN_LABEL[plan]}`
-  const featured = getTemplate(recommended ?? selected)
+  const featured = getTemplate(selected)
   async function requestTemplate() {
     if (asking) return
     setAsking(true); setRequestError('')
@@ -93,12 +82,10 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
     <button type="button" className="tp-featured" aria-pressed={selected === featured.id} onClick={() => setSelected(featured.id)}>
       <span className="tp-featured-art">
         <img src={featured.art} width={360} height={240} alt="" />
-        {recommended && <span className="tp-reco">추천</span>}
       </span>
       <span className="tp-featured-body">
         <span className="tp-featured-name">{featured.name}<span className={`tp-badge inline ${featured.plan.toLowerCase()}`}>{planBadge(featured.plan)}</span></span>
         <span className="tp-featured-desc">{featured.description}</span>
-        {recommended && <span className="tp-featured-why">{home.room.place ? '모임 장소' : '장소'}가 {featured.name}라서 추천해요</span>}
       </span>
     </button>
 

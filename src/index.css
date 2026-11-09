@@ -56,3 +56,6 @@ body {
 .branch-count { position: absolute; right: -7px; top: -5px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; color: #fff;
   font-size: 9px; font-weight: 700; line-height: 15px; text-align: center; box-shadow: 0 0 0 1.5px var(--color-bg); }
 @media (prefers-reduced-motion: reduce) { .branch-flower { animation: none; transform: translate(-50%, -50%); } }
+
+/* Constrain native iOS date controls to the containing dialog. */
+input[type="date"], input[type="datetime-local"], input[type="time"] { min-width: 0; max-width: 100%; box-sizing: border-box; }

@@ -265,7 +265,7 @@ function CitySheet({ pin, place: focus, onClose, onChanged }: { pin: CityPin; pl
           <span className="shrink-0 text-[12px] text-sub">
             {placeName
               ? `${pin.city} · 사진 ${places.length}장`
-              : `기록 ${pin.recordCount}개 · 모임방 ${pin.rooms.length}개`}
+              : `사진 ${pin.photoCount}장 · 이야기 ${pin.recordCount}개 · 모임방 ${pin.rooms.length}개`}
           </span>
         </h2>
 

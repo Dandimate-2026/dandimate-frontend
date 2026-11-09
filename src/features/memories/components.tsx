@@ -39,11 +39,11 @@ export function TextModeToggle({ value, onChange }: { value: boolean; onChange: 
   return <label className="memory-text-mode"><span>지금 소리를 못 들어요 &gt; 글로 보기</span><input type="checkbox" role="switch" checked={value} onChange={(event) => onChange(event.target.checked)} /><span className="memory-switch" aria-hidden="true" /></label>
 }
 
-export function StoryCard({ story, mine = false, textOnly = false }: { story: MemoryStory; mine?: boolean; textOnly?: boolean }) {
-  return <StoryCardPlayback key={`${textOnly}:${story.audioUrl ?? ''}:${story.text}`} story={story} mine={mine} textOnly={textOnly} />
+export function StoryCard({ story, mine = false, textOnly = false, mineLabel = '내 덧붙임' }: { story: MemoryStory; mine?: boolean; textOnly?: boolean; mineLabel?: string }) {
+  return <StoryCardPlayback key={`${textOnly}:${story.audioUrl ?? ''}:${story.text}`} story={story} mine={mine} textOnly={textOnly} mineLabel={mineLabel} />
 }
 
-function StoryCardPlayback({ story, mine, textOnly }: { story: MemoryStory; mine: boolean; textOnly: boolean }) {
+function StoryCardPlayback({ story, mine, textOnly, mineLabel }: { story: MemoryStory; mine: boolean; textOnly: boolean; mineLabel: string }) {
   const [playing, setPlaying] = useState(false)
   const [message, setMessage] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -90,7 +90,7 @@ function StoryCardPlayback({ story, mine, textOnly }: { story: MemoryStory; mine
   return <article className={`memory-story ${story.durationLabel ? 'has-duration' : ''} ${mine ? 'is-mine' : ''} ${textOnly ? 'text-only' : ''}`}>
     {!textOnly && <button type="button" className="memory-play" onClick={() => void play()} aria-label={`${mine ? '내 덧붙임' : story.author} 이야기 ${playing ? '멈추기' : '듣기'}`} aria-pressed={playing}>{playing ? <span>Ⅱ</span> : <PlayIcon />}</button>}
     <div className="memory-story-content">
-      <div className="memory-story-author">{story.flower && <MemoryFlower color={story.flower} size={18} />}<span>{mine ? '내 덧붙임' : story.author} · {story.kind}{story.durationLabel ? ` · ${story.durationLabel}` : ''}</span></div>
+      <div className="memory-story-author">{story.flower && <MemoryFlower color={story.flower} size={18} />}<span>{mine ? mineLabel : story.author} · {story.kind}{story.durationLabel ? ` · ${story.durationLabel}` : ''}</span></div>
       <p>{story.text || '음성으로 남긴 이야기예요.'}</p>
       {!textOnly && message && <span className="memory-audio-note" role="status">{message}</span>}
     </div>
