@@ -612,3 +612,20 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-replies { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 2px solid var(--scroll-accent, var(--color-line)); }
 .scroll-replies li { font-size: 13px; line-height: 1.5; color: var(--color-ink); }
 .scroll-replies strong { margin-right: 4px; font-size: 12px; font-weight: 700; color: var(--color-sub); }
+
+.memory-header .memory-back { min-height: 44px; }
+.memory-circulation .memory-actions { position: sticky; bottom: 0; padding: 16px 0 max(16px, env(safe-area-inset-bottom)); background: #f7f3ec; flex-shrink: 0; }
+.memory-circulation .memory-photo-card { flex-shrink: 0; }
+
+.memory-feed-card .memory-photo-card { margin-top: 0; }
+.memory-feed-actions { display: flex; padding-top: 10px; }
+.memory-feed-actions > button { width: 100%; }
+.memory-story-disclosure > summary { list-style: none; }
+.memory-story-disclosure > summary::-webkit-details-marker { display: none; }
+.memory-story-disclosure > summary > span:first-child::after { content: ' ＋'; float: right; }
+.memory-story-disclosure[open] > summary > span:first-child::after { content: ' −'; }
+.memory-story-disclosure[open] > summary > span:last-child { display: none; }
+
+.memory-story-disclosure .disclosure-open { display: none; }
+.memory-story-disclosure[open] .disclosure-open { display: inline; }
+.memory-story-disclosure[open] .disclosure-closed { display: none; }

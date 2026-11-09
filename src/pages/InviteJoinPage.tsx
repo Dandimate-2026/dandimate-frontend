@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { getInvitePreview, joinRoom } from '../api/rooms'
 import type { InvitePreview } from '../api/types'
+import { InviteLinkHelp } from '../components/InviteLinkHelp'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Flower, { EmptySlot } from '../components/Flower'
@@ -61,9 +62,12 @@ function InviteJoinPage() {
         inviteRoomName={preview.roomName}
         inviterNickname={preview.inviterNickname}
         actions={
-          <Button onClick={() => setEntered(true)} disabled={!preview.canJoin} className="w-full">
-            {preview.canJoin ? '입장하기' : '지금은 들어갈 수 없어요'}
-          </Button>
+          <>
+            <Button onClick={() => setEntered(true)} disabled={!preview.canJoin} className="w-full">
+              {preview.canJoin ? '입장하기' : '지금은 들어갈 수 없어요'}
+            </Button>
+            <InviteLinkHelp />
+          </>
         }
         note={
           <>

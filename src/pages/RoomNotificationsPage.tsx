@@ -18,6 +18,9 @@ function ChevronLeftIcon() {
 }
 
 const NOTIFICATION_TEXT: Record<NotificationType, { title: string; detail: string }> = {
+  HOST_TRANSFERRED: { title: '방장이 바뀌었어요', detail: '새 방장을 확인해 주세요' },
+  PHOTO_ADDON_ADDED: { title: '사진에 새 덧붙임이 달렸어요', detail: '친구의 이야기를 확인해 보세요' },
+  ROOM_PLAN_UPGRADED: { title: '모임방 플랜이 변경됐어요', detail: '새 플랜으로 함께 기록해 보세요' },
   ASKBACK_RECEIVED: { title: '나에게 질문이 왔어요', detail: '한 문장만 답하면 이야기가 더 풍성해져요' },
   SCROLL_READY: { title: '두루마리가 완성됐어요', detail: '우리 이야기를 펼쳐 보세요' },
   REPLY_APPLIED: { title: '답가가 두루마리에 엮였어요', detail: '바뀐 문단을 확인해 보세요' },
@@ -78,6 +81,9 @@ function RoomNotificationsPage() {
     if (item.type === 'ASKBACK_RECEIVED') navigate(paths.askback(roomId, item.resourceId))
     // 방장이 플랜 변경 요청을 누르면 플랜 화면으로 간다
     else if (item.type === 'PLAN_UPGRADE_REQUESTED') navigate(paths.roomPlan(roomId))
+    else if (item.type === 'PHOTO_ADDON_ADDED') navigate(paths.roomCirculation(roomId, item.resourceType.toUpperCase() === 'PHOTO' ? item.resourceId : undefined))
+    else if (item.type === 'HOST_TRANSFERRED') navigate(paths.roomSettings(roomId))
+    else if (item.type === 'ROOM_PLAN_UPGRADED') navigate(paths.roomPlan(roomId))
     else if (item.type.startsWith('ROOM_DELETION_DUE_')) navigate(paths.roomHome(roomId))
     else navigate(paths.roomWeaving(roomId))
   }

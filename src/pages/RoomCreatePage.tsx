@@ -295,7 +295,7 @@ function RoomCreatePage() {
           </Field>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Field htmlFor="meeting-date" label="모임 날짜">
+            <Field htmlFor="meeting-date" label="모임 시작일">
               {/* 날짜 칸은 시안 모양으로 보여주고, 실제 입력은 위에 투명하게 깐 기본 날짜 선택기로 받는다 */}
               <div className="relative flex h-[52px] items-center justify-between rounded-full border border-line bg-surface pr-4 pl-4 text-[13px]">
                 <span className={meetingDate ? '' : 'text-muted'}>
@@ -328,6 +328,8 @@ function RoomCreatePage() {
               />
             </Field>
           </div>
+
+          <p className="mt-2 px-1 text-[11px] leading-4 text-sub">여러 날의 모임은 시작 날짜를 선택해 주세요.</p>
 
           <div className="mt-3">
             <Field htmlFor="capacity" label="함께할 인원" hint="나 포함">

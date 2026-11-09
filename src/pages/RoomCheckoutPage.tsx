@@ -61,6 +61,17 @@ function RoomCheckoutPage() {
     setOrderId(undefined)
     setStatus('processing')
     try {
+      if (!isNewRoom) {
+        if (!roomId || memberAccessToken === undefined) throw new Error('모임방을 확인할 수 없어요')
+        const fresh = await getRoomHome(roomId, memberAccessToken)
+        setHome(fresh)
+        const ranks = ['FREE', 'LITE', 'PRO']
+        if (fresh.me.role !== 'HOST' || ranks.indexOf(fresh.room.planType ?? 'FREE') >= ranks.indexOf(plan.id.toUpperCase())) {
+          setFailureReason('현재 플랜과 같거나 낮은 플랜은 다시 결제할 수 없어요')
+          setStatus('failed')
+          return
+        }
+      }
       if (TOSS_ENABLED) {
         const planType = plan.id.toUpperCase() as RoomPlanType
         const order = isNewRoom && draft
@@ -126,7 +137,7 @@ function RoomCheckoutPage() {
         {PAYMENT_DEMO && !USE_MOCK && <p className="mt-1 text-[11px] text-sub" role="status">시연용 화면이에요. 실제로 결제되지 않아요.</p>}
         {!paymentOpen && <p className="mt-1 text-[11px] text-sub" role="status">지금은 결제를 준비하고 있어요. 잠시 후 다시 시도해 주세요.</p>}
         {!plan.available && <p className="mt-1 text-[11px] text-point" role="status">이 플랜은 결제 준비 중이에요</p>}
-        <Button onClick={() => void handlePay()} disabled={!agreed || !plan.available || !paymentOpen} className="mt-[11px] w-full text-[16px] font-bold">{formatWon(plan.price)} 결제하기</Button>
+        <Button onClick={() => void handlePay()} disabled={!agreed || !plan.available || !paymentOpen || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-[11px] w-full text-[16px] font-bold">{formatWon(plan.price)} 결제하기</Button>
       </footer>
     </main>
   )

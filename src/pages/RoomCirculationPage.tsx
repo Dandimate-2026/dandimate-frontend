@@ -2,15 +2,17 @@ import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 import { createEntry, deleteEntry, editEntry, transcribe } from '../api/entries'
+import PlaceSheet from '../components/PlaceSheet'
+import { setPhotoLocation, type Place } from '../api/places'
 import { deletePhoto } from '../api/photos'
-import { getCirculation, passPhoto, recordMockAddon, undoPass } from '../api/memories'
+import { getCirculation, recordMockAddon, undoPass } from '../api/memories'
 import type { CirculationCard, Entry, FlowerCode } from '../api/types'
 import Button from '../components/Button'
 import CirculationPage from '../features/memories/CirculationPage'
 import { CirculationComplete } from '../features/memories/CompletionPages'
 import ContributionSheet from '../features/memories/ContributionSheet'
 import { useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
-import { MemoryFlower, MemoryHeader } from '../features/memories/components'
+import { MemoryFlower, MemoryHeader, TextModeToggle } from '../features/memories/components'
 import type { FlowerColor, MemoryContribution, MemoryPhoto, MemoryResponse, MemoryStory } from '../features/memories/types'
 import '../features/memories/memories.css'
 import { getRoomSession } from '../lib/session'
@@ -44,11 +46,11 @@ function memoryPhoto(card: CirculationCard, myMemberId?: string): MemoryPhoto {
     mine: card.myResponse.status === 'OWN_PHOTO',
     owner: card.photo.uploader.nickname,
     flower: flower(card.photo.uploader.flowerCode),
-    location: '올린 사진',
+    location: card.photo.location?.placeName ?? '장소 미등록',
     dateLabel: card.firstEntry?.confirmedAt.slice(0, 10).replaceAll('-', '.') ?? '',
     photoUrl: card.photo.imageUrl,
     firstStory: card.firstEntry ? story(card.firstEntry, myMemberId) : { author: card.photo.uploader.nickname, kind: '첫 한마디', text: '아직 첫 이야기가 없어요.' },
-    friends: card.otherEntries.map((entry) => story(entry, myMemberId)),
+    friends: card.otherEntries.filter((entry, i, entries) => entry.id !== card.firstEntry?.id && entries.findIndex(item => item.id === entry.id) === i).map((entry) => story(entry, myMemberId)),
   }
 }
 
@@ -64,8 +66,16 @@ function RoomCirculationPage() {
   const quotaHome = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const editable = canEditRoomRecords(quotaHome?.room.status)
   const [cards, setCards] = useState<CirculationCard[]>([])
+  const [feedPage, setFeedPage] = useState(1)
+  const feedTop = useRef<HTMLDivElement>(null)
+  const pageSize = 6
+  const pageCount = Math.max(1, Math.ceil(cards.length / pageSize))
+  const currentPage = Math.min(feedPage, pageCount)
+  const pageStart = (currentPage - 1) * pageSize
   const [index, setIndex] = useState(0)
   // 홈·핀 꽃에서 사진 하나를 콕 집어 들어오면 그 사진 하나만 보여 준다
+  const [listing, setListing] = useState(!startPhotoId)
+  const [placing, setPlacing] = useState<string | null>(null)
   const [single, setSingle] = useState(false)
   const [done, setDone] = useState(false)
   const [responses, setResponses] = useState<Record<string, MemoryContribution>>({})
@@ -94,7 +104,7 @@ function RoomCirculationPage() {
       const start = startPhotoId ? list.findIndex((card) => card.photo.id === startPhotoId) : -1
       if (start >= 0) { setIndex(start); setSingle(true) }
       // 아직 돌려보기에 없는 사진(지워졌거나 첫 한마디 전)이면 첫 사진부터 보여주고 알린다
-      else if (startPhotoId) setError('그 사진은 지금 볼 수 없어요. 처음 사진부터 보여 드릴게요')
+      else if (startPhotoId) { setListing(true); setError('그 사진은 지금 볼 수 없어요. 목록에서 다른 사진을 골라 주세요') }
     })
       .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : '사진을 불러오지 못했어요.') })
       .finally(() => { if (active) setLoading(false) })
@@ -119,18 +129,21 @@ function RoomCirculationPage() {
     ? { status: 'added', contribution: responses[card.photo.id] }
     : card?.myResponse.status === 'PASSED' ? { status: 'passed' } : undefined
   const backToHome = () => navigate(paths.roomHome(roomId))
+  const backToList = () => { setListing(true); setSingle(false); setSheetOpen(false) }
+  async function savePlace(place: Place) {
+    if (!placing || busy) return
+    setBusy(true); setError('')
+    try {
+      await setPhotoLocation(placing, place)
+      await refresh()
+      setPlacing(null)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : '장소를 저장하지 못했어요') }
+    finally { setBusy(false) }
+  }
 
   async function refresh() {
     const result = await getCirculation(roomId, token)
     setCards(result)
-  }
-
-  async function pass() {
-    if (!editable || !card || busy) return
-    setBusy(true); setError('')
-    try { await passPhoto(card.photo.id, token); await refresh() }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '패스하지 못했어요.') }
-    finally { setBusy(false) }
   }
 
   async function saveAddition(contribution: MemoryContribution) {
@@ -201,6 +214,29 @@ function RoomCirculationPage() {
 
   return <div className="memory-app w-full">
     {loading ? <main className="memory-page" role="status">사진을 불러오고 있어요…</main>
+      : listing && cards.length > 0 ? <main className="memory-page">
+          <MemoryHeader title="친구 사진 둘러보기" onBack={backToHome} />
+          <p className="mt-4 text-[12px] text-sub">아래로 넘기며 사진을 둘러보세요. 이야기는 펼쳐서 읽을 수 있어요.</p>
+          {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
+          <TextModeToggle value={textOnly} onChange={setTextOnly} />
+          <div ref={feedTop} className="scroll-mt-5" />
+          <p className="mt-3 text-[12px] text-sub">사진 {cards.length}장 · {currentPage} / {pageCount} 페이지</p>
+          <ul className="mt-4 flex flex-col gap-6">
+            {cards.slice(pageStart, pageStart + pageSize).map((item, offset) => { const i = pageStart + offset; return <li key={item.photo.id} id={`photo-${item.photo.id}`}>
+              <CirculationPage embedded readOnly={!editable} photo={memoryPhoto(item, quotaHome?.me.id)} position={i + 1} total={cards.length}
+                response={item.myResponse.status === 'ADDON' ? { status: 'added', contribution: responses[item.photo.id] } : undefined}
+                locked={item.locked} busy={busy} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome}
+                onAdd={() => { setIndex(i); setSheetOpen(true) }} onNext={() => {}}
+                onPlace={editable && item.myResponse.status === 'OWN_PHOTO' ? () => setPlacing(item.photo.id) : undefined}
+                onDeletePhoto={editable ? () => { setIndex(i); setConfirmDelete({ kind: 'photo' }) } : undefined}
+                onEditStory={editable ? s => { setIndex(i); setEditing({ story: s, text: s.text }) } : undefined}
+                onDeleteStory={editable ? s => { setIndex(i); setConfirmDelete({ kind: 'story', story: s }) } : undefined} />
+            </li>})}
+          </ul>
+          {pageCount > 1 && <nav aria-label="사진 목록 페이지" className="mt-6 flex flex-wrap justify-center gap-2">
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map(page => <button key={page} type="button" aria-label={`${page}페이지`} aria-current={page === currentPage ? 'page' : undefined} onClick={() => { setFeedPage(page); feedTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} className={`flex size-11 items-center justify-center rounded-full border text-[13px] ${page === currentPage ? 'border-ink bg-ink text-surface' : 'border-line bg-surface'}`}>{page}</button>)}
+          </nav>}
+        </main>
       : !photo ? <main className="memory-page memory-empty">
           <MemoryHeader onBack={backToHome} />
           <section className="memory-empty-main" role={error ? 'alert' : 'status'}>
@@ -214,10 +250,11 @@ function RoomCirculationPage() {
           </footer>
         </main>
         : done ? <CirculationComplete addedCount={cards.filter((item) => item.myResponse.status === 'ADDON').length} photoCount={cards.length} roomName={session.roomName} onBack={() => setDone(false)} onHome={backToHome} />
-          : <CirculationPage readOnly={!editable} photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome} onAdd={() => setSheetOpen(true)} onPass={() => void pass()} onNext={next}
+          : <CirculationPage readOnly={!editable} photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToList} onAdd={() => setSheetOpen(true)} onNext={next}
             onDeletePhoto={editable ? () => setConfirmDelete({ kind: 'photo' }) : undefined}
             onEditStory={editable ? (s) => setEditing({ story: s, text: s.text }) : undefined}
             onDeleteStory={editable ? (s) => setConfirmDelete({ kind: 'story', story: s }) : undefined} />}
+    {placing && <PlaceSheet title="사진을 어디서 찍었나요?" recent={[]} onClose={() => { if (!busy) setPlacing(null) }} onSelect={(_, detail) => { if (detail) void savePlace(detail) }} />}
     {editable && confirmDelete && (
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-8" onClick={() => setConfirmDelete(null)}>
         <div role="alertdialog" aria-modal="true" aria-labelledby="delete-title" onClick={(e) => e.stopPropagation()} className="w-full max-w-[360px] rounded-[24px] bg-[#fffdf9] px-5 pt-6 pb-5 text-center text-[#2a2623]">
