@@ -46,12 +46,10 @@ function RoomWeavingPage() {
   const [replyNotice, setReplyNotice] = useState('')
   const [reweaving, setReweaving] = useState(false)
   const [pendingParagraph, setPendingParagraph] = useState<ScrollParagraph | null>(null)
-  // 다시 엮기 버튼으로 방 전체를 다시 엮는 중 (입력 화면 없이 바로 '다시 엮는 중' 화면)
-  const [reweavingAll, setReweavingAll] = useState(false)
   const [pendingContribution, setPendingContribution] = useState('')
   const [deletingReply, setDeletingReply] = useState(false)
   const [reweaveResult, setReweaveResult] = useState<ReweaveResult>()
-  // 챗봇에서 "이 문단에 답가 남기기"로 왔으면(?reply=사진id) 두루마리를 처음 불러왔을 때 그 사진 문단의 답가 창을 한 번 연다
+  // 예전 챗봇 링크는 문단 위치만 안내한다. 재엮기는 문단 메뉴·전체 평가에서 시작한다.
   const replyPhotoId = params.get('reply')
   const replyOpened = useRef(false)
   const showScroll = useCallback((result: Scroll) => {
@@ -60,8 +58,8 @@ function RoomWeavingPage() {
     replyOpened.current = true
     const paragraph = result.paragraphs.find((p) => p.photo.id === replyPhotoId)
     if (paragraph) {
-      setReplyTarget(paragraph)
-      // 답가 창 뒤에도 그 사진 문단이 보이도록 두루마리를 그 위치로 내린다 (문단이 그려진 다음에)
+      setReplyNotice('고칠 문단의 ⋯에서 ‘다시 엮기’를 눌러 주세요.')
+      // 문단이 그려진 다음 해당 사진 위치로 이동한다.
       window.setTimeout(() => {
         document.getElementById(`paragraph-${paragraph.id}`)?.scrollIntoView({ block: 'start' })
       }, 100)
@@ -70,7 +68,7 @@ function RoomWeavingPage() {
   }, [replyPhotoId])
   useEffect(() => {
     if (!replyNotice || jobId) return
-    const timer = window.setTimeout(() => setReplyNotice(''), 4500)
+    const timer = window.setTimeout(() => setReplyNotice(''), 12_000)
     return () => window.clearTimeout(timer)
   }, [replyNotice, jobId])
 
@@ -125,13 +123,6 @@ function RoomWeavingPage() {
               setReplyNotice(`답가가 문단에 엮였어요${remaining !== undefined ? ` · 재엮기 ${remaining}${limit !== undefined ? `/${limit}` : ''}회 남음` : ''}`)
               setPendingParagraph(null)
               window.scrollTo(0, 0)
-            } else if (reweavingAll) {
-              const quota = room.room.quota
-              const remaining = quota?.regenerationsRemaining
-              const limit = quota?.regenerationLimit
-              setReplyNotice(`두루마리를 다시 엮었어요${remaining !== undefined ? ` · 재엮기 ${remaining}${limit !== undefined ? `/${limit}` : ''}회 남음` : ''}`)
-              setReweavingAll(false)
-              window.scrollTo(0, 0)
             } else if (deletingReply) {
               setReplyNotice('답가를 삭제하고 문단을 갱신했어요')
               setDeletingReply(false)
@@ -147,7 +138,7 @@ function RoomWeavingPage() {
     void check()
     const interval = window.setInterval(() => void check(), 5000)
     return () => { active = false; window.clearInterval(interval) }
-  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, reweavingAll, deletingReply])
+  }, [roomId, token, jobId, jobFailed, pendingParagraph, pendingContribution, updateJobParam, showScroll, deletingReply])
 
   if (!session) return <NotFoundPage message="초대 링크로 먼저 들어와 주세요" />
   const backToHome = () => navigate(reviewerDemo ? paths.roomList() : paths.roomHome(roomId), { state: reviewerDemo ? { reviewerDemo } : null })
@@ -164,20 +155,14 @@ function RoomWeavingPage() {
     updateJobParam(result.job.id)
   }
 
-  /** 다시 엮기 (맨 아래 버튼·문단 ⋮ 메뉴 공통). 입력 화면 없이 바로 엮기 작업을 시작하고 '다시 엮는 중' 화면으로 간다 */
-  async function startReweave() {
-    if (!home) return
+  /** 문단 메뉴와 낮은 전체 평가가 같은 문단 재엮기 화면으로 이어진다. */
+  function startReweave(paragraph: ScrollParagraph) {
+    if (!home || (jobId && !jobFailed)) return
     if (home.room.quota?.regenerationsRemaining === 0) { setReweaveLimitOpen(true); return }
-    if (home.me.role !== 'HOST') { setError('다시 엮기는 방장만 할 수 있어요. 방장에게 부탁해 주세요.'); window.scrollTo(0, 0); return }
     setError('')
-    try {
-      const result = await retryWeave(roomId, token)
-      setReweavingAll(true); setJobFailed(false); setJobId(result.job.id); updateJobParam(result.job.id)
-      window.scrollTo(0, 0)
-    } catch (cause) {
-      if (isLimitError(cause)) { setReweaveLimitOpen(true); return }
-      setError(cause instanceof Error ? cause.message : '다시 엮기를 시작하지 못했어요.')
-    }
+    setReweaving(true)
+    setReplyTarget(paragraph)
+    window.scrollTo(0, 0)
   }
 
   async function retry() {
@@ -242,15 +227,14 @@ function RoomWeavingPage() {
 
   return <div className="memory-app w-full">
     {USE_MOCK && !captureMode && <p className="scroll-preview-banner" role="note">기능 미리보기 · 예시 데이터</p>}
-    {reweaving && replyTarget ? null : jobId && (pendingParagraph || reweavingAll) && !jobFailed ? <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name} reweavingCount={reweavingAll ? scroll?.paragraphs.length || 1 : 1} remaining={home?.room.quota?.regenerationsRemaining} limit={home?.room.quota?.regenerationLimit} photoCount={scroll?.paragraphs.length} participantDetail={scroll ? `${scroll.participantCount}/${scroll.memberCount}` : undefined} error={error} /> : scroll && home ? <>
+    {reweaving && replyTarget ? null : jobId && pendingParagraph && !jobFailed ? <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name} reweavingCount={1} remaining={home?.room.quota?.regenerationsRemaining} limit={home?.room.quota?.regenerationLimit} photoCount={scroll?.paragraphs.length} participantDetail={scroll ? `${scroll.participantCount}/${scroll.memberCount}` : undefined} error={error} /> : scroll && home ? <>
       {error && <p className="memory-error" role="alert">{error}</p>}
       <LiveScrollPage key={`${home.room.id}:${home.me.id}`} scroll={scroll} home={home} token={token} onBack={backToHome}
-        onReply={(paragraph) => { setReweaving(false); setReplyTarget(paragraph) }} onRefresh={refresh} onDeleteReply={removeReply}
+        onRefresh={refresh} onDeleteReply={removeReply}
         onReweaveLimit={() => setReweaveLimitOpen(true)}
-        onReweave={() => void startReweave()}
+        onReweave={startReweave}
         pendingParagraphId={jobId && !jobFailed ? pendingParagraph?.id ?? scroll.paragraphs[0]?.id : undefined} reweaveResult={reweaveResult}
-        completionMessage={!jobId ? replyNotice : ''} onDismissCompletion={() => setReplyNotice('')}
-        onAddStory={() => navigate(paths.photoUpload(roomId))} />
+        completionMessage={!jobId ? replyNotice : ''} onDismissCompletion={() => setReplyNotice('')} />
     </> : <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name ?? session?.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
     {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} draftKey={reweaving ? undefined : `reply:${replyTarget.id}`} maxLength={200} maxVoiceMs={voiceMaxMs(home?.room.quota, 'other')} startWithText={reweaving} fullPage={reweaving}
       onTranscribe={transcribeReplyWithLimit}
@@ -267,7 +251,7 @@ function RoomWeavingPage() {
       <PlanLimitSheet
         kind="reweave"
         title="재엮기를 모두 사용했어요"
-        description={<>답가는 계속 남길 수 있고 원문으로 보관돼요.<br />두루마리 본문에는 플랜을 바꾸면 엮여요</>}
+        description={<>현재 두루마리는 그대로 볼 수 있어요.<br />다시 엮으려면 재엮기 횟수가 있는 플랜이 필요해요.</>}
         usage={home?.room.quota?.regenerationLimit ? {
           label: '재엮기',
           value: `${home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit}/${home.room.quota.regenerationLimit}회`,

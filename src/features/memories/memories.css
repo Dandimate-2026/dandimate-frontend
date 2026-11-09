@@ -1,4 +1,7 @@
 /* 기억 돌려보기와 두루마리 화면의 공통 스타일. */
+/* 미리보기·내보내기는 한글 전체 글리프가 있는 정적 글꼴로 통일한다. */
+@font-face { font-family: 'Scroll Pretendard'; font-style: normal; font-weight: 400; font-display: swap; src: url('pretendard/dist/web/static/woff2/Pretendard-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Scroll Pretendard'; font-style: normal; font-weight: 700; font-display: swap; src: url('pretendard/dist/web/static/woff2/Pretendard-Bold.woff2') format('woff2'); }
 body:has(.memory-app) { margin: 0; background: #ede9e3; }
 html:has(.memory-app) { scrollbar-width: none; }
 html:has(.memory-app)::-webkit-scrollbar { display: none; }
@@ -53,7 +56,7 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-play { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 0; flex-shrink: 0; border: 1px solid var(--color-line); border-radius: 50%; background: var(--color-surface); }
 .memory-play svg { width: 8px; height: 9px; }
 .memory-play span { font-size: 9px; }
-.memory-story.is-mine { padding-left: 41px; min-height: 60px; background: #f6e3ea; }
+.memory-story.is-mine { min-height: 60px; background: #f6e3ea; }
 .memory-story.is-mine .memory-story-author { color: var(--color-point); }
 .memory-story.text-only { padding-left: 12px; }
 .memory-story audio { margin-top: 8px; }
@@ -117,6 +120,8 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-reaction[aria-pressed="true"] { background: #f6e3ea; border-color: var(--color-point); color: var(--color-point); }
 .memory-reply { border-color: var(--color-ink); }
 .memory-original-link { margin-left: auto; color: var(--color-sub); font-size: 10px; white-space: nowrap; padding: 6px 0; }
+.memory-chapter-actions > .memory-reaction { flex-shrink: 0; }
+.memory-chapter-actions > .memory-original-link { flex: 1; min-width: 0; white-space: normal; text-align: right; }
 .memory-added-reply { margin-top: 12px; }
 .memory-app .memory-rating { padding: 18px 19px 13px; margin-top: 0; }
 .memory-app .memory-chapter-actions + .memory-rating { margin-top: 10px; }
@@ -253,9 +258,16 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .template-chips button { display: flex; align-items: center; gap: 5px; border: 1px solid var(--color-line); background: var(--color-surface); border-radius: 30px; white-space: nowrap; padding: 7px 10px; font-size: 12px; }
 .template-chips button[aria-pressed="true"] { border-color: var(--color-ink); }
 .template-chips button span { width: 16px; height: 16px; border-radius: 50%; }
-.scroll-document { color: var(--color-ink); font-family: 'Pretendard Variable', Pretendard, sans-serif; font-size: 14px; line-height: 1.5; word-break: keep-all; overflow: hidden; }
+.scroll-document { color: var(--color-ink); font-family: 'Scroll Pretendard', var(--font-sans); font-size: 14px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; overflow: hidden; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.template-picker { font-family: 'Scroll Pretendard', var(--font-sans); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.template-chips button, .tp-tile-name { flex-shrink: 0; line-height: 1.5; }
 .scroll-document-body { padding: 20px; }
 .scroll-document-heading h1 { font-size: 23px; font-weight: 750; }
+.scroll-document-heading h1, .scroll-document-heading p, .scroll-document .memory-member-name { line-height: 1.5; overflow: visible; }
+.reweave-paragraph-option { display: grid; width: 100%; gap: 6px; text-align: left; margin-top: 12px; padding: 14px; border: 1px solid var(--color-line); border-radius: 14px; }
+.reweave-paragraph-option span { color: var(--color-sub); font-size: 13px; }
+.download-ready { display: grid; gap: 12px; margin-top: 20px; }
+.download-ready > p { line-height: 1.6; }
 .scroll-document-heading > p { color: var(--color-sub); font-size: 12px; margin-top: 5px; }
 .scroll-document-heading .memory-members { flex-wrap: wrap; margin-top: 10px; }
 .scroll-document .memory-chapter { padding-right: 0; padding-top: 20px; padding-bottom: 24px; }

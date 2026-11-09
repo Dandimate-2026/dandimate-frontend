@@ -65,11 +65,11 @@ function MemoryExperience({ initialScreen }: { initialScreen: PreviewScreen }) {
   return <>
     {view === 's6-5' ? <CirculationComplete addedCount={Object.values(responses).filter((entry) => entry.status === 'added').length} photoCount={MEMORY_PHOTOS.length - 1} onBack={() => setView('s6-1')} onHome={home} />
       : view === 's8' ? <WeavingPage onBack={home} onReady={showScroll} />
-      : isScroll ? <ScrollPage onBack={home} replies={replies} onReply={(chapter, quote) => setReplyTarget({ chapter, quote })} />
+      : isScroll ? (replyTarget ? null : <ScrollPage onBack={home} replies={replies} onReply={(chapter, quote) => setReplyTarget({ chapter, quote })} />)
       : view === 's6-2' ? <main className="memory-page memory-scroll"><TripHeading onBack={home} /><div className="memory-sheet-preview-photo"><PhotoSlot label="황리단길 카페" /></div><Button className="memory-reopen-sheet" onClick={() => setAdditionOpen(true)}>덧붙이기</Button></main>
       : <CirculationPage photo={photo} position={index + 1} total={MEMORY_PHOTOS.length} response={response} textOnly={textOnly} onTextMode={setTextOnly} onBack={home} onAdd={() => setAdditionOpen(true)} onPass={() => { setResponses((current) => ({ ...current, [photo.id]: { status: 'passed' } })); setView('s6-4') }} onNext={next} />}
     {additionOpen && <ContributionSheet kind="addition" quote={photo.firstStory.text} initial={response?.contribution} startWithText={textOnly} onSave={saveAddition} onClose={() => setAdditionOpen(false)} />}
-    {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.quote} onClose={() => setReplyTarget(null)} onSave={(contribution) => {
+    {replyTarget && <ContributionSheet kind="reply" fullPage startWithText quote={replyTarget.quote} onClose={() => setReplyTarget(null)} onSave={(contribution) => {
       if (contribution.audioUrl) audioUrls.current.add(contribution.audioUrl)
       setReplies((current) => ({ ...current, [replyTarget.chapter]: [...(current[replyTarget.chapter] ?? []), contribution] }))
       setReplyTarget(null)
