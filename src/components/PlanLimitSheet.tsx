@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { RoomPlanType, RoomQuota } from '../api/types'
-import { PLANS, type Plan } from '../lib/plans'
+import { type Plan, type PlanId } from '../lib/plans'
+import { usePlans } from '../hooks/usePlans'
 import { useSheetDrag } from '../hooks/useSheetDrag'
 
 export type PlanLimitKind = 'photo' | 'voice' | 'reweave'
@@ -57,6 +58,7 @@ function PlanLimitSheet({
   usage,
   currentPlan,
   showPlans = true,
+  onSelectPlan,
   primary,
   secondary,
   onClose,
@@ -68,12 +70,14 @@ function PlanLimitSheet({
   usage?: { label: string; value: string; ratio: number }
   currentPlan?: RoomPlanType
   showPlans?: boolean
+  onSelectPlan?: (plan: PlanId) => void
   primary: Action
   secondary?: Action
   onClose: () => void
 }) {
   const { icon, value } = KIND[kind]
   const current = (currentPlan ?? 'FREE').toLowerCase()
+  const plans = usePlans()
   const sheetDrag = useSheetDrag(onClose)
 
   return (
@@ -114,8 +118,9 @@ function PlanLimitSheet({
 
         {showPlans && current !== 'pro' && (
           <ul className={`${usage ? 'mt-2.5' : 'mt-5'} grid grid-cols-3 gap-[19px]`}>
-            {PLANS.map((plan) => {
+            {plans.map((plan) => {
               const isCurrent = plan.id === current
+              const selectable = onSelectPlan && plan.available && plans.findIndex(item => item.id === current) < plans.indexOf(plan)
               return (
                 <li
                   key={plan.id}
@@ -124,8 +129,10 @@ function PlanLimitSheet({
                     isCurrent ? 'border-ink' : 'border-[#d5ccbf]'
                   }`}
                 >
-                  <span className="text-[12px] text-[#6b635b]">{plan.name}</span>
-                  <span className="mt-0.5 text-[13px] font-semibold text-ink">{value(plan)}</span>
+                  {onSelectPlan ? <button type="button" disabled={!selectable} onClick={() => onSelectPlan(plan.id)} aria-label={`${plan.name} ${value(plan)}${isCurrent ? ' 현재 플랜' : ' 결제하기'}`} className="flex size-full flex-col items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-point disabled:cursor-default">
+                    <span className="text-[12px] text-[#6b635b]">{plan.name}</span>
+                    <span className="mt-0.5 text-[13px] font-semibold text-ink">{value(plan)}</span>
+                  </button> : <><span className="text-[12px] text-[#6b635b]">{plan.name}</span><span className="mt-0.5 text-[13px] font-semibold text-ink">{value(plan)}</span></>}
                 </li>
               )
             })}

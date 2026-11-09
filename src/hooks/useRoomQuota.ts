@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { getRoomHome, requestPlanUpgrade } from '../api/rooms'
 import type { PlanRequestReason, RoomHome, RoomQuota } from '../api/types'
 import { paths } from '../routes/paths'
+import type { PlanId } from '../lib/plans'
 import { useRoomLiveUpdates } from './useRoomLiveUpdates'
 
 /**
@@ -52,16 +53,18 @@ export function usePlanLimitAction(
   onAsked?: (message: string) => void,
 ) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [notice, setNotice] = useState<string | null>(null)
   const isHost = home?.me.role === 'HOST'
   const isPro = home?.room.planType === 'PRO'
+  const returnPath = location.pathname + location.search
 
   const action = isPro
     ? { label: '확인', onClick: () => {} }
     : isHost
     ? {
         label: '플랜보기',
-        onClick: () => navigate(paths.roomPlan(roomId), { state: { fromLimit: true } }),
+        onClick: () => navigate(paths.roomPlan(roomId), { state: { fromLimit: true, returnPath } }),
       }
     : {
         label: '방장에게 알리기',
@@ -76,7 +79,13 @@ export function usePlanLimitAction(
         },
       }
 
-  return { isHost, action, notice }
+  const onSelectPlan = isHost && !isPro ? (plan: PlanId) => {
+    const current = (home?.room.planType ?? 'FREE').toLowerCase()
+    if (['free', 'lite', 'pro'].indexOf(plan) <= ['free', 'lite', 'pro'].indexOf(current)) return
+    navigate(paths.roomCheckout(roomId, plan), { state: { returnPath, selectedPlan: plan } })
+  } : undefined
+
+  return { isHost, action, notice, onSelectPlan }
 }
 
 // 서버가 한도를 알려 주지 않으면 가장 짧은 Free 기준으로 막는다. 길게 녹음했다가 서버에서 거절당하지 않도록

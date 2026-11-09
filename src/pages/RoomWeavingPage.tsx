@@ -244,6 +244,7 @@ function RoomWeavingPage() {
           ratio: (home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit) / home.room.quota.regenerationLimit,
         } : undefined}
         currentPlan={home?.room.planType}
+        onSelectPlan={reweavePlan.onSelectPlan}
         primary={{ ...reweavePlan.action, onClick: () => { setReweaveLimitOpen(false); reweavePlan.action.onClick() } }}
         secondary={{ label: '다음에 할게요', onClick: () => setReweaveLimitOpen(false) }}
         onClose={() => setReweaveLimitOpen(false)}

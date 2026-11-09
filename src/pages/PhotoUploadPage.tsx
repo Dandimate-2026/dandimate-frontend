@@ -332,6 +332,7 @@ function PhotoUploadPage() {
             </>
           }
           currentPlan={home?.room.planType}
+          onSelectPlan={photoPlan.onSelectPlan}
           primary={{
             ...photoPlan.action,
             onClick: () => {
