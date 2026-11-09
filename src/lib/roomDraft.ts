@@ -5,6 +5,7 @@ const DRAFT_KEY = 'duruduru:room-draft'
 export interface RoomDraft {
   name: string
   meetingDate: string
+  deadlineAt?: string
   hostNickname: string
   capacity: number
   /** 서버에 올린 대표 사진 주소 (방을 만들 때 그대로 보낸다) */

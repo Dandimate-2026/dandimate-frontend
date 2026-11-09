@@ -39,12 +39,6 @@ export async function askHost(text: string) {
   await navigator.clipboard?.writeText(text).catch(() => {})
 }
 
-const ASK_TEXT: Record<PlanRequestReason, string> = {
-  PHOTO: '사진을 더 올리고 싶어요',
-  VOICE: '목소리로 더 남기고 싶어요',
-  REWEAVE: '두루마리를 더 엮고 싶어요',
-}
-
 /**
  * 한도 시트의 플랜 버튼. 사진·말하기·재엮기 모두 같은 규칙을 쓴다.
  * - 방장: [플랜 보기] → 플랜 화면. 뒤로 가면 보던 화면으로 돌아온다
@@ -75,7 +69,7 @@ export function usePlanLimitAction(
               setNotice(message)
               onAsked?.(message)
             })
-            .catch(() => askHost(`방장님, ${home?.room.name ?? '우리 방'}에서 ${ASK_TEXT[reason]}. 플랜을 바꿔 줄 수 있을까요?`))
+            .catch(() => { const message = '방장에게 요청을 보내지 못했어요. 잠시 후 다시 눌러 주세요'; setNotice(message); onAsked?.(message) })
         },
       }
 

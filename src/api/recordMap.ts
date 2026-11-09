@@ -176,5 +176,11 @@ export function askDuru(message: string, conversationId: string) {
     })
   }
   // 같은 질문을 두 번 차감하지 않도록 Idempotency-Key를 보낸다 (서버가 이 키로 결과를 다시 돌려준다)
-  return request<ChatAnswer>('/chat/messages', { method: 'POST', body: { message, conversationId }, idempotent: true })
+  return request<ChatAnswer>('/chat/messages', { method: 'POST', body: { message, conversationId }, idempotent: true, timeoutMs: 60000 })
+}
+
+/** 챗봇 추천에는 지도 표시 지역 밖의 실제 기록 장소도 사용한다. */
+export async function getChatPlaceNames(): Promise<string[]> {
+  const cities = USE_MOCK ? MOCK_MAP : (await request<{ cities: CityPin[] }>('/users/me/map')).cities
+  return [...new Set(cities.flatMap(city => [city.city, ...city.places.map(place => place.placeName)]).filter(Boolean))].slice(0, 12)
 }

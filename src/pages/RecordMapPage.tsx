@@ -704,6 +704,7 @@ function RoomFilter({
 
 /** 아래 탭 "기록 지도": 내 사진 장소를 도시별 꽃 핀으로 보여준다. 방을 고르면 그 방 사진의 장소만 보인다 */
 function RecordMapPage() {
+  const navigate = useAppNavigate()
   const [allPins, setPins] = useState<CityPin[] | null>(null)
   const [visiblePins, setVisiblePins] = useState<CityPin[] | null>(null)
   const [error, setError] = useState(false)
@@ -790,6 +791,8 @@ function RecordMapPage() {
             onChange={changeRoom}
           />
         </div>
+        <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface">＋ 새 모임방 만들기</button>
+        <p className="mt-2 text-[11px] text-sub">친구에게 초대 링크를 받았다면 그 링크로 들어오면 돼요.</p>
       </header>
 
       {/* 개요는 시안의 커스텀 경계 지도, 확대하면 카카오 상세 지도. */}

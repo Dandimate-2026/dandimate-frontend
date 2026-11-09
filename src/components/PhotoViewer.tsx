@@ -25,7 +25,7 @@ export function PhotoViewer({ src, alt = '', onClose }: { src: string; alt?: str
       onClick={onClose}
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
     >
-      <img src={src} alt={alt} onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full object-contain select-none" />
+      <img src={src} alt={alt} draggable={false} onContextMenu={event => event.preventDefault()} onClick={(e) => e.stopPropagation()} className="max-h-[90dvh] max-w-full object-contain select-none [-webkit-touch-callout:none]" />
       <button
         type="button"
         aria-label="닫기"
@@ -52,7 +52,7 @@ export function ViewablePhoto({ src, alt = '', className, ...rest }: ImgHTMLAttr
   }
   return (
     <>
-      <img src={src} alt={alt} className={`${className ?? ''} cursor-zoom-in`} onClick={handleClick} {...rest} />
+      <img src={src} alt={alt} draggable={false} onContextMenu={event => event.preventDefault()} className={`${className ?? ''} cursor-zoom-in select-none [-webkit-touch-callout:none]`} onClick={handleClick} {...rest} />
       {open && src && <PhotoViewer src={src} alt={alt} onClose={() => setOpen(false)} />}
     </>
   )

@@ -58,7 +58,7 @@ function RoomWeavingPage() {
     replyOpened.current = true
     const paragraph = result.paragraphs.find((p) => p.photo.id === replyPhotoId)
     if (paragraph) {
-      setReplyNotice('고칠 문단의 ⋯에서 ‘다시 엮기’를 눌러 주세요.')
+      setReplyNotice('고칠 문단 아래 ‘다시 엮기’ 버튼을 눌러 주세요.')
       // 문단이 그려진 다음 해당 사진 위치로 이동한다.
       window.setTimeout(() => {
         document.getElementById(`paragraph-${paragraph.id}`)?.scrollIntoView({ block: 'start' })
@@ -120,7 +120,7 @@ function RoomWeavingPage() {
               const quota = room.room.quota
               const remaining = quota?.regenerationsRemaining
               const limit = quota?.regenerationLimit
-              setReplyNotice(`답가가 문단에 엮였어요${remaining !== undefined ? ` · 재엮기 ${remaining}${limit !== undefined ? `/${limit}` : ''}회 남음` : ''}`)
+              setReplyNotice(`재엮기가 완료됐어요${remaining !== undefined ? ` · 재엮기 ${remaining}${limit !== undefined ? `/${limit}` : ''}회 남음` : ''}`)
               setPendingParagraph(null)
               window.scrollTo(0, 0)
             } else if (deletingReply) {
@@ -132,7 +132,8 @@ function RoomWeavingPage() {
           }
         }
       } catch (cause) {
-        if (active && !(cause instanceof ApiError && cause.status === 409)) setError(cause instanceof Error ? cause.message : '두루마리를 불러오지 못했어요.')
+        if (active && cause instanceof ApiError && cause.status === 409 && !jobId) setError('엮을 게 없어요. 사진과 이야기를 먼저 남겨 주세요.')
+        else if (active) setError(cause instanceof Error ? cause.message : '두루마리를 불러오지 못했어요.')
       } finally { checking = false }
     }
     void check()

@@ -68,8 +68,10 @@ function RoomCirculationPage() {
   const [cards, setCards] = useState<CirculationCard[]>([])
   const [feedPage, setFeedPage] = useState(1)
   const feedTop = useRef<HTMLDivElement>(null)
+  const [filter, setFilter] = useState<'friends' | 'mine' | 'all'>('friends')
+  const filteredCards = cards.filter(item => filter === 'all' || (filter === 'mine' ? item.myResponse.status === 'OWN_PHOTO' : item.myResponse.status !== 'OWN_PHOTO'))
   const pageSize = 6
-  const pageCount = Math.max(1, Math.ceil(cards.length / pageSize))
+  const pageCount = Math.max(1, Math.ceil(filteredCards.length / pageSize))
   const currentPage = Math.min(feedPage, pageCount)
   const pageStart = (currentPage - 1) * pageSize
   const [index, setIndex] = useState(0)
@@ -218,11 +220,13 @@ function RoomCirculationPage() {
           <MemoryHeader title="친구 사진 둘러보기" onBack={backToHome} />
           <p className="mt-4 text-[12px] text-sub">아래로 넘기며 사진을 둘러보세요. 이야기는 펼쳐서 읽을 수 있어요.</p>
           {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
+          <div className="mt-3 flex gap-2" aria-label="사진 필터">{([{ id: 'friends', label: '친구들만' }, { id: 'mine', label: '내가 올린' }, { id: 'all', label: '전체' }] as const).map(item => <button key={item.id} type="button" aria-pressed={filter === item.id} onClick={() => { setFilter(item.id); setFeedPage(1) }} className={`min-h-10 rounded-full border px-4 text-[12px] ${filter === item.id ? 'border-ink bg-ink text-surface' : 'border-line bg-surface'}`}>{item.label}</button>)}</div>
           <TextModeToggle value={textOnly} onChange={setTextOnly} />
           <div ref={feedTop} className="scroll-mt-5" />
-          <p className="mt-3 text-[12px] text-sub">사진 {cards.length}장 · {currentPage} / {pageCount} 페이지</p>
+          <p className="mt-3 text-[12px] text-sub">사진 {filteredCards.length}장 · {currentPage} / {pageCount} 페이지</p>
+          {filteredCards.length === 0 && <p className="py-8 text-center text-[13px] text-sub">아직 이 목록에 사진이 없어요. 다른 목록을 선택해 주세요.</p>}
           <ul className="mt-4 flex flex-col gap-6">
-            {cards.slice(pageStart, pageStart + pageSize).map((item, offset) => { const i = pageStart + offset; return <li key={item.photo.id} id={`photo-${item.photo.id}`}>
+            {filteredCards.slice(pageStart, pageStart + pageSize).map((item) => { const i = cards.indexOf(item); return <li key={item.photo.id} id={`photo-${item.photo.id}`}>
               <CirculationPage embedded readOnly={!editable} photo={memoryPhoto(item, quotaHome?.me.id)} position={i + 1} total={cards.length}
                 response={item.myResponse.status === 'ADDON' ? { status: 'added', contribution: responses[item.photo.id] } : undefined}
                 locked={item.locked} busy={busy} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToHome}
@@ -250,7 +254,7 @@ function RoomCirculationPage() {
           </footer>
         </main>
         : done ? <CirculationComplete addedCount={cards.filter((item) => item.myResponse.status === 'ADDON').length} photoCount={cards.length} roomName={session.roomName} onBack={() => setDone(false)} onHome={backToHome} />
-          : <CirculationPage readOnly={!editable} photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={backToList} onAdd={() => setSheetOpen(true)} onNext={next}
+          : <CirculationPage readOnly={!editable} photo={photo} position={index + 1} total={cards.length} single={single} response={response} locked={card.locked} busy={busy} error={error} textOnly={textOnly} onTextMode={setTextOnly} onBack={() => { if (single) { if ((window.history.state?.idx ?? 0) > 0) navigate(-1); else backToHome() } else backToList() }} onAdd={() => setSheetOpen(true)} onNext={next}
             onDeletePhoto={editable ? () => setConfirmDelete({ kind: 'photo' }) : undefined}
             onEditStory={editable ? (s) => setEditing({ story: s, text: s.text }) : undefined}
             onDeleteStory={editable ? (s) => setConfirmDelete({ kind: 'story', story: s }) : undefined} />}

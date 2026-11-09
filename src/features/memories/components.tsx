@@ -28,8 +28,21 @@ export function MemoryCard({ children, className = '' }: { children: ReactNode; 
   return <Card className={`memory-card ${className}`}>{children}</Card>
 }
 
-export function PhotoSlot({ label, date, src, icon = false }: { label: string; date?: string; src?: string; icon?: boolean }) {
-  return <div className={`memory-photo ${src ? 'has-photo' : ''}`}>
+export function PhotoSlot({ label, date, src, icon = false, onShare, onDelete }: { label: string; date?: string; src?: string; icon?: boolean; onShare?: () => void; onDelete?: () => void }) {
+  const start = useRef<{ x: number; y: number } | null>(null)
+  const swiped = useRef(false)
+  return <div className={`memory-photo ${src ? 'has-photo' : ''}`} style={{ touchAction: 'pan-y' }}
+    onTouchStart={event => { const point = event.touches[0]; start.current = { x: point.clientX, y: point.clientY }; swiped.current = false }}
+    onTouchEnd={event => {
+      if (!start.current) return
+      const point = event.changedTouches[0]
+      const dx = point.clientX - start.current.x, dy = point.clientY - start.current.y
+      start.current = null
+      if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+      const action = dx < 0 ? onShare : onDelete
+      if (action) { swiped.current = true; action() }
+    }}
+    onClickCapture={event => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false } }}>
     {src ? <ViewablePhoto src={src} alt={label} /> : <div className="memory-photo-label">{icon && <ImagePlaceholderIcon />}<span>사진 · {label}</span></div>}
     {date && <span className="memory-photo-date">{date}</span>}
   </div>

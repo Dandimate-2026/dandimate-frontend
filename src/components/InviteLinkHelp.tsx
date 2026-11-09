@@ -24,9 +24,13 @@ export function JoinByInviteLink() {
   const navigate = useNavigate()
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
-  return <details className="my-4 rounded-2xl border border-line bg-surface p-3 text-[13px]">
-    <summary className="cursor-pointer font-semibold">초대 링크로 참여</summary>
-    <form className="mt-3" onSubmit={event => {
+  return <details className="group my-4 overflow-hidden rounded-[20px] border border-line bg-surface text-[13px]">
+    <summary className="flex min-h-[76px] cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-point/10 text-point" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m10 13 4-4M8 16l-1 1a4.2 4.2 0 0 1-6-6l4-4a4.2 4.2 0 0 1 6 0m2 1 1-1a4.2 4.2 0 0 1 6 6l-4 4a4.2 4.2 0 0 1-6 0" /></svg></span>
+      <span className="min-w-0 flex-1"><span className="block font-semibold">초대 링크로 참여</span><span className="mt-1 block text-[11px] leading-4 text-sub">친구가 보내준 모임방에 함께해요</span></span>
+      <svg className="shrink-0 text-sub transition-transform group-open:rotate-180" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </summary>
+    <form className="border-t border-line p-4" onSubmit={event => {
       event.preventDefault()
       try {
         const url = new URL(value.trim())
@@ -38,9 +42,9 @@ export function JoinByInviteLink() {
       } catch { setError('두루두루 초대 링크를 확인해 주세요') }
     }}>
       <label htmlFor="invite-link" className="text-sub">복사한 초대 링크를 붙여넣어 주세요</label>
-      <input id="invite-link" type="url" required value={value} onChange={event => setValue(event.target.value)} className="mt-2 h-11 w-full min-w-0 rounded-xl border border-line px-3" />
+      <input id="invite-link" type="url" required value={value} onChange={event => { setValue(event.target.value); setError('') }} placeholder="https://…/invite/…" aria-invalid={Boolean(error)} className="mt-2 h-12 w-full min-w-0 rounded-xl border border-line bg-bg px-3 text-[13px] outline-none focus:border-ink/40" />
       {error && <p role="alert" className="mt-2 text-point">{error}</p>}
-      <button type="submit" className="mt-2 min-h-11 w-full rounded-full bg-ink text-surface">초대 확인하기</button>
+      <button type="submit" disabled={!value.trim()} className="mt-3 min-h-11 w-full rounded-full bg-ink font-semibold text-surface disabled:opacity-40">초대 확인하기</button>
     </form>
   </details>
 }

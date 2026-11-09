@@ -641,3 +641,7 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-story-disclosure .disclosure-open { display: none; }
 .memory-story-disclosure[open] .disclosure-open { display: inline; }
 .memory-story-disclosure[open] .disclosure-closed { display: none; }
+
+.memory-page.memory-weaving { min-height: 100dvh; height: 100dvh; max-height: 100dvh; overflow-y: auto; }
+.memory-weaving .memory-weaving-main { min-height: 0; flex: 1 0 auto; padding-top: 24px; padding-bottom: 24px; }
+.memory-photo > img { object-fit: contain; -webkit-touch-callout: none; user-select: none; }

@@ -85,7 +85,7 @@ export async function sendChat(text: string) {
     setState({
       lines: [
         ...state.lines,
-        { from: 'duru', text: res.answer, citations: res.citations, sources: res.sources, outcome: res.outcome },
+        { from: 'duru', text: res.answer?.trim() || '관련 기록에서 답을 찾지 못했어요. 장소나 다른 기억으로 물어봐 주세요.', citations: res.citations, sources: res.sources, outcome: res.outcome ?? (!res.answer?.trim() ? 'INSUFFICIENT' : undefined) },
       ],
     })
   } catch (e) {
@@ -96,7 +96,8 @@ export async function sendChat(text: string) {
         ...state.lines,
         {
           from: 'duru',
-          text: limited ? '오늘 물어볼 수 있는 횟수를 다 썼어요' : '지금은 답하지 못했어요. 잠시 후 다시 물어봐 주세요',
+          text: limited ? '오늘 물어볼 수 있는 횟수를 다 썼어요' : e instanceof ApiError && e.status === 503 ? '아직 기록을 정리 중이거나 두루 연결이 잠시 끊겼어요. 다른 질문을 해 보거나 잠시 후 다시 시도해 주세요.' : e instanceof ApiError && e.status === 401 ? '로그인이 만료됐어요. 다시 로그인한 뒤 물어봐 주세요.' : e instanceof ApiError && e.status === 409 ? '질문 중 기록이 바뀌었어요. 다시 물어봐 주세요.' : '지금은 답하지 못했어요. 다른 추천 질문을 골라 보거나 잠시 후 다시 물어봐 주세요',
+          outcome: 'INSUFFICIENT',
         },
       ],
     })

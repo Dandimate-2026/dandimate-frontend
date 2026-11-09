@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import duruBot from '../assets/duru-bot.webp'
 
 /** 두루 캐릭터 그림 (꽃 모양 몸통의 로봇). size는 한 변 픽셀 */
@@ -7,20 +8,22 @@ export function BotIcon({ size = 44 }: { size?: number }) {
 
 /** 모임방 목록 위에 떠 있는 두루 챗봇 버튼과 말풍선 */
 function ChatFab({ onOpen }: { onOpen: () => void }) {
+  const [dismissed, setDismissed] = useState(() => { try { return sessionStorage.getItem('duruduru:bot-hint-dismissed') === '1' } catch { return false } })
+  const open = () => { setDismissed(true); try { sessionStorage.setItem('duruduru:bot-hint-dismissed', '1') } catch { /* optional */ } onOpen() }
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(84px+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-[430px] items-center justify-end gap-2 px-5">
-      <button
+      {!dismissed && <button
         type="button"
-        onClick={onOpen}
+        onClick={open}
         className="pointer-events-auto rounded-[14px] border border-line bg-surface px-3.5 py-2 text-left shadow-[0_4px_16px_rgba(42,38,35,0.08)]"
       >
         <span className="block text-[13px] font-bold">두루에게 우리 추억을 물어보세요</span>
-        <span className="mt-0.5 block text-[11px] text-sub">“부산에서 누가 제일 많이 웃었지?”</span>
-      </button>
+        <span className="mt-0.5 block text-[11px] text-sub">장소와 함께 물어보면 더 잘 찾아요</span>
+      </button>}
       <button
         type="button"
         aria-label="두루에게 물어보기"
-        onClick={onOpen}
+        onClick={open}
         className="pointer-events-auto flex size-[62px] shrink-0 items-center justify-center rounded-full bg-point shadow-[0_6px_18px_rgba(160,60,100,0.35)] active:opacity-90"
       >
         {/* 안테나 때문에 아래로 처져 보여서 살짝 올린다 */}

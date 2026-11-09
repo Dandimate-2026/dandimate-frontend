@@ -24,8 +24,11 @@ function RoomPlanDonePage() {
   const plans = usePlans()
   const plan = plans.find((item) => item.id === searchParams.get('plan'))
   const freePlan = plans.find((item) => item.id === 'free')!
+  const [solo, setSolo] = useState(false)
+
   const [roomName, setRoomName] = useState(session?.roomName)
   const memberAccessToken = session?.memberAccessToken
+  useEffect(() => { if (memberAccessToken === undefined) return; getRoomHome(roomId, memberAccessToken).then(home => setSolo(home.room.capacity === 1)).catch(() => {}) }, [roomId, memberAccessToken])
   const inviteToken = useRoomInvite(roomId)
   const { share, copied } = useInviteShare(inviteToken ?? '')
   // 두루마리 템플릿을 고르다가 왔으면 그 두루마리로 돌아간다
@@ -80,13 +83,13 @@ function RoomPlanDonePage() {
 
       <footer className="mx-[6px] mt-auto flex flex-col gap-[10px] pt-8">
         {/* 방을 막 만든 참이라 아직 친구가 없다. 바로 공유하거나 초대 링크 화면으로 간다 */}
-        <button
+        {!solo && <button
           type="button"
           onClick={() => inviteToken ? void share() : navigate(paths.roomSettings(roomId))}
           className="h-[52px] rounded-full bg-surface text-[15px] font-semibold active:opacity-80"
         >
           {copied ? '초대 링크가 복사됐어요' : '단톡방에 알리기'}
-        </button>
+        </button>}
         <Button onClick={() => { clearPlanReturn(roomId); navigate(returnPath ?? paths.roomHome(roomId), { replace: true }) }} className="w-full">
           {returnPath ? '두루마리로 돌아가기' : '방으로 돌아가기'}
         </Button>

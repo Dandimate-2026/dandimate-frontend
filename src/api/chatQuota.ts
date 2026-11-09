@@ -33,16 +33,18 @@ export const FREE_DAILY_LIMIT = 4
 export const CHAT_LIMIT_CODE = 'CHAT_LIMIT_EXCEEDED'
 
 function nextMidnight() {
-  const d = new Date()
-  d.setHours(24, 0, 0, 0)
-  return d.toISOString()
+  const now = Date.now()
+  return new Date((Math.floor((now + 9 * 3600000) / 86400000) + 1) * 86400000 - 9 * 3600000).toISOString()
 }
 
 // 데모: 서버 없이 무료 4번 → 크레딧 순서로 줄어드는 모습을 보여준다
 let mockQuota: ChatQuota = { freeLimit: FREE_DAILY_LIMIT, freeRemaining: FREE_DAILY_LIMIT, credits: 0, resetsAt: nextMidnight() }
 
 export async function getChatQuota(): Promise<ChatQuota | null> {
-  if (USE_MOCK) return mockQuota
+  if (USE_MOCK) {
+    if (Date.parse(mockQuota.resetsAt) <= Date.now()) mockQuota = { ...mockQuota, freeRemaining: FREE_DAILY_LIMIT, resetsAt: nextMidnight() }
+    return mockQuota
+  }
   try {
     return await request<ChatQuota>('/chat/quota')
   } catch (e) {

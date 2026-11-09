@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react'
 import { useNavigate } from 'react-router'
-import type { ChatCitation, ChatSource } from '../api/recordMap'
+import { getChatPlaceNames, type ChatCitation, type ChatSource } from '../api/recordMap'
 import { getRoomHome } from '../api/rooms'
 import type { RoomStatus } from '../api/types'
 import { canAsk } from '../api/chatQuota'
@@ -17,7 +17,7 @@ import { clampText } from '../lib/textLimit'
 const CLOSE_DRAG_PX = 90
 
 const MAX_MESSAGE_LENGTH = 2000
-const SUGGESTIONS = ['부산에서 누가 제일 많이 웃었지?', '경주 여행에서 뭐 먹었더라?', '가장 최근 모임은 어땠어?']
+const SUGGESTIONS = ['가장 최근에 함께한 모임은 어땠어?', '사진에 남긴 음식 이야기를 알려줘', '함께 웃었던 순간을 찾아줘', '친구들이 다르게 기억하는 일은 뭐야?', '우리가 남긴 여행 이야기를 정리해줘', '다음에 다시 가고 싶다고 했던 곳이 있어?']
 
 function CloseIcon() {
   return (
@@ -209,8 +209,10 @@ const FOLLOW_UP_OUTCOMES = ['SMALL_TALK', 'OUT_OF_SCOPE', 'INSUFFICIENT', 'INVAL
 function DuruBubble({
   line,
   onAsk,
+  suggestions,
 }: {
   line: ChatLine
+  suggestions: string[]
   onAsk: (question: string) => void
 }) {
   const citations = line.citations ?? []
@@ -240,13 +242,13 @@ function DuruBubble({
           </div>
         )}
         {grounded && <p className="mt-2 text-[11px] text-muted">AI가 원문에서 찾았어요</p>}
-        {line.outcome && FOLLOW_UP_OUTCOMES.includes(line.outcome) && (
+        {(!grounded || (line.outcome && FOLLOW_UP_OUTCOMES.includes(line.outcome))) && (
           <div className="mt-3 border-t border-line pt-2.5">
             <p className="text-[11px] text-sub">
               {line.outcome === 'SMALL_TALK' ? '이렇게 물어볼 수 있어요' : '이렇게 물어보면 잘 찾아요'}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {SUGGESTIONS.map((q) => (
+              {suggestions.map((q) => (
                 <button
                   key={q}
                   type="button"
@@ -295,8 +297,22 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     void refreshChatQuota()
   }, [])
+  useEffect(() => {
+    const expiry = quota?.resetsAt ? Date.parse(quota.resetsAt) : NaN
+    const timer = Number.isFinite(expiry) ? window.setTimeout(() => void refreshChatQuota(), Math.max(1000, Math.min(expiry - Date.now() + 1000, 86400000))) : undefined
+    const visible = () => { if (document.visibilityState === 'visible') void refreshChatQuota() }
+    document.addEventListener('visibilitychange', visible)
+    return () => { window.clearTimeout(timer); document.removeEventListener('visibilitychange', visible) }
+  }, [quota?.resetsAt])
   const outOfQuestions = !canAsk(quota)
   const [roomCount] = useState(() => listSavedRoomIds().length)
+  const [places, setPlaces] = useState<string[]>([])
+  useEffect(() => { let active = true; getChatPlaceNames().then(names => { if (active) setPlaces(names) }).catch(() => {}); return () => { active = false } }, [])
+  const questions = places.length ? places.flatMap(place => [`${place}에서 어떤 추억을 남겼어?`, `${place}에서 먹었던 음식 이야기를 찾아줘`, `${place}에서 친구들이 기억하는 순간은?`, `${place}에서 찍은 사진의 이야기를 요약해줘`]) : SUGGESTIONS
+  const asked = new Set(lines.filter(line => line.from === 'me').map(line => line.text))
+  const available = questions.filter(question => !asked.has(question))
+  const suggestions = (available.length ? available : SUGGESTIONS.filter(question => !asked.has(question))).slice(0, 3)
+  const resetTime = quota?.resetsAt && Number.isFinite(Date.parse(quota.resetsAt)) ? new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(quota.resetsAt)) : null
   const [input, setInput] = useState('')
   const [dragY, setDragY] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -421,7 +437,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
             </p>
             <p className="mt-2 text-[12px] text-sub">내가 함께한 모임방의 이야기로 답해요</p>
             <ul className="mt-5 flex flex-col items-start gap-2">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <li key={s}>
                   <button
                     type="button"
@@ -445,7 +461,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
               </li>
             ) : (
               <li key={i}>
-                <DuruBubble line={line} onAsk={send} />
+                <DuruBubble line={line} onAsk={send} suggestions={suggestions} />
               </li>
             ),
           )}
@@ -464,7 +480,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
           <div className="mx-4 mt-3 rounded-[20px] bg-bg px-4 pt-4 pb-3.5 text-center">
             <p className="text-[15px] font-bold">오늘 물어볼 수 있는 횟수를 다 썼어요</p>
             <p className="mt-1.5 text-[12px] leading-5 text-sub">
-              내일 0시에 다시 {quota?.freeLimit ?? 4}번이 생겨요.
+              {resetTime ? `${resetTime} (한국시간)에 무료 ${quota?.freeLimit ?? 4}회가 충전돼요.` : '무료 질문은 매일 한국시간 0시에 충전돼요.'}
               <br />
               지금 더 물어보려면 상점에서 구매할 수 있어요.
             </p>
@@ -508,6 +524,7 @@ function ChatSheet({ onClose }: { onClose: () => void }) {
         {/* 보내기 아래: 오늘 남은 무료 질문 · 남은 크레딧 */}
         {quota && (
           <p className="mt-2 text-center text-[11px] text-sub">
+            매일 한국시간 0시 무료 충전{resetTime ? ` · 다음 ${resetTime}` : ''}<br />
             오늘의 남은 횟수 <b className="font-semibold text-ink">{quota.freeRemaining}/{quota.freeLimit}</b>
             <span className="mx-1.5 text-line">|</span>
             남은 크레딧 <b className="font-semibold text-ink">{quota.credits}</b>

@@ -89,7 +89,7 @@ function RoomCheckoutPage() {
         saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
         clearRoomDraft()
         attachDraftExtras(room.id)
-        navigate(paths.roomPlanDone(room.id, plan.id), { replace: true })
+        navigate(draft.capacity === 1 ? paths.roomHome(room.id) : paths.roomPlanDone(room.id, plan.id), { replace: true })
       } else if (roomId) {
         navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })
       }

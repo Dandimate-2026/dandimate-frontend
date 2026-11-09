@@ -123,7 +123,7 @@ function FlowerSheet({ person, roomId, slides, onClose, editable }: { editable: 
         aria-modal="true"
         aria-labelledby="flower-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[80dvh] w-full max-w-[390px] flex-col rounded-[24px] bg-bg pb-4 text-ink shadow-xl"
+        className="flex h-[min(640px,85dvh)] max-h-[85dvh] w-full max-w-[390px] flex-col rounded-[24px] bg-bg pb-4 text-ink shadow-xl"
       >
         <header className="flex items-center gap-2.5 px-5 pt-4 pb-3">
           <Flower code={person.flowerCode} size={28} />
@@ -153,13 +153,13 @@ function FlowerSheet({ person, roomId, slides, onClose, editable }: { editable: 
             <div
               ref={trackRef}
               onScroll={(e) => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
-              className="flex min-h-0 snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {slides.map((sl) => (
                 <article key={sl.photoId} className="flex w-full shrink-0 snap-center flex-col px-5">
                   <div className="min-h-0 flex-1 overflow-y-auto">
                     {sl.imageUrl
-                      ? <ViewablePhoto src={sl.imageUrl} alt={`${person.nickname}님이 올린 사진`} className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-cover" />
+                      ? <ViewablePhoto src={sl.imageUrl} alt={`${person.nickname}님이 올린 사진`} className="aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc] object-contain" />
                       : <span className="block aspect-[16/10] w-full rounded-[16px] bg-[#ece6dc]" aria-hidden="true" />}
                     <ul className="mt-2.5 flex flex-col gap-2">
                       {sl.entries.map((e) => (

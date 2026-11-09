@@ -7,8 +7,8 @@ const SEARCH_DELAY_MS = 300
 const OTHER_REGION = '다른 지역'
 
 const PLACE_GROUPS: { region: string; cities: string[] }[] = [
-  { region: '대구', cities: ['대구'] },
-  { region: '경북', cities: ['경주', '포항', '구미', '안동', '경산', '문경', '영주', '김천', '상주', '영천', '칠곡', '울릉'] },
+  { region: '대구·근교', cities: ['대구', '경산', '칠곡'] },
+  { region: '경북', cities: ['경주', '포항', '구미', '안동', '문경', '영주', '김천', '상주', '영천', '울릉'] },
   { region: '그 밖에', cities: [OTHER_REGION] },
 ]
 
@@ -189,7 +189,7 @@ function PlaceSheet({
             <PlaceSearch
               // 도시를 바꾸면 검색어를 그 도시로 다시 채운다
               key={city}
-              initialQuery={city && city !== OTHER_REGION ? `${city} ` : ''}
+              initialQuery=""
               selected={picked}
               onPick={setPicked}
             />
