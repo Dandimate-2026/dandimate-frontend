@@ -50,7 +50,7 @@ function RoomPlanDonePage() {
     { label: '1인당 사진', before: `${freePlan.photosPerMember}장`, after: `${plan.photosPerMember}장` },
     { label: '말하기 총량', before: `${freePlan.voiceMinutes}분`, after: `${plan.voiceMinutes}분` },
     { label: '재엮기', before: `${freePlan.reweaves}회`, after: `${plan.reweaves}회` },
-    { label: '꾸미기', before: '기본', after: plan.id === 'lite' ? '일반 전부' : '일반 + 특별' },
+    { label: '꾸미기', before: '기본', after: plan.id === 'lite' ? '기본 + 지역 템플릿 5종' : '일반 + 특별' },
   ]
 
   return (
