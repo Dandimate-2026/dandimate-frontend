@@ -14,7 +14,7 @@ function mount(file, props, overrides = {}, exportName = 'default', globals = {}
   }
   const templates = { getTemplate: id => ({ id: id || 'minimal', name: id === 'andong' ? '안동' : '기본', plan: id === 'andong' ? 'LITE' : 'FREE' }), fromServerTemplate: () => 'minimal', canUseTemplate: (id, plan) => id !== 'andong' || plan !== 'FREE', templateStyle: () => ({}), SCROLL_TEMPLATES: [{ id: 'minimal', name: '기본', plan: 'FREE' }, { id: 'andong', name: '안동', plan: 'LITE' }] }
   const dependencies = {
-    react: hooks, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-router': { useNavigate: () => () => {} },
+    react: hooks, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-router': { useNavigate: () => () => {}, useLocation: () => ({ state: null }), useSearchParams: () => [new URLSearchParams(), () => {}] },
     '../../api/memories': { rateParagraph: async () => {}, setAhMatda: async () => {} },
     '../../api/rooms': { updateRoom: async () => {} },
     '../../lib/paragraphRatings': { getParagraphRating: () => undefined, rememberParagraphRating() {} },
@@ -23,7 +23,7 @@ function mount(file, props, overrides = {}, exportName = 'default', globals = {}
     './templates': templates,
     ...overrides,
   }
-  const context = { exports: {}, require: name => dependencies[name] || new Proxy({ __esModule: true, default: name }, { get: (object, key) => key in object ? object[key] : key }), window: { location: { pathname: '/rooms/test/weaving' }, scrollTo() {} }, navigator: {}, DOMException, ...globals }
+  const context = { exports: {}, require: name => dependencies[name] || new Proxy({ __esModule: true, default: name }, { get: (object, key) => key in object ? object[key] : key }), window: { location: { pathname: '/rooms/test/weaving', search: '' }, scrollTo() {} }, localStorage: { getItem: () => '1' }, navigator: {}, DOMException, URLSearchParams, ...globals }
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, context)
   const component = context.exports[exportName]
   return { render() { cursor = 0; let tree = component(props); while (typeof tree.type === 'function') tree = tree.type(tree.props); return tree } }
@@ -73,22 +73,45 @@ test('전체 평가를 다시 바꾸면 기존 점수 대신 새 점수를 저�
 test('팀원은 무료 템플릿도 첫 사진 미리보기까지 접근하고 적용 대신 방장에게 요청한다', () => {
   const selected = []
   const app = mount('src/features/memories/TemplatePicker.tsx', { scroll: { paragraphs }, home: home('MEMBER'), value: 'minimal', onSelect: id => selected.push(id) })
-  find(app.render(), n => text(n) === '기본 미리보기' && typeof n.props.onClick === 'function').props.onClick()
+  find(app.render(), n => n.props.role === 'tab' && text(n) === '미리보기').props.onClick()
   const tree = app.render()
   assert.equal(find(tree, n => n.type === './ScrollDocument').props.paragraph.id, 'p1')
-  assert.ok(find(tree, n => text(n) === '방장에게 요청' && typeof n.props.onClick === 'function'))
-  assert.ok(!all(tree).some(n => text(n) === '이 템플릿 적용하기' && n.props.onClick))
+  assert.ok(find(tree, n => text(n) === '방장에게 이 템플릿 요청하기' && typeof n.props.onClick === 'function'))
+  assert.ok(!all(tree).some(n => text(n) === '이 템플릿 선택하기' && n.props.onClick))
   assert.equal(selected.length, 0)
 })
 
 test('방장은 전체 템플릿 미리보기에서 적용할 수 있다', () => {
   const selected = []
   const app = mount('src/features/memories/TemplatePicker.tsx', { scroll: { paragraphs }, home: home('HOST'), value: 'minimal', onSelect: id => selected.push(id) })
-  find(app.render(), n => text(n) === '기본 미리보기' && typeof n.props.onClick === 'function').props.onClick()
+  find(app.render(), n => n.props.role === 'tab' && text(n) === '미리보기').props.onClick()
   const tree = app.render()
   assert.equal(find(tree, n => n.type === './ScrollDocument').props.paragraph, undefined)
-  find(tree, n => text(n) === '이 템플릿 적용하기' && typeof n.props.onClick === 'function').props.onClick()
+  find(tree, n => text(n) === '이 템플릿 선택하기' && typeof n.props.onClick === 'function').props.onClick()
   assert.deepEqual(selected, ['minimal'])
+})
+
+test('플랜에서 돌아오면 고른 템플릿과 미리보기 탭을 복원한다', () => {
+  const params = new URLSearchParams('templates=1&template=andong&templateTab=preview')
+  const app = mount('src/features/memories/TemplatePicker.tsx', { scroll: { paragraphs }, home: home('HOST'), value: 'minimal' }, {
+    'react-router': { useNavigate: () => () => {}, useLocation: () => ({ state: null }), useSearchParams: () => [params, () => {}] },
+  })
+  const tree = app.render()
+  assert.equal(find(tree, n => n.props.role === 'tab' && text(n) === '미리보기').props['aria-selected'], true)
+  assert.equal(find(tree, n => n.type === './ScrollDocument').props.template, 'andong')
+})
+
+test('이미 템플릿을 적용했던 방도 복귀 주소로 선택 화면을 다시 열고 다른 주소 정보는 보존한다', () => {
+  const params = new URLSearchParams('templates=1&template=andong&templateTab=preview&job=job-1&reply=photo-1')
+  let updated
+  const app = mount('src/features/memories/LiveScrollPage.tsx', { scroll: { paragraphs }, home: home('HOST'), token: 'test' }, {
+    'react-router': { useNavigate: () => () => {}, useLocation: () => ({ state: null }), useSearchParams: () => [params, update => { updated = update(params) }] },
+    '../../lib/planReturn': { clearPlanReturn() {} },
+  }, 'default', { localStorage: { getItem: () => '1', setItem() {} } })
+  const tree = app.render()
+  assert.equal(tree.type, './TemplatePicker')
+  tree.props.onClose()
+  assert.equal(updated.toString(), 'job=job-1&reply=photo-1')
 })
 
 test('평가 저장이 일부 실패하면 성공한 문단을 중복 저장하지 않고 실패한 문단만 재시도한다', async () => {

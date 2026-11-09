@@ -103,7 +103,8 @@ function RoomPlanPage() {
   const { roomId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const fromLimit = (location.state as { fromLimit?: boolean } | null)?.fromLimit === true
+  const routeState = location.state as { fromLimit?: boolean; returnPath?: string; selectedPlan?: PlanId } | null
+  const fromLimit = routeState?.fromLimit === true
   const isNewRoom = roomId === undefined
   const [draft] = useState(getRoomDraft)
   const session = roomId ? getRoomSession(roomId) : null
@@ -139,7 +140,7 @@ function RoomPlanPage() {
     if (!plan.available || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))) return
     // 유료 플랜은 결제 화면으로 간다 (새 방은 결제 뒤에 방을 만든다)
     if (plan.price > 0) {
-      navigate(isNewRoom ? paths.roomCreateCheckout(plan.id) : paths.roomCheckout(roomId, plan.id))
+      navigate(isNewRoom ? paths.roomCreateCheckout(plan.id) : paths.roomCheckout(roomId, plan.id), { state: { ...routeState, selectedPlan: plan.id } })
       return
     }
     // 이미 있는 방에서 Free를 고르면 바꿀 게 없으니 보던 화면으로 돌아간다
@@ -166,6 +167,7 @@ function RoomPlanPage() {
     // 새 방은 입력하던 화면으로, 한도 시트에서 왔으면 보던 화면으로 돌아간다
     if (isNewRoom) navigate(paths.roomCreate())
     else if (fromLimit) navigate(-1)
+    else if (routeState?.returnPath) navigate(routeState.returnPath, { replace: true })
     else navigate(paths.roomList())
   }
 
