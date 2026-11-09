@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { MAX_PHOTOS } from '../api/photos'
+import { findPlan } from '../lib/plans'
 import { readPhotoDraft, savePhotoDraft } from '../lib/photoDraft'
 import Button from '../components/Button'
 import PlanLimitSheet from '../components/PlanLimitSheet'
@@ -87,7 +88,7 @@ function PhotoUploadPage() {
   const uploadAllowed = canEditRoomRecords(home?.room.status)
   const quota = home?.room.quota
   /** 1인당 누적 사진 한도 (플랜별 3/6/10장) */
-  const perMember = quota?.photosPerMember ?? MAX_PHOTOS
+  const perMember = quota?.photosPerMember ?? findPlan(home?.room.planType?.toLowerCase() ?? 'free')?.photosPerMember ?? MAX_PHOTOS
   /** 이번에 더 고를 수 있는 장수. 이미 올린 사진도 플랜 한도에 포함한다 */
   const maxPhotos = Math.max(0, quota?.myPhotosRemaining ?? (perMember - (quota?.myPhotoCount ?? home?.me.photoCount ?? 0)))
 
@@ -103,8 +104,8 @@ function PhotoUploadPage() {
   const isHost = photoPlan.isHost
   const closeLimit = () => setLimitOpen(false)
   // 이번에 고를 수 있는 만큼 다 골랐거나, 이미 한도만큼 올린 방
-  // 서버 한도를 아직 못 받았어도 기본(Free 3장) 기준으로 잠금 표시를 한다
-  const atLimit = photos.length >= maxPhotos
+  // 방의 현재 플랜을 확인한 뒤에만 잠금 안내를 표시한다.
+  const atLimit = home !== null && photos.length >= maxPhotos
 
   const handlePick = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []).map(withType)
@@ -327,10 +328,11 @@ function PhotoUploadPage() {
             <>
               {planName(home?.room.planType)} 플랜은 한 사람당 {perMember}장까지예요.
               <br />
-              {isHost ? '플랜을 바꾸면' : '방장이 플랜을 바꾸면'} 방 친구 모두 더 올릴 수 있어요
+              {home?.room.planType === 'PRO' ? '이 방에서 이용할 수 있는 최대 사진 한도예요' : `${isHost ? '플랜을 바꾸면' : '방장이 플랜을 바꾸면'} 방 친구 모두 더 올릴 수 있어요`}
             </>
           }
           currentPlan={home?.room.planType}
+          onSelectPlan={photoPlan.onSelectPlan}
           primary={{
             ...photoPlan.action,
             onClick: () => {

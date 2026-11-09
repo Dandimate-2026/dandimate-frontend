@@ -237,13 +237,14 @@ function RoomWeavingPage() {
       <PlanLimitSheet
         kind="reweave"
         title="재엮기를 모두 사용했어요"
-        description={<>현재 두루마리는 그대로 볼 수 있어요.<br />다시 엮으려면 재엮기 횟수가 있는 플랜이 필요해요.</>}
+        description={<>현재 두루마리는 그대로 볼 수 있어요.<br />{home?.room.planType === 'PRO' ? '이 방에서 이용할 수 있는 최대 재엮기 횟수를 모두 썼어요.' : '다시 엮으려면 재엮기 횟수가 있는 플랜이 필요해요.'}</>}
         usage={home?.room.quota?.regenerationLimit ? {
           label: '재엮기',
           value: `${home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit}/${home.room.quota.regenerationLimit}회`,
           ratio: (home.room.quota.regenerationCount ?? home.room.quota.regenerationLimit) / home.room.quota.regenerationLimit,
         } : undefined}
         currentPlan={home?.room.planType}
+        onSelectPlan={reweavePlan.onSelectPlan}
         primary={{ ...reweavePlan.action, onClick: () => { setReweaveLimitOpen(false); reweavePlan.action.onClick() } }}
         secondary={{ label: '다음에 할게요', onClick: () => setReweaveLimitOpen(false) }}
         onClose={() => setReweaveLimitOpen(false)}

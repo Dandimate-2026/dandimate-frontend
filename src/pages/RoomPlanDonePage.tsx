@@ -24,21 +24,23 @@ function RoomPlanDonePage() {
   const plans = usePlans()
   const plan = plans.find((item) => item.id === searchParams.get('plan'))
   const freePlan = plans.find((item) => item.id === 'free')!
-  const [solo, setSolo] = useState(false)
+  const [solo, setSolo] = useState<boolean | null>(null)
 
   const [roomName, setRoomName] = useState(session?.roomName)
   const memberAccessToken = session?.memberAccessToken
-  useEffect(() => { if (memberAccessToken === undefined) return; getRoomHome(roomId, memberAccessToken).then(home => setSolo(home.room.capacity === 1)).catch(() => {}) }, [roomId, memberAccessToken])
   const inviteToken = useRoomInvite(roomId)
   const { share, copied } = useInviteShare(inviteToken ?? '', roomName, 'plan')
   // 두루마리 템플릿을 고르다가 왔으면 그 두루마리로 돌아간다
   const [returnPath] = useState(() => readPlanReturn(roomId))
 
   useEffect(() => {
-    if (!roomId || memberAccessToken === undefined || savedRoomName) return
+    if (!roomId || memberAccessToken === undefined) return
     let cancelled = false
     getRoomHome(roomId, memberAccessToken).then((home) => {
-      if (!cancelled) setRoomName(home.room.name)
+      if (!cancelled) {
+        setSolo(home.room.capacity === 1)
+        if (!savedRoomName) setRoomName(home.room.name)
+      }
     }).catch(() => {})
     return () => { cancelled = true }
   }, [roomId, memberAccessToken, savedRoomName])
@@ -50,7 +52,7 @@ function RoomPlanDonePage() {
     { label: '1인당 사진', before: `${freePlan.photosPerMember}장`, after: `${plan.photosPerMember}장` },
     { label: '말하기 총량', before: `${freePlan.voiceMinutes}분`, after: `${plan.voiceMinutes}분` },
     { label: '재엮기', before: `${freePlan.reweaves}회`, after: `${plan.reweaves}회` },
-    { label: '꾸미기', before: '기본', after: plan.id === 'lite' ? '일반 전부' : '일반 + 특별' },
+    { label: '꾸미기', before: '기본', after: plan.id === 'lite' ? '기본 + 지역 템플릿 5종' : '일반 + 특별' },
   ]
 
   return (
@@ -83,7 +85,7 @@ function RoomPlanDonePage() {
 
       <footer className="mx-[6px] mt-auto flex flex-col gap-[10px] pt-8">
         {/* 방을 막 만든 참이라 아직 친구가 없다. 바로 공유하거나 초대 링크 화면으로 간다 */}
-        {!solo && <button
+        {solo === false && <button
           type="button"
           onClick={() => inviteToken ? void share() : navigate(paths.roomSettings(roomId))}
           className="h-[52px] rounded-full bg-surface text-[15px] font-semibold active:opacity-80"

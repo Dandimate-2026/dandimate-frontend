@@ -15,9 +15,6 @@ import { getRoomSession, saveRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
 
-// 1인당 금액 안내에 쓰는 예시 인원
-const EXAMPLE_FRIENDS = 3
-
 function PlanCard({ plan, selected, current = false, disabled = false, onSelect }: { plan: Plan; selected: boolean; current?: boolean; disabled?: boolean; onSelect: () => void }) {
   return (
     <button
@@ -103,13 +100,14 @@ function RoomPlanPage() {
   const { roomId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const fromLimit = (location.state as { fromLimit?: boolean } | null)?.fromLimit === true
+  const routeState = location.state as { fromLimit?: boolean; returnPath?: string; selectedPlan?: PlanId } | null
+  const fromLimit = routeState?.fromLimit === true
   const isNewRoom = roomId === undefined
   const [draft] = useState(getRoomDraft)
   const session = roomId ? getRoomSession(roomId) : null
   const plans = usePlans()
-  const [selectedId, setSelectedId] = useState<PlanId>(() =>
-    (location.state as { selectedPlan?: PlanId } | null)?.selectedPlan ?? RECOMMENDED_PLAN_ID,
+  const [selectedId, setSelectedId] = useState<PlanId | null>(() =>
+    routeState?.selectedPlan ?? null,
   )
   const [home, setHome] = useState<RoomHome | null>(null)
   const [requested, setRequested] = useState(false)
@@ -131,15 +129,16 @@ function RoomPlanPage() {
   if (isNewRoom && !draft) return <Navigate to={paths.roomCreate()} replace />
   if (!isNewRoom && !session) return <NotFoundPage message="모임방을 찾을 수 없어요" />
 
-  const plan = plans.find((p) => p.id === selectedId) ?? plans[0]
+  const plan = plans.find((p) => p.id === selectedId)
   const roomName = isNewRoom ? draft?.name : home?.room.name ?? session?.roomName ?? '모임방'
   const capacity = isNewRoom ? draft?.capacity : home?.room.capacity
+  const memberCount = isNewRoom ? draft?.capacity : home?.members.length
 
   const handleNext = async () => {
-    if (!plan.available || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))) return
+    if (!plan?.available || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))) return
     // 유료 플랜은 결제 화면으로 간다 (새 방은 결제 뒤에 방을 만든다)
     if (plan.price > 0) {
-      navigate(isNewRoom ? paths.roomCreateCheckout(plan.id) : paths.roomCheckout(roomId, plan.id))
+      navigate(isNewRoom ? paths.roomCreateCheckout(plan.id) : paths.roomCheckout(roomId, plan.id), { state: { ...routeState, selectedPlan: plan.id } })
       return
     }
     // 이미 있는 방에서 Free를 고르면 바꿀 게 없으니 보던 화면으로 돌아간다
@@ -166,10 +165,12 @@ function RoomPlanPage() {
     // 새 방은 입력하던 화면으로, 한도 시트에서 왔으면 보던 화면으로 돌아간다
     if (isNewRoom) navigate(paths.roomCreate())
     else if (fromLimit) navigate(-1)
+    else if (routeState?.returnPath) navigate(routeState.returnPath, { replace: true })
     else navigate(paths.roomList())
   }
 
-  const buttonLabel = !isNewRoom && home?.room.planType?.toLowerCase() === plan.id
+  const buttonLabel = !plan ? '플랜을 선택해 주세요'
+    : !isNewRoom && home?.room.planType?.toLowerCase() === plan.id
     ? '현재 이용 중인 플랜이에요'
     : !plan.available
     ? `${plan.name} 결제 준비 중이에요`
@@ -208,29 +209,30 @@ function RoomPlanPage() {
           <PlanCard key={p.id} plan={p} selected={p.id === selectedId} current={!isNewRoom && home?.room.planType?.toLowerCase() === p.id} disabled={!isNewRoom && (!home || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(p.id))} onSelect={() => { setSelectedId(p.id); setRequested(false) }} />
         ))}
       </div>
-      <DecorGuide planId={selectedId} />
+      <DecorGuide planId={selectedId ?? home?.room.planType?.toLowerCase() ?? 'free'} />
 
       {!isNewRoom && home?.me.role === 'MEMBER' && <section className="mt-4 rounded-2xl border border-line bg-surface p-4">
         <p className="text-[13px] leading-5 text-sub">플랜은 방장이 변경해요. 요청하면 방장에게 알림을 보내드려요.</p>
-        <Button className="mt-3 w-full" disabled={requesting || requested || ['free', 'lite', 'pro'].indexOf(plan.id) <= ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE')} onClick={async () => {
+        <Button className="mt-3 w-full" disabled={!plan || requesting || requested || ['free', 'lite', 'pro'].indexOf(plan.id) <= ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE')} onClick={async () => {
+          if (!plan) return
           setRequesting(true); setError(null)
           try { await requestPlanUpgrade(roomId ?? '', 'PHOTO', plan.id.toUpperCase() as 'LITE' | 'PRO'); setRequested(true) }
           catch (cause) { setError(cause instanceof Error ? cause.message : '요청을 보내지 못했어요') }
           finally { setRequesting(false) }
-        }}>{requested ? '방장에게 변경 요청을 보냈어요' : requesting ? '보내는 중…' : `${plan.name}로 변경 요청하기`}</Button>
+        }}>{requested ? '방장에게 변경 요청을 보냈어요' : requesting ? '보내는 중…' : plan ? `${plan.name}로 변경 요청하기` : '플랜을 선택해 주세요'}</Button>
       </section>}
       <footer className="mx-[6px] mt-auto pt-8">
         {/* 서버가 결제를 아직 받지 않는 플랜(roomCreationAvailable=false)은 고를 수만 있고 넘어가지 않는다 */}
-        {!plan.available && (
+        {plan && !plan.available && (
           <p className="text-center text-[12px] text-point">유료 플랜 결제가 아직 준비되지 않았어요. 지금은 Free로 시작할 수 있어요.</p>
         )}
-        {plan.available && plan.price > 0 && (
+        {plan?.available && plan.price > 0 && memberCount != null && memberCount > 0 && (
           <p className="text-center text-[11px] text-sub">
-            친구 {EXAMPLE_FRIENDS}명이면 1인당 약 {formatWon(Math.round(plan.price / EXAMPLE_FRIENDS / 10) * 10)}
+            {isNewRoom ? '모임' : '참여'} {memberCount}명 기준 · 1인당 약 {formatWon(Math.round(plan.price / memberCount))}
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
-        {(isNewRoom || home?.me.role === 'HOST') && <Button onClick={() => void handleNext()} disabled={!plan.available || creating || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-3 w-full text-[16px] font-bold">
+        {(isNewRoom || home?.me.role === 'HOST') && <Button onClick={() => void handleNext()} disabled={!plan?.available || creating || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-3 w-full text-[16px] font-bold">
           {buttonLabel}
         </Button>}
       </footer>

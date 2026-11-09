@@ -43,7 +43,7 @@ export default function EarlyCloseButton({ home, token }: { home: RoomHome; toke
       <p id="early-close-description" className="mt-3 text-center text-[13px] leading-[22px] text-sub">지금까지 모은 사진과 이야기를<br />하나의 두루마리로 엮어요.</p>
       <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 rounded-2xl border border-line bg-bg p-3">
         <div><p className="text-[10px] text-sub">이번 두루마리의 플랜</p><p className="mt-1 text-[18px] font-bold">{home.room.planType ?? 'FREE'} <span className="text-[12px] font-normal text-sub">플랜</span></p></div>
-        <button type="button" disabled={busy} onClick={() => navigate(paths.roomPlan(home.room.id))} className="min-h-10 rounded-full border border-ink/20 bg-surface px-3 text-[11px] font-semibold">플랜 변경하기 <span aria-hidden="true">›</span></button>
+        {home.room.planType !== 'PRO' && <button type="button" disabled={busy} onClick={() => navigate(paths.roomPlan(home.room.id))} className="min-h-10 rounded-full border border-ink/20 bg-surface px-3 text-[11px] font-semibold">플랜 변경하기 <span aria-hidden="true">›</span></button>}
         <p className="col-span-2 border-t border-line pt-3 text-[12px] text-sub">재엮기 <strong className="text-ink">{home.room.quota?.regenerationsRemaining === undefined ? '플랜에서 확인해 주세요' : `${home.room.quota.regenerationsRemaining}회 남음`}</strong></p>
       </div>
       <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">

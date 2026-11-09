@@ -5,14 +5,17 @@ import { highlightTextChanges } from '../../lib/textChanges'
 import { MemoryFlower, PhotoSlot } from './components'
 import { getTemplate, templateStyle, type ScrollTemplateId } from './templates'
 import type { ReweaveResult } from './types'
+import { formatTemplateText } from './templateText'
 
 export function ParagraphStory({ paragraph, changes }: { paragraph: ScrollParagraph; changes?: ReweaveResult }) {
   const reply = changes?.reply
+  const names = [paragraph.photo.uploader.nickname, ...paragraph.sources.map(source => source.member.nickname)]
+  const body = formatTemplateText(paragraph.body, names)
   const hasReplySource = reply && paragraph.sources.some((source) => source.member.id === reply.member.id && source.quote === reply.text)
   return <>
-    <p className="memory-narrative">{changes ? highlightTextChanges(changes.previous.body, paragraph.body).map((part, index) => part.changed
+    <p className="memory-narrative">{changes ? highlightTextChanges(formatTemplateText(changes.previous.body, names), body).map((part, index) => part.changed
       ? <mark className="memory-text-highlight" key={index}>{part.text}</mark>
-      : part.text) : paragraph.body}</p>
+      : part.text) : body}</p>
     <div className="memory-quotes">{paragraph.sources.map((source) => {
       const isReply = reply?.member.id === source.member.id && reply.text === source.quote
       return <blockquote className="memory-quote" key={source.entryId}>

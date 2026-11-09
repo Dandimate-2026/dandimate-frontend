@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { PAYMENT_DEMO, purchasePlan } from '../api/plans'
 import { createPlanOrder, createRoomOrder, openTossPayment, savePendingPayment, TOSS_ENABLED } from '../api/payments'
 import { USE_MOCK } from '../api/mock'
@@ -22,6 +22,8 @@ function RoomCheckoutPage() {
   const { roomId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const routeState = location.state as { fromLimit?: boolean; returnPath?: string } | null
   const isNewRoom = roomId === undefined
   const [draft] = useState(getRoomDraft)
   const session = roomId ? getRoomSession(roomId) : null
@@ -107,7 +109,7 @@ function RoomCheckoutPage() {
   return (
     <main className="flex min-h-dvh flex-1 flex-col bg-bg px-[22px] pt-[66px] pb-10 text-ink">
       <header>
-        <button type="button" onClick={() => navigate(planPath, { state: { selectedPlan: plan.id } })} className="flex min-h-6 items-center gap-1 text-[15px] font-bold"><ChevronLeftIcon />결제</button>
+        <button type="button" onClick={() => navigate(planPath, { replace: true, state: { ...routeState, fromLimit: false, selectedPlan: plan.id } })} className="flex min-h-6 items-center gap-1 text-[15px] font-bold"><ChevronLeftIcon />결제</button>
       </header>
       <section aria-label="주문 내용" className="mt-[15px] rounded-[20px] border border-line bg-surface px-6 pt-4 pb-[14px]">
         <dl className="space-y-2 text-[12px] leading-4">
