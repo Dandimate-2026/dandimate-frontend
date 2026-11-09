@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getRoomHome } from '../api/rooms'
 import { useNavigate, useParams } from 'react-router'
 import Button from '../components/Button'
 import Card from '../components/Card'
@@ -16,7 +17,9 @@ const MAX_MESSAGE_LENGTH = 50
 /** 방 생성 직후, 친구들에게 초대 링크를 공유하는 화면 */
 function RoomSharePage() {
   const { roomId = '' } = useParams()
+
   const navigate = useNavigate()
+  useEffect(() => { let active = true; getRoomHome(roomId, '').then(home => { if (active && home.room.capacity === 1) navigate(paths.roomHome(roomId), { replace: true }) }).catch(() => {}); return () => { active = false } }, [roomId, navigate])
   const [message, setMessage] = useState('')
   // 원본 초대 토큰은 방 생성 응답에서 한 번만 받으므로 저장해 둔 값을 쓴다
   const session = getRoomSession(roomId)

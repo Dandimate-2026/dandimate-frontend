@@ -14,6 +14,7 @@ export async function uploadPhotos(
   roomId: string,
   token: string,
   files: { request: UploadFileRequest; blob: Blob }[],
+  isCancelled: () => boolean = () => false,
 ): Promise<string[]> {
   if (USE_MOCK) {
     const ids = files.map((f) => `mock-${f.request.clientFileId}`)
@@ -39,7 +40,17 @@ export async function uploadPhotos(
         body: file.blob,
       })
       if (!res.ok) throw new ApiError(res.status, 'UPLOAD_FAILED', '사진을 올리지 못했어요')
-      await request(`/photos/${ticket.photoId}/complete`, { method: 'POST', token, idempotent: true })
+      const started = Date.now()
+      let status: string | undefined
+      do {
+        if (isCancelled()) throw new Error('사진 작성을 취소했어요')
+        const result = await request<{ photo?: { status?: string } }>(`/photos/${ticket.photoId}/complete`, { method: 'POST', token, idempotent: true })
+        status = result?.photo?.status
+        if (status === 'FAILED') throw new Error('사진을 처리하지 못했어요. 다른 사진을 선택해 주세요')
+        if (status !== 'PROCESSING' && status !== 'UPLOADING') break
+        if (Date.now() - started >= 60000) throw new Error('사진 처리가 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요')
+        await new Promise(resolve => window.setTimeout(resolve, 1000))
+      } while (status === 'PROCESSING' || status === 'UPLOADING')
     }),
   )
   const failure = results.find((result) => result.status === 'rejected')

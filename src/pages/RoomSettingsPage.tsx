@@ -22,7 +22,7 @@ import { coverSrc, uploadRoomCover } from '../api/roomCovers'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 import { useRoomLiveUpdates } from '../hooks/useRoomLiveUpdates'
-import { formatDateSpaced, latestDeadline, toLocalDateTimeInput } from '../lib/date'
+import { formatDateSpaced, latestDeadline, toLocalDateTimeInput, todayIsoDate } from '../lib/date'
 import { objectParticle } from '../lib/plans'
 import { getRoomPlaceCover, saveRoomPlaceCover, shrinkImage } from '../lib/roomExtras'
 import { getRoomSession, removeRoomSession, saveRoomSession } from '../lib/session'
@@ -90,7 +90,7 @@ type EditTarget = 'roomName' | 'meetingDate' | 'deadlineAt' | 'nickname' | 'capa
 
 const EDIT_COPY: Record<EditTarget, { title: string; maxLength?: number }> = {
   roomName: { title: '모임 이름 바꾸기', maxLength: MAX_ROOM_NAME_LENGTH },
-  meetingDate: { title: '모임 시작일 바꾸기' },
+  meetingDate: { title: '놀았던 날 바꾸기' },
   deadlineAt: { title: '첫 두루마리 날 바꾸기' },
   nickname: { title: '내 이름 바꾸기', maxLength: MAX_NICKNAME_LENGTH },
   capacity: { title: '함께할 인원 바꾸기' },
@@ -102,6 +102,7 @@ function EditDialog({
   initialValue,
   minCapacity = 1,
   maxDeadline,
+  maxMeetingDate,
   onCancel,
   onSave,
 }: {
@@ -111,6 +112,7 @@ function EditDialog({
   minCapacity?: number
   /** 첫 두루마리 시각: 방을 만든 날로부터 1년까지 */
   maxDeadline?: Date
+  maxMeetingDate?: string
   onCancel: () => void
   onSave: (value: string) => Promise<void>
 }) {
@@ -202,7 +204,7 @@ function EditDialog({
               aria-label={title}
               type={target === 'deadlineAt' ? 'datetime-local' : 'date'}
               min={target === 'deadlineAt' ? toLocalDateTimeInput(new Date().toISOString()) : undefined}
-              max={target === 'deadlineAt' && maxDeadline ? toLocalDateTimeInput(maxDeadline.toISOString()) : undefined}
+              max={target === 'deadlineAt' && maxDeadline ? toLocalDateTimeInput(maxDeadline.toISOString()) : target === 'meetingDate' ? maxMeetingDate : undefined}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="h-[52px] min-w-0 max-w-full w-full rounded-full border border-line bg-surface px-[18px] outline-none focus:border-sub"
@@ -407,6 +409,7 @@ function RoomSettingsPage() {
       }
       setHome(USE_MOCK ? { ...home, room: { ...room, capacity } } : fresh)
     } else if (editing === 'meetingDate') {
+      if (room.status === 'GROWING' && value > todayIsoDate()) throw new Error('완료된 모임의 놀았던 날은 오늘 이후로 바꿀 수 없어요')
       await updateRoom(room.id, { meetingDate: value }, session.memberAccessToken)
       setHome({ ...home, room: { ...room, meetingDate: value } })
     } else {
@@ -477,7 +480,7 @@ function RoomSettingsPage() {
           <InfoRow label="함께할 인원" editable={isHost} onEdit={() => setEditing('capacity')}>
             {room.capacity ?? ROOM_CAPACITY}명 <span className="text-[12px] text-sub">· 지금 {members.length}명</span>
           </InfoRow>
-          <InfoRow label="모임 시작일" editable={isHost} onEdit={() => setEditing('meetingDate')}>
+          <InfoRow label="놀았던 날" editable={isHost} onEdit={() => setEditing('meetingDate')}>
             {room.meetingDate ? formatDateSpaced(room.meetingDate) : <Empty>정하지 않았어요</Empty>}
           </InfoRow>
           <InfoRow label="대표 사진" editable={isHost} onEdit={() => photoInputRef.current?.click()}>
@@ -520,7 +523,7 @@ function RoomSettingsPage() {
       <Section title="현재 플랜">
         <div className="flex min-h-11 items-center justify-between gap-3">
           <p className="text-[15px] font-semibold">{room.planType ?? 'FREE'} <span className="text-[12px] font-normal text-sub">이용 중</span></p>
-          {isHost && <Link to={paths.roomPlan(roomId)} className={`${EDIT_BUTTON_CLASS} inline-flex min-h-9 items-center`}>변경하기</Link>}
+          <Link to={paths.roomPlan(roomId)} className={`${EDIT_BUTTON_CLASS} inline-flex min-h-9 items-center`}>변경하기</Link>
         </div>
       </Section>
 
@@ -603,6 +606,7 @@ function RoomSettingsPage() {
         <EditDialog
           target={editing}
           maxDeadline={latestDeadline(room.createdAt)}
+          maxMeetingDate={room.status === 'GROWING' ? todayIsoDate() : undefined}
           initialValue={
             editing === 'roomName'
               ? room.name

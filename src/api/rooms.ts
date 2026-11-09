@@ -72,10 +72,21 @@ export function getMyRooms() {
 }
 
 /** 로그인한 사용자가 방을 만들고 방장이 된다 */
-export async function createRoom(body: Omit<CreateRoomRequest, 'consent'>) {
-  const payload: CreateRoomRequest = { ...body, consent: await currentConsent() }
-  if (USE_MOCK) return Promise.resolve(mockCreateRoom(payload))
-  return request<CreateRoomResult>('/rooms', { method: 'POST', body: payload, idempotent: true })
+export async function createRoom(body: Omit<CreateRoomRequest, 'consent'> & { deadlineAt?: string }) {
+  const { deadlineAt, ...fields } = body
+  const payload: CreateRoomRequest = { ...fields, consent: await currentConsent() }
+  const result = USE_MOCK ? mockCreateRoom(payload) : await request<CreateRoomResult>('/rooms', { method: 'POST', body: payload, idempotent: true })
+  if (deadlineAt) {
+    try {
+      await updateRoom(result.room.id, { deadlineAt }, '')
+      result.room.deadlineAt = deadlineAt
+      result.room.deadlineChangedByHost = true
+    } catch {
+      // The room already exists: never retry creation just because scheduling failed.
+      return { ...result, schedulingFailed: true }
+    }
+  }
+  return { ...result, schedulingFailed: false }
 }
 
 export function getInvitePreview(inviteToken: string) {

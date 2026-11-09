@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { clearPendingPayment, getPendingPayment, type PaymentOrder } from '../api/payments'
-import { getRoomInvite } from '../api/rooms'
+import { showToast } from '../lib/share'
+import { updateRoom, getRoomInvite } from '../api/rooms'
 import PaymentState from '../components/PaymentState'
 import { paymentErrorMessage } from '../lib/paymentErrors'
 import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
@@ -65,6 +66,7 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
         throw new ApiError(400, 'PAYMENT_FAILED', '결제가 완료되지 않았어요')
       }
       const roomId = order.roomId
+      let solo = false
       const plan = pending?.plan ?? order.targetPlan?.toLowerCase()
       if (!pending?.roomId) {
         // 새 방: 결제가 승인되면서 서버가 방을 만들었다. 고정 초대 링크는 조회 API로 받는다
@@ -77,11 +79,17 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
           inviteToken: inviteToken ?? saved?.inviteToken,
           roomName: pending?.roomName ?? getRoomDraft()?.name ?? saved?.roomName,
         })
+        const draft = getRoomDraft()
+        solo = draft?.capacity === 1
+        if (draft?.deadlineAt) {
+          try { await updateRoom(roomId, { deadlineAt: draft.deadlineAt }, '') }
+          catch { showToast('방은 만들었지만 엮는 날을 저장하지 못했어요. 설정에서 다시 정해 주세요') }
+        }
         clearRoomDraft()
         attachDraftExtras(roomId)
       }
       clearPendingPayment()
-      navigate(paths.roomPlanDone(roomId, plan), { replace: true })
+      navigate(solo ? paths.roomHome(roomId) : paths.roomPlanDone(roomId, plan), { replace: true })
     }
 
     finish().catch((e: unknown) => {

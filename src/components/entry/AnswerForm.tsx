@@ -57,6 +57,7 @@ function AnswerForm({
           )}
         </div>
         <textarea
+          style={{ fontSize: `${Math.max(14, 18 - Math.floor(transcript.length / 60))}px` }}
           id="entry-text"
           value={transcript}
           maxLength={maxLength}

@@ -46,6 +46,7 @@ interface RequestOptions {
   token?: string
   /** 생성/입장처럼 중복 요청을 막아야 하는 API에 필요 */
   idempotent?: boolean
+  timeoutMs?: number
 }
 
 // 쓰기 요청(POST/PUT/PATCH/DELETE)에는 서버가 준 CSRF 토큰을 헤더에 넣어야 한다
@@ -76,13 +77,16 @@ export async function request<T>(path: string, options: RequestOptions = {}, ret
   if (idempotent) headers['Idempotency-Key'] = crypto.randomUUID()
   if (method !== 'GET') headers['X-CSRF-TOKEN'] = await getCsrfToken()
 
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs ?? 30000)
   const res = await fetch(`${BASE_URL}${path}`, {
+    signal: controller.signal,
     method,
     headers,
     // 카카오 로그인 세션 쿠키를 같이 보낸다
     credentials: 'include',
     body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
-  })
+  }).finally(() => window.clearTimeout(timeout))
 
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as ErrorBody | null

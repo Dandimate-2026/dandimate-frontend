@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { MAX_PHOTOS } from '../api/photos'
+import { readPhotoDraft, savePhotoDraft } from '../lib/photoDraft'
 import Button from '../components/Button'
 import PlanLimitSheet from '../components/PlanLimitSheet'
 import { isLimitError, usePlanLimitAction, useRoomHomeForQuota } from '../hooks/useRoomQuota'
+import { canEditRoomRecords } from '../lib/roomState'
 import { isAcceptedType } from '../lib/image'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
@@ -67,6 +69,9 @@ function PhotoUploadPage() {
   const session = getRoomSession(roomId)
   const inputRef = useRef<HTMLInputElement>(null)
   const [photos, setPhotos] = useState<PickedPhoto[]>([])
+  const [draftLoaded, setDraftLoaded] = useState(false)
+  useEffect(() => { let active = true; readPhotoDraft(roomId).then(items => { if (active) { setPhotos(current => current.length ? current : items.map(item => ({ ...item, previewUrl: URL.createObjectURL(item.file) }))); setDraftLoaded(true) } }); return () => { active = false } }, [roomId])
+  useEffect(() => { if (draftLoaded) void savePhotoDraft(roomId, photos.map(({ id, file }) => ({ id, file }))) }, [roomId, photos, draftLoaded])
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   // 길게 눌러 끌고 있는 사진과 손가락이 움직인 거리
@@ -79,8 +84,9 @@ function PhotoUploadPage() {
   const [limitOpen, setLimitOpen] = useState(false)
   const home = useRoomHomeForQuota(roomId, session?.memberAccessToken)
   const photoPlan = usePlanLimitAction(roomId, home, 'PHOTO')
+  const uploadAllowed = canEditRoomRecords(home?.room.status)
   const quota = home?.room.quota
-  /** 1인당 사진 한도 (플랜별 3/6/10장) */
+  /** 1인당 누적 사진 한도 (플랜별 3/6/10장) */
   const perMember = quota?.photosPerMember ?? MAX_PHOTOS
   /** 이번에 더 고를 수 있는 장수. 이미 올린 사진도 플랜 한도에 포함한다 */
   const maxPhotos = Math.max(0, quota?.myPhotosRemaining ?? (perMember - (quota?.myPhotoCount ?? home?.me.photoCount ?? 0)))
@@ -177,7 +183,7 @@ function PhotoUploadPage() {
   }
 
   const handleNext = async () => {
-    if (!home || photos.length === 0 || photos.length > maxPhotos || uploading) return
+    if (!draftLoaded || !home || !uploadAllowed || photos.length === 0 || photos.length > maxPhotos || uploading) return
     setUploading(true)
     setError(null)
     try {
@@ -192,13 +198,13 @@ function PhotoUploadPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col bg-bg px-5 pt-[clamp(24px,8dvh,64px)] pb-10 text-ink">
+    <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-bg px-5 pt-[max(24px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] text-ink">
       {/* TODO: 뒤로 가기 목적지 확정 필요 (지금은 브라우저 히스토리 기준) */}
       <button type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-fit">
         <ChevronLeftIcon />
       </button>
 
-      <h1 className="mt-[50px] px-[7px] text-[17px] leading-[19px] font-bold">
+      <h1 className="mt-6 px-[7px] text-[17px] leading-[19px] font-bold">
         이야기를 남길 사진을
         <br />
         골라주세요.
@@ -207,7 +213,10 @@ function PhotoUploadPage() {
         {maxPhotos > 0 ? `이번에 ${maxPhotos}장 더 올릴 수 있어요 · 총 ${perMember}장까지` : `사진 ${perMember}장을 모두 올렸어요`}
       </p>
 
-      <ul ref={listRef} className="mt-4 grid grid-cols-3 gap-[9px]">
+      {!home && <p role="status" className="mt-3 text-[12px] text-sub">모임방과 남은 사진 한도를 확인하고 있어요. 연결이 오래 걸리면 다시 열어 주세요.</p>}
+      {photos.length > maxPhotos && home && <p role="alert" className="mt-3 text-[12px] text-point">현재 남은 한도는 {maxPhotos}장이에요. 선택한 사진을 {photos.length - maxPhotos}장 빼 주세요.</p>}
+      {home && !uploadAllowed && <p role="status" className="mt-3 text-[12px] text-point">두루마리 엮기가 시작되어 사진을 더 올릴 수 없어요.</p>}
+      <ul ref={listRef} className="mt-4 grid min-h-0 max-h-[45dvh] grid-cols-3 gap-[9px] overflow-y-auto overscroll-contain">
         {photos.map((p) => (
           <li
             key={p.id}
@@ -244,7 +253,7 @@ function PhotoUploadPage() {
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || !draftLoaded || !home || !uploadAllowed}
               className="flex aspect-[101/136] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-muted text-[11px] text-sub"
             >
               <PlusIcon />
@@ -297,15 +306,15 @@ function PhotoUploadPage() {
           className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-line/60 text-[12px] text-sub active:opacity-80"
         >
           <LockIcon />
-          이 방은 1인당 {perMember}장까지예요 · 더 올리려면
+          이 방은 총 {perMember}장까지예요 · 플랜 한도 보기
         </button>
       )}
 
       {/* 화면이 낮아도 버튼 위에 빈 공간을 남긴다 */}
-      <div className="mt-auto pt-[clamp(32px,10dvh,96px)]">
+      <div className="mt-auto pt-5">
         {/* 다음 화면에서 사진마다 장소부터 고른다 */}
         <p className="mb-2 text-center text-[11px] text-sub">📍 사진마다 고른 장소는 기록 지도에 표시돼요</p>
-        <Button onClick={handleNext} disabled={!home || photos.length === 0 || photos.length > maxPhotos || uploading} className="w-full">
+        <Button onClick={handleNext} disabled={!draftLoaded || !home || !uploadAllowed || photos.length === 0 || photos.length > maxPhotos || uploading} className="w-full">
           {uploading ? '사진 올리는 중…' : '다음 : 장소 고르러 가기'}
         </Button>
       </div>

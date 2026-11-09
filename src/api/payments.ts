@@ -31,10 +31,12 @@ export interface PaymentOrder {
 }
 
 /** 유료 플랜(LITE·PRO)으로 새 방을 만드는 주문. 방은 결제 승인 뒤 서버가 만든다 */
-export async function createRoomOrder(body: Omit<CreateRoomRequest, 'consent'>) {
+export async function createRoomOrder(body: Omit<CreateRoomRequest, 'consent'> & { deadlineAt?: string }) {
+  const { deadlineAt, ...fields } = body
+  void deadlineAt
   return request<PaymentOrder>('/payments/room-orders', {
     method: 'POST',
-    body: { ...body, consent: await currentConsent() },
+    body: { ...fields, consent: await currentConsent() },
     idempotent: true,
   })
 }

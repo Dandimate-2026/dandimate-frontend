@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { SCROLL_TEMPLATES } from '../features/memories/templates'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
-import { createRoom, getRoomHome } from '../api/rooms'
+import { createRoom, getRoomHome, requestPlanUpgrade } from '../api/rooms'
 import type { RoomHome } from '../api/types'
+import { showToast } from '../lib/share'
 import Button from '../components/Button'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import Flower from '../components/Flower'
@@ -111,6 +112,8 @@ function RoomPlanPage() {
     (location.state as { selectedPlan?: PlanId } | null)?.selectedPlan ?? RECOMMENDED_PLAN_ID,
   )
   const [home, setHome] = useState<RoomHome | null>(null)
+  const [requested, setRequested] = useState(false)
+  const [requesting, setRequesting] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -147,11 +150,12 @@ function RoomPlanPage() {
     setCreating(true)
     setError(null)
     try {
-      const { room, inviteToken } = await createRoom({ ...draft, planType: 'FREE' })
+      const { room, inviteToken, schedulingFailed } = await createRoom({ ...draft, planType: 'FREE' })
       saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
+      if (schedulingFailed) showToast('방은 만들었지만 엮는 날을 저장하지 못했어요. 설정에서 다시 정해 주세요')
       clearRoomDraft()
       attachDraftExtras(room.id)
-      navigate(paths.roomShare(room.id), { replace: true })
+      navigate(draft.capacity === 1 ? paths.roomHome(room.id) : paths.roomShare(room.id), { replace: true })
     } catch {
       setError('모임방을 만들지 못했어요. 다시 시도해 주세요')
       setCreating(false)
@@ -206,6 +210,15 @@ function RoomPlanPage() {
       </div>
       <DecorGuide planId={selectedId} />
 
+      {!isNewRoom && home?.me.role === 'MEMBER' && <section className="mt-4 rounded-2xl border border-line bg-surface p-4">
+        <p className="text-[13px] leading-5 text-sub">플랜은 방장이 변경해요. 요청하면 방장에게 알림을 보내드려요.</p>
+        <Button className="mt-3 w-full" disabled={requesting || requested} onClick={async () => {
+          setRequesting(true); setError(null)
+          try { await requestPlanUpgrade(roomId ?? '', 'PHOTO'); setRequested(true) }
+          catch (cause) { setError(cause instanceof Error ? cause.message : '요청을 보내지 못했어요') }
+          finally { setRequesting(false) }
+        }}>{requested ? '방장에게 변경 요청을 보냈어요' : requesting ? '보내는 중…' : '방장에게 플랜 변경 요청'}</Button>
+      </section>}
       <footer className="mx-[6px] mt-auto pt-8">
         {/* 서버가 결제를 아직 받지 않는 플랜(roomCreationAvailable=false)은 고를 수만 있고 넘어가지 않는다 */}
         {!plan.available && (
@@ -217,9 +230,9 @@ function RoomPlanPage() {
           </p>
         )}
         {error && <p className="mt-2 text-center text-[12px] text-point">{error}</p>}
-        <Button onClick={() => void handleNext()} disabled={!plan.available || creating || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-3 w-full text-[16px] font-bold">
+        {(isNewRoom || home?.me.role === 'HOST') && <Button onClick={() => void handleNext()} disabled={!plan.available || creating || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-3 w-full text-[16px] font-bold">
           {buttonLabel}
-        </Button>
+        </Button>}
       </footer>
     </main>
   )

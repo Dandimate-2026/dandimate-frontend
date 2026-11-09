@@ -22,7 +22,7 @@ import { ViewablePhoto } from '../components/PhotoViewer'
 
 const STATUS_LABEL: Record<RoomStatus, string> = {
   COLLECTING: '모으는 중',
-  CIRCULATING: '돌려보는 중',
+  CIRCULATING: '둘러보는 중',
   WEAVING: '엮는 중',
   GROWING: '완성',
 }
@@ -165,6 +165,7 @@ function RoomListPage() {
   const [ongoingVisible, setOngoingVisible] = useState(ROOM_PAGE_SIZE)
   const [doneVisible, setDoneVisible] = useState(ROOM_PAGE_SIZE)
   const [roomQuery, setRoomQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | RoomStatus>('ALL')
   const [reviewerDemoEnabled, setReviewerDemoEnabled] = useState(false)
   const [demoBusy, setDemoBusy] = useState(true)
   const changingDemo = useRef(false)
@@ -275,9 +276,11 @@ function RoomListPage() {
 
   const demoIds = new Set(demo ? [demo.hostRoomId, demo.memberRoomId, demo.completedRoomId] : [])
   const regularHomes = homes.filter((home) => !demoIds.has(home.room.id) && !home.room.name.startsWith('[심사용]'))
-  const demoOngoing = demoHomes.filter((home) => home.room.status !== 'GROWING')
-  const demoDone = demoHomes.filter((home) => home.room.status === 'GROWING')
-  const matchingHomes = regularHomes.filter((home) => home.room.name.toLocaleLowerCase().includes(roomQuery.trim().toLocaleLowerCase()))
+  const matchesQuery = (home: RoomHome) => home.room.name.toLocaleLowerCase().includes(roomQuery.trim().toLocaleLowerCase())
+  const matchesStatus = (home: RoomHome) => statusFilter === 'ALL' || home.room.status === statusFilter
+  const searchableHomes = [...regularHomes, ...(reviewerDemoEnabled ? demoHomes : [])].filter(matchesQuery)
+  const filteredDemoHomes = reviewerDemoEnabled ? demoHomes.filter(matchesQuery).filter(matchesStatus) : []
+  const matchingHomes = regularHomes.filter(matchesQuery).filter(matchesStatus)
   const ongoing = matchingHomes
     .filter((h) => h.room.status !== 'GROWING')
     .sort(
@@ -321,34 +324,45 @@ function RoomListPage() {
 
         <div className="mt-[clamp(28px,6dvh,48px)] flex flex-wrap items-center justify-between gap-3 px-1.5">
           <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
-          <button type="button" role="switch" aria-checked={reviewerDemoEnabled} aria-label="심사용 데모" aria-busy={demoBusy} disabled={demoBusy} onClick={() => void toggleReviewerDemo()} className="flex min-h-11 items-center gap-2 text-[12px] text-sub disabled:opacity-50">
-            심사용 데모
-            <span aria-hidden="true" className={`relative h-6 w-10 rounded-full transition-colors ${reviewerDemoEnabled ? 'bg-point' : 'bg-muted'}`}><span className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${reviewerDemoEnabled ? 'translate-x-4' : ''}`} /></span>
-            <span className="w-6 text-[10px] font-semibold">{reviewerDemoEnabled ? 'ON' : 'OFF'}</span>
-          </button>
         </div>
-        {reviewerDemoEnabled && <p className="mt-1 px-1.5 text-[10px] leading-4 text-sub">OFF로 바꾸면 데모 방과 체험 중 남긴 기록·대화가 삭제돼요.</p>}
         <JoinByInviteLink />
         {(regularHomes.length > 0 || reviewerDemoEnabled) && <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface active:opacity-80">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           새 모임방 만들기
         </button>}
-        {(demoError || (reviewerDemoEnabled && demoHomes.length === 0)) && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
-          <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
-          {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}
-        </div>}
-        {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
-          <h2 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 모임방</h2>
-          <ul className="overflow-hidden rounded-[20px] border-2 border-ink/35 bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoOngoing.map((home) => <RoomCard key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
-        </section>}
-        {regularHomes.length > 3 && <div className="relative mt-5">
+        <div className="relative mt-5">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sub" aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="6.5" />
             <path d="m16 16 4.5 4.5" />
           </svg>
           <input type="search" aria-label="내 모임방 검색" placeholder="모임방 이름으로 찾기" value={roomQuery} onChange={(event) => { setRoomQuery(event.target.value); setOngoingVisible(ROOM_PAGE_SIZE); setDoneVisible(ROOM_PAGE_SIZE) }} className="h-11 w-full rounded-2xl border border-line bg-surface pr-4 pl-11 text-[13px] outline-none focus:border-ink/40" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="모임방 상태 필터">
+          {(['ALL', 'COLLECTING', 'CIRCULATING', 'WEAVING', 'GROWING'] as const).map((status) => {
+            const count = searchableHomes.filter((home) => status === 'ALL' || home.room.status === status).length
+            return <button key={status} type="button" aria-pressed={statusFilter === status} onClick={() => { setStatusFilter(status); setOngoingVisible(ROOM_PAGE_SIZE); setDoneVisible(ROOM_PAGE_SIZE) }} className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-[12px] transition-colors ${statusFilter === status ? 'border-ink bg-ink font-semibold text-surface' : 'border-line bg-surface text-sub'}`}>
+              {status === 'ALL' ? '전체' : STATUS_LABEL[status]}<span className="text-[10px] opacity-70">{count}</span>
+            </button>
+          })}
+        </div>
+        <section aria-label="데모용 모임방" className="mt-4 rounded-[20px] border border-dashed border-line bg-surface/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-3">
+            <p className="text-[12px] font-semibold">미리 체험해 보기</p>
+          <button type="button" role="switch" aria-checked={reviewerDemoEnabled} aria-label="심사용 데모" aria-busy={demoBusy} disabled={demoBusy} onClick={() => void toggleReviewerDemo()} className="flex min-h-11 items-center gap-2 text-[12px] text-sub disabled:opacity-50">
+            심사용 데모
+            <span aria-hidden="true" className={`relative h-6 w-10 rounded-full transition-colors ${reviewerDemoEnabled ? 'bg-point' : 'bg-muted'}`}><span className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${reviewerDemoEnabled ? 'translate-x-4' : ''}`} /></span>
+            <span className="w-6 text-[10px] font-semibold">{reviewerDemoEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+          </div>
+        {reviewerDemoEnabled && <p className="mt-1 px-1.5 text-[10px] leading-4 text-sub">OFF로 바꾸면 데모 방과 체험 중 남긴 기록·대화가 삭제돼요.</p>}
+        {(demoError || (reviewerDemoEnabled && demoHomes.length === 0)) && <div className="mt-4 rounded-2xl bg-surface px-4 py-4">
+          <p className="text-[13px] font-semibold text-point">데모용 모임방</p>
+          {demoError ? <><p role="alert" className="mt-2 text-[12px] text-sub">{demoError}</p><button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => { setDemoError(''); setDemoRetry((value) => value + 1) }}>다시 불러오기</button></> : <p role="status" className="mt-2 text-[12px] text-sub">체험할 모임방을 준비하고 있어요…</p>}
         </div>}
-        {roomQuery && matchingHomes.length === 0 && <p className="px-2 py-6 text-center text-[13px] text-sub">일치하는 모임방이 없어요.</p>}
+
+          {filteredDemoHomes.length > 0 && <ul className="mt-2 overflow-hidden rounded-2xl border border-line bg-surface [&>li+li]:border-t [&>li+li]:border-line">{filteredDemoHomes.map((home) => <RoomCard key={home.room.id} home={home} meta={home.room.status === 'GROWING' ? doneMeta(home) : ongoingMeta(home)} reviewerDemo={demo} />)}</ul>}
+        </section>
+        {searchableHomes.filter(matchesStatus).length === 0 && (regularHomes.length > 0 || reviewerDemoEnabled) && <p role="status" className="px-2 py-6 text-center text-[13px] text-sub">{roomQuery.trim() ? '검색 조건에 맞는 모임방이 없어요.' : statusFilter === 'GROWING' ? '아직 완성된 두루마리가 없어요.' : '이 상태의 모임방이 없어요.'}</p>}
         {regularHomes.length === 0 && !reviewerDemoEnabled ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
           <section className="px-1.5">
@@ -387,13 +401,9 @@ function RoomListPage() {
         </section>
         )}
 
-        {((reviewerDemoEnabled && demoDone.length > 0) || done.length > 0) && (
+        {done.length > 0 && (
           <section className="mt-3">
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
-            {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
-              <h3 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 두루마리</h3>
-              <ul className="overflow-hidden rounded-[20px] border-2 border-ink/35 bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoDone.map((home) => <RoomCard key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
-            </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
               {done.slice(0, doneVisible).map((h) => (
                 <RoomCard key={h.room.id} home={h} meta={doneMeta(h)} />
@@ -407,7 +417,7 @@ function RoomListPage() {
       {/* 챗봇 버튼이 마지막 카드를 가리지 않게 아래에 여유를 둔다 */}
       <div className="h-24" aria-hidden="true" />
       {/* 진행 중인 방(할 일 많은 순)부터 실시간으로 지켜본다. 친구의 "방장에게 알리기" 같은 알림이 바로 배지로 뜬다 */}
-      {[...(reviewerDemoEnabled ? demoOngoing : []), ...ongoing].slice(0, MAX_LIVE_ROOMS).map((h) => (
+      {[...(reviewerDemoEnabled ? demoHomes : []), ...regularHomes].filter((home) => home.room.status !== 'GROWING').slice(0, MAX_LIVE_ROOMS).map((h) => (
         <RoomLiveWatcher key={h.room.id} roomId={h.room.id} onChange={refreshRoom} />
       ))}
       <ChatFab onOpen={() => setChatOpen(true)} />

@@ -1,3 +1,4 @@
+import { requestPlanUpgrade } from '../../api/rooms'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { paths } from '../../routes/paths'
@@ -31,6 +32,11 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
     if (asking) return
     setAsking(true); setRequestError('')
     try {
+      if (!allowed) {
+        await requestPlanUpgrade(home.room.id, 'REWEAVE')
+        setAsked('방장에게 플랜 변경 요청 알림을 보냈어요.')
+        return
+      }
       const text = `방장님, ${home.room.name} 두루마리를 ${template.name} 템플릿으로 바꿔 보고 싶어요.${allowed ? '' : ` ${PLAN_LABEL[template.plan]} 플랜이 필요해요.`}`
       if (navigator.share) await navigator.share({ text })
       else if (navigator.clipboard) await navigator.clipboard.writeText(text)

@@ -4,7 +4,7 @@ import { MIN_ROOM_CAPACITY, ROOM_CAPACITY } from '../api/rooms'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
-import { formatDateSpaced, todayIsoDate } from '../lib/date'
+import { formatDateSpaced, todayIsoDate, toLocalDateTimeInput, latestDeadline } from '../lib/date'
 import { getRoomDraft, saveRoomDraft } from '../lib/roomDraft'
 import { uploadRoomCover } from '../api/roomCovers'
 import { getRoomExtras, saveRoomExtras, shrinkImage } from '../lib/roomExtras'
@@ -208,10 +208,13 @@ function Field({
 /** 방장이 모임 이름·날짜·자기 이름을 정해 모임방을 여는 첫 화면 */
 function RoomCreatePage() {
   const navigate = useNavigate()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 60000); return () => window.clearInterval(timer) }, [])
   // 플랜 화면에서 뒤로 돌아왔으면 입력했던 내용을 다시 채운다
   const [draft] = useState(getRoomDraft)
   const [roomName, setRoomName] = useState(draft?.name ?? '')
   const [meetingDate, setMeetingDate] = useState(draft?.meetingDate ?? todayIsoDate)
+  const [deadline, setDeadline] = useState(draft?.deadlineAt ? toLocalDateTimeInput(draft.deadlineAt) : '')
   const [nickname, setNickname] = useState(draft?.hostNickname ?? '')
   const [capacity, setCapacity] = useState(draft?.capacity ?? DEFAULT_CAPACITY)
   const [extras] = useState(getRoomExtras)
@@ -224,7 +227,7 @@ function RoomCreatePage() {
 
   // 대표 사진은 골라도 안 골라도 된다 (올리는 중이면 끝날 때까지 기다린다)
   const canSubmit =
-    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && !uploadingCover
+    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && !uploadingCover && (!deadline || (Number.isFinite(Date.parse(deadline)) && Date.parse(deadline) > now))
 
   const handlePhoto = async (file?: File) => {
     if (!file) return
@@ -254,7 +257,7 @@ function RoomCreatePage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!canSubmit) return
-    saveRoomDraft({ name: roomName.trim(), meetingDate, hostNickname: nickname.trim(), capacity, coverImageUrl })
+    saveRoomDraft({ name: roomName.trim(), meetingDate, deadlineAt: deadline ? new Date(deadline).toISOString() : undefined, hostNickname: nickname.trim(), capacity, coverImageUrl })
     saveRoomExtras({ coverPhoto: coverPhoto || undefined })
     navigate(paths.roomCreatePlan())
   }
@@ -273,6 +276,7 @@ function RoomCreatePage() {
           <ChevronLeftIcon />
         </button>
       </header>
+      <p className="mt-5 px-1.5 text-[12px] leading-5 text-sub">친구에게 초대 링크를 받았다면 그 링크로 들어오면 돼요.</p>
       <section className="mt-[clamp(8px,calc(16dvh_-_48px),76px)] mb-12 px-1.5">
         <h1 className="text-[20px] leading-[24px] font-bold">
           사진에 한마디씩 남기면
@@ -295,7 +299,7 @@ function RoomCreatePage() {
           </Field>
 
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Field htmlFor="meeting-date" label="모임 시작일">
+            <Field htmlFor="meeting-date" label="놀았던 날">
               {/* 날짜 칸은 시안 모양으로 보여주고, 실제 입력은 위에 투명하게 깐 기본 날짜 선택기로 받는다 */}
               <div className="relative flex h-[52px] items-center justify-between rounded-full border border-line bg-surface pr-4 pl-4 text-[13px]">
                 <span className={meetingDate ? '' : 'text-muted'}>
@@ -329,7 +333,14 @@ function RoomCreatePage() {
             </Field>
           </div>
 
-          <p className="mt-2 px-1 text-[11px] leading-4 text-sub">여러 날의 모임은 시작 날짜를 선택해 주세요.</p>
+          <p className="mt-2 px-1 text-[11px] leading-4 text-sub">사진 속 추억의 날짜예요. 여러 날이면 첫날을 선택해 주세요.</p>
+
+          <div className="mt-3">
+            <Field htmlFor="weave-deadline" label="두루마리 엮는 날" hint="선택 · 나중에 정해도 돼요">
+              <input id="weave-deadline" type="datetime-local" value={deadline} min={toLocalDateTimeInput(new Date(now).toISOString())} max={toLocalDateTimeInput(latestDeadline(new Date(now).toISOString()).toISOString())} onChange={event => setDeadline(event.target.value)} className="h-[52px] w-full min-w-0 rounded-2xl border border-line bg-surface px-4 text-[13px]" />
+            </Field>
+            {deadline && Date.parse(deadline) <= now && <p role="alert" className="mt-2 text-[11px] text-point">엮는 날은 지금보다 뒤로 정해 주세요.</p>}
+          </div>
 
           <div className="mt-3">
             <Field htmlFor="capacity" label="함께할 인원" hint="나 포함">

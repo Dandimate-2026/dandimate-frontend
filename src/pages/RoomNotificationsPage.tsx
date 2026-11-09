@@ -23,7 +23,7 @@ const NOTIFICATION_TEXT: Record<NotificationType, { title: string; detail: strin
   ROOM_PLAN_UPGRADED: { title: '모임방 플랜이 변경됐어요', detail: '새 플랜으로 함께 기록해 보세요' },
   ASKBACK_RECEIVED: { title: '나에게 질문이 왔어요', detail: '한 문장만 답하면 이야기가 더 풍성해져요' },
   SCROLL_READY: { title: '두루마리가 완성됐어요', detail: '우리 이야기를 펼쳐 보세요' },
-  REPLY_APPLIED: { title: '답가가 두루마리에 엮였어요', detail: '바뀐 문단을 확인해 보세요' },
+  REPLY_APPLIED: { title: '재엮기가 완료됐어요', detail: '바뀐 문단을 확인해 보세요' },
   PLAN_UPGRADE_REQUESTED: { title: '플랜을 바꿔 달라는 요청이 왔어요', detail: '친구가 더 남기고 싶어 해요' },
   ROOM_DELETION_DUE_30D: { title: '모임방 삭제 예정 안내', detail: '삭제 전에 필요한 기록을 저장해 주세요' },
   ROOM_DELETION_DUE_7D: { title: '모임방이 7일 뒤 삭제돼요', detail: '필요한 기록을 미리 저장해 주세요' },
@@ -43,6 +43,8 @@ function RoomNotificationsPage() {
   const navigate = useAppNavigate()
   const session = getRoomSession(roomId)
   const [items, setItems] = useState<RoomNotification[] | null>(null)
+  const [hidden, setHidden] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(`duruduru:hidden-notifications:${roomId}`) ?? '[]') } catch { return [] } })
+  const hide = (id: string) => setHidden(previous => { const next = [...previous, id]; try { localStorage.setItem(`duruduru:hidden-notifications:${roomId}`, JSON.stringify(next)) } catch { /* optional */ } return next })
   const [error, setError] = useState<string | null>(null)
   const token = session?.memberAccessToken
   const sequence = useRef(0)
@@ -101,11 +103,11 @@ function RoomNotificationsPage() {
         </button>
       </header>
 
-      {items.length === 0 ? (
+      {items.filter(item => !hidden.includes(item.id)).length === 0 ? (
         <p className="mt-24 text-center text-[13px] text-sub">아직 온 알림이 없어요</p>
       ) : (
         <ul className="mt-5 flex flex-col gap-2">
-          {items.map((item) => {
+          {items.filter(item => !hidden.includes(item.id)).map((item) => {
             const text = NOTIFICATION_TEXT[item.type] ?? { title: '새 소식이 있어요', detail: '방의 소식을 확인해 주세요' }
             const unread = !item.readAt
             return (
@@ -130,6 +132,7 @@ function RoomNotificationsPage() {
                   <span className="shrink-0 text-[10px] text-sub">{timeAgo(item.createdAt)}</span>
                   {unread && <span className="sr-only">안 읽음</span>}
                 </button>
+                <button type="button" onClick={() => hide(item.id)} className="mt-1 min-h-9 px-3 text-[11px] text-sub underline underline-offset-2" aria-label="이 알림을 이 기기에서 숨기기">이 기기에서 숨기기</button>
               </li>
             )
           })}

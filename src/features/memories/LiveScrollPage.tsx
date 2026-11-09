@@ -10,7 +10,6 @@ import { BottomSheet, MemoryCard, MemoryFlower, PhotoSlot, ShareMemoryButton, St
 import DownloadSheet from './DownloadSheet'
 import { ParagraphStory } from './ScrollDocument'
 import TemplatePicker from './TemplatePicker'
-import MoreMenu from '../../components/MoreMenu'
 import ScrollUnroll from './ScrollUnroll'
 import { canUseTemplate, fromServerTemplate, getTemplate, templateStyle, type ScrollTemplateId } from './templates'
 import type { DownloadResult } from './scrollDownload'
@@ -54,7 +53,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
   // 템플릿은 방 단위로 서버에 저장된다. 방금 고른 값은 서버에서 다시 받아 올 때까지만 먼저 보여 준다
   const [chosenTemplate, setChosenTemplate] = useState<ScrollTemplateId | null>(null)
   const selectedTemplate = chosenTemplate ?? fromServerTemplate(home.room.scrollTemplateId)
-  const [pickingTemplate, setPickingTemplate] = useState(false)
+  const [pickingTemplate, setPickingTemplate] = useState(() => { try { return scroll.paragraphs.length > 0 && !localStorage.getItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`) } catch { return scroll.paragraphs.length > 0 } })
   const [downloading, setDownloading] = useState(false)
   const [notice, setNotice] = useState('')
   const savedDownload = useRef<DownloadResult | null>(null)
@@ -68,8 +67,8 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
     return () => window.clearTimeout(timer)
   }, [notice])
 
-  if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => setPickingTemplate(false)} onSelect={async (id) => {
-    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); setChosenTemplate(id); setPickingTemplate(false); await onRefresh(); setChosenTemplate(null); window.scrollTo(0, 0) }
+  if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => { try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ } setPickingTemplate(false) }} onSelect={async (id) => {
+    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ } setChosenTemplate(id); setPickingTemplate(false); await onRefresh(); setChosenTemplate(null); window.scrollTo(0, 0) }
     catch (cause) { setError(cause instanceof Error ? cause.message : '템플릿을 저장하지 못했어요.'); setPickingTemplate(false) }
   }} />
 
@@ -154,17 +153,14 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       <PhotoSlot label={`${paragraph.photo.uploader.nickname}님의 사진`} src={paragraph.photo.imageUrl} />
       <p className="memory-chapter-meta">{paragraph.photo.uploader.nickname}님이 올린 사진</p>
       <div className={changes ? 'scroll-rewoven' : 'scroll-paragraph-story'}>
-      {changes && <div className="scroll-rewoven-heading"><strong>✓ {changes.reply.member.nickname} 님의 답가가 엮였어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
+      {changes && <div className="scroll-rewoven-heading"><strong>✓ 재엮기 완료 · {changes.reply.member.nickname} 님의 답가가 엮였어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
       <ParagraphStory paragraph={paragraph} changes={changes} />
       {/* 이 문단에 남은 답가 (서버가 오래된 순으로 준다) */}
       {paragraph.replies && paragraph.replies.length > 0 && <ul className="scroll-replies">{paragraph.replies.map((reply) => <li key={reply.id}><strong>{reply.mine ? '나' : reply.nickname}</strong> “{reply.transcript}” {reply.mine && onDeleteReply && <button type="button" disabled={busy !== null || Boolean(pendingParagraphId)} className="memory-text-link" onClick={() => setDeleteTarget(reply.id)}>삭제</button>}</li>)}</ul>}
       <div className="memory-chapter-actions">
         <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>나도 이렇게 기억해요 <strong>{paragraph.ahMatdaCount}</strong></button>
         <button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button>
-        {onReweave && !pendingParagraphId && <span className="scroll-paragraph-more"><MoreMenu label="문단 더 보기" items={[{
-          label: '다시 엮기',
-          onSelect: () => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else onReweave(paragraph) },
-        }]} /></span>}
+        {onReweave && !pendingParagraphId && <button type="button" className="memory-reply" onClick={() => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else onReweave(paragraph) }}>다시 엮기</button>}
       </div>
       </div>
       {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">답가를 반영하고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
@@ -204,6 +200,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       }}>다시 엮기</button>
     </section>}
     {scroll.paragraphs.length > 0 && <div className="scroll-bottom-save">
+      <button type="button" className="template-change-button mb-3" onClick={() => setPickingTemplate(true)}>템플릿 변경하기</button>
       <div className="scroll-save-actions"><Button disabled={Boolean(pendingParagraphId)} onClick={() => setDownloading(true)}><DownloadIcon />이미지로 저장</Button><ShareMemoryButton roomName={home.room.name} label="단톡방에 공유" url={shareUrl} /></div>
     </div>}
     {reweavePicker && onReweave && <BottomSheet title="다시 엮을 문단 선택" onClose={() => setReweavePicker(false)}><p className="memory-sheet-hint">고치고 싶은 문단을 골라 주세요.</p>{reweaveTargets.map((paragraph) => <button type="button" className="reweave-paragraph-option" key={paragraph.id} onClick={() => { setReweavePicker(false); onReweave(paragraph) }}><strong>문단 {scroll.paragraphs.findIndex((item) => item.id === paragraph.id) + 1} · {paragraph.photo.uploader.nickname}님의 사진</strong><span>{paragraph.body}</span></button>)}</BottomSheet>}
