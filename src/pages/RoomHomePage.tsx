@@ -1,3 +1,4 @@
+import { siteUrl } from '../lib/siteUrl'
 import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router'
@@ -230,7 +231,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
             {activityTotal(members) > 0 && <FlowerHint />}
           </div>
           {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
-          <BranchFlowers status={room.status} roomId={room.id} members={members} cards={roomCards} />
+          <BranchFlowers myMemberId={home.me.id} status={room.status} roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-2 text-[11px] text-sub">
             {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
           </p>
@@ -362,7 +363,7 @@ function RoomHomePage() {
   // 방장은 원본 초대 토큰이 있어서 초대 링크를, 멤버는 이 방 주소를 단톡방에 보낸다
   // 고정 초대 링크: 이 기기에 없으면 서버에서 받아 온다 (방 참가자 누구나 같은 링크)
   const inviteToken = useRoomInvite(roomId)
-  const { share: shareInvite } = useInviteShare(inviteToken ?? '', home?.room.name)
+  const { share: shareInvite } = useInviteShare(inviteToken ?? '', home?.room.name, home?.room.status === 'GROWING' ? 'completed' : home?.room.status === 'WEAVING' ? 'weaving' : home?.room.status === 'CIRCULATING' ? 'circulating' : 'collecting', home?.room.status === 'GROWING' || home?.room.status === 'WEAVING' ? siteUrl(paths.roomWeaving(roomId)) : undefined)
 
   // 쿠키로 인증해서 토큰은 비어 있을 수 있다. 이 기기에 방 정보가 아예 없을 때(undefined)만 막는다
   const token = session?.memberAccessToken
@@ -405,8 +406,7 @@ function RoomHomePage() {
 
   /** 모든 초대 공유는 토큰이 포함된 초대 링크를 사용한다. */
   const handleShareToChat = async () => {
-    const text = `${room.name} 두루마리 같이 채우자! 사진 올리고 한마디 남겨줘`
-    await shareInvite(text)
+    await shareInvite()
   }
 
   // 사진을 모으는 동안 친구들이 다 들어오기 전까지는 친구를 기다리는 화면을 보여준다
@@ -439,7 +439,7 @@ function RoomHomePage() {
             <h2 className="shrink-0 text-[11px] text-sub">핀 꽃</h2>
             {activityTotal(members) > 0 && <FlowerHint />}
           </div>
-          <BranchFlowers status={room.status} roomId={room.id} members={members} cards={roomCards} />
+          <BranchFlowers myMemberId={home.me.id} status={room.status} roomId={room.id} members={members} cards={roomCards} />
           <p className="mt-1 text-[11px] text-sub">
             {activityTotal(members) === 0 && '아직 핀 꽃이 없어요 · 첫 꽃을 피워 보세요'}
           </p>
@@ -481,8 +481,8 @@ function RoomHomePage() {
           </ul>
           {/* 모두 100%면: 두루마리를 만들기에 충분해요 (엮기는 방장이 정한 시각에) */}
           {everyoneFull && !grown && room.status !== 'WEAVING' && (
-            <p className="mt-2.5 flex items-start gap-2 rounded-2xl bg-surface px-3 py-3 text-[12px] leading-5 text-sub" role="status">
-              <span className="mt-0.5 shrink-0" aria-hidden="true"><Flower code={hostFlower} size={18} /></span><span className="font-semibold text-ink">모두 참여했어요. 두루마리를 만들기에 충분해요</span>
+            <p className="mt-2.5 flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-[12px] leading-5 text-emerald-900" role="status">
+              <span className="mt-0.5 shrink-0" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg></span><span><strong className="block font-semibold">모두 참여했어요</strong><span className="block text-emerald-800">두루마리를 만들기에 충분해요</span></span>
             </p>
           )}
         </section>
@@ -495,7 +495,7 @@ function RoomHomePage() {
           <Card className="flex flex-col items-center pt-[22px] pb-5 text-center">
             <ScrollIcon flower={hostFlower} />
             <p className="mt-2 text-[15px] font-bold">첫 두루마리가 완성됐어요</p>
-            <p className="mt-2 text-[11px] text-sub">답가를 달면 두루마리가 계속 자라요</p>
+            <p className="mt-2 text-[11px] text-sub">빠뜨린 이야기는 다시 엮기로 보탤 수 있어요</p>
             <Button onClick={() => navigate(paths.roomWeaving(room.id))} className="mt-3.5 w-full">
               두루마리 보기
             </Button>

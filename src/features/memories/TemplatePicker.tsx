@@ -13,10 +13,11 @@ const PLAN_LABEL: Record<RoomPlan, string> = { FREE: 'Free', LITE: 'Lite', PRO: 
 const planBadge = (plan: RoomPlan) => (plan === 'FREE' ? '무료' : plan === 'LITE' ? 'LITE+' : 'PRO')
 
 export default function TemplatePicker({ scroll, home, value, onSelect, onClose }: {
-  scroll: Scroll; home: RoomHome; value: ScrollTemplateId; onSelect: (id: ScrollTemplateId) => void; onClose: () => void
+  scroll: Scroll; home: RoomHome; value: ScrollTemplateId; onSelect: (id: ScrollTemplateId) => void | Promise<void>; onClose: () => void
 }) {
   const [selected, setSelected] = useState<ScrollTemplateId>(value)
-  const [preview, setPreview] = useState(false)
+  const [tab, setTab] = useState<'select' | 'preview'>('select')
+  const [saving, setSaving] = useState(false)
   const [asked, setAsked] = useState('')
   const [asking, setAsking] = useState(false)
   const [requestError, setRequestError] = useState('')
@@ -33,7 +34,7 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
     setAsking(true); setRequestError('')
     try {
       if (!allowed) {
-        await requestPlanUpgrade(home.room.id, 'REWEAVE')
+        await requestPlanUpgrade(home.room.id, 'REWEAVE', template.plan as 'LITE' | 'PRO')
         setAsked('방장에게 플랜 변경 요청 알림을 보냈어요.')
         return
       }
@@ -59,21 +60,12 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
     </button>
   )
 
-  if (preview) {
-    return <main className="memory-page template-picker">
-      <MemoryHeader title="미리보기" onBack={() => setPreview(false)} />
-      <div className="template-document-preview"><ScrollDocument scroll={scroll} home={home} template={selected} paragraph={isHost ? undefined : scroll.paragraphs[0]} /></div>
-      {!isHost && <p className="template-note">팀원 미리보기에는 첫 번째 사진과 이야기만 보여요. 적용은 방장에게 요청해 주세요.</p>}
-      <div className="template-chips" aria-label="템플릿 바꿔 보기">{SCROLL_TEMPLATES.map((item) => <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => { setSelected(item.id); setAsked(''); setRequestError('') }}><img src={item.art} alt="" />{item.name}</button>)}</div>
-      <p className="template-note">방장이 고른 템플릿이 모든 참여자에게 똑같이 보여요{template.plan !== 'FREE' && ` · ${template.name}는 ${PLAN_LABEL[template.plan]} 이상`}</p>
-      {!isHost ? <Button disabled={asking} onClick={() => void requestTemplate()}>{asking ? '요청 준비 중…' : '방장에게 요청'}</Button>
-        : allowed ? <Button onClick={() => onSelect(selected)}>이 템플릿 적용하기</Button>
-        // 플랜을 올리러 가기 전에 고른 템플릿을 기억해 둔다. 플랜이 올라가면 다시 고르지 않아도 이 템플릿으로 펼쳐진다.
-        // 결제를 마치면 방 홈이 아니라 이 두루마리로 돌아온다
-        : <Button onClick={() => { rememberPlanReturn(home.room.id, window.location.pathname + window.location.search); navigate(paths.roomPlan(home.room.id)) }}>{PLAN_LABEL[template.plan]} 플랜 보기</Button>}
-      {asked && <p className="template-note" role="status">{asked}</p>}
-      {requestError && <p className="memory-error" role="alert">{requestError}</p>}
-    </main>
+  async function apply() {
+    if (saving) return
+    setSaving(true); setRequestError('')
+    try { await onSelect(selected) }
+    catch (cause) { setRequestError(cause instanceof Error ? cause.message : '템플릿을 적용하지 못했어요.') }
+    finally { setSaving(false) }
   }
 
   return <main className="memory-page template-picker tp">
@@ -82,9 +74,17 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
       <button type="button" className="template-later" onClick={onClose}>나중에</button>
     </div>
     <p className="tp-eyebrow">✓ 이야기 {storyCount}개가 엮였어요</p>
-    <h1 className="tp-title">어떤 두루마리로<br />펼쳐 볼까요?</h1>
-    <p className="tp-sub">언제든 다시 바꿀 수 있어요</p>
-
+    <h1 className="tp-title">우리 추억에 어울리는<br />두루마리를 골라요</h1>
+    <p className="tp-sub">바로 선택하거나, 실제 이야기로 미리 볼 수 있어요</p>
+    <div className="template-mode-tabs" role="tablist" aria-label="템플릿 고르기 방식">
+      {([{ id: 'select', label: '템플릿 선택' }, { id: 'preview', label: '미리보기' }] as const).map(item => <button key={item.id} type="button" role="tab" id={`template-tab-${item.id}`} aria-controls={`template-panel-${item.id}`} aria-selected={tab === item.id} tabIndex={tab === item.id ? 0 : -1} onClick={() => setTab(item.id)} onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const next = tab === 'select' ? 'preview' : 'select'; setTab(next); document.getElementById(`template-tab-${next}`)?.focus() } }}>{item.label}</button>)}
+    </div>
+    <div role="tabpanel" id={`template-panel-${tab}`} aria-labelledby={`template-tab-${tab}`}>
+    {tab === 'preview' ? <>
+      <div className="template-chips" aria-label="템플릿 바꿔 보기">{SCROLL_TEMPLATES.map(item => <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => { setSelected(item.id); setAsked(''); setRequestError('') }}><img src={item.art} alt="" />{item.name}</button>)}</div>
+      <div className="template-document-preview"><ScrollDocument scroll={scroll} home={home} template={selected} paragraph={isHost ? undefined : scroll.paragraphs[0]} /></div>
+      {!isHost && <p className="template-note">미리보기에는 첫 번째 사진과 이야기를 보여드려요. 적용은 방장에게 요청해 주세요.</p>}
+    </> : <>
     <button type="button" className="tp-featured" aria-pressed={selected === featured.id} onClick={() => setSelected(featured.id)}>
       <span className="tp-featured-art">
         <img src={featured.art} width={360} height={240} alt="" />
@@ -110,9 +110,15 @@ export default function TemplatePicker({ scroll, home, value, onSelect, onClose 
       </section>
     </div>
 
+    </>}
+    </div>
     <div className="tp-footer">
       <p className="tp-note">{lockNote ?? `${template.name} 템플릿으로 펼쳐요`}</p>
-      <Button onClick={() => { setPreview(true); window.scrollTo(0, 0) }}>{template.name} 미리보기</Button>
+      {!isHost ? <Button disabled={asking} onClick={() => void requestTemplate()}>{asking ? '요청 중…' : '방장에게 이 템플릿 요청하기'}</Button>
+        : allowed ? <Button disabled={saving} onClick={() => void apply()}>{saving ? '적용 중…' : '이 템플릿 선택하기'}</Button>
+        : <Button onClick={() => { rememberPlanReturn(home.room.id, window.location.pathname + window.location.search); navigate(paths.roomPlan(home.room.id)) }}>{PLAN_LABEL[template.plan]} 플랜 보기</Button>}
+      {asked && <p className="template-note" role="status">{asked}</p>}
+      {requestError && <p className="memory-error" role="alert">{requestError}</p>}
     </div>
   </main>
 }

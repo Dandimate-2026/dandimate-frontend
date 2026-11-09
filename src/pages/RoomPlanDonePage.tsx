@@ -30,7 +30,7 @@ function RoomPlanDonePage() {
   const memberAccessToken = session?.memberAccessToken
   useEffect(() => { if (memberAccessToken === undefined) return; getRoomHome(roomId, memberAccessToken).then(home => setSolo(home.room.capacity === 1)).catch(() => {}) }, [roomId, memberAccessToken])
   const inviteToken = useRoomInvite(roomId)
-  const { share, copied } = useInviteShare(inviteToken ?? '')
+  const { share, copied } = useInviteShare(inviteToken ?? '', roomName, 'plan')
   // 두루마리 템플릿을 고르다가 왔으면 그 두루마리로 돌아간다
   const [returnPath] = useState(() => readPlanReturn(roomId))
 
@@ -67,7 +67,7 @@ function RoomPlanDonePage() {
         {plan.name} 플랜이 됐어요
       </h1>
       <p className="mt-1 text-center text-[13px] leading-[18px] text-sub">친구들도 지금 바로 더 많이 올릴 수 있어요</p>
-      {/* 결제 API가 없어 실제 서버의 방은 Free 그대로라서, 시연 중임을 알려 둔다 */}
+      {/* 결제 시연 모드에서는 실제 서버 플랜이 달라질 수 있으므로 구분한다 */}
       {!USE_MOCK && PAYMENT_DEMO && (
         <p className="mt-1 text-center text-[11px] text-[#9a9085]">시연용 화면이에요. 실제 한도는 아직 Free예요.</p>
       )}

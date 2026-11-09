@@ -206,9 +206,9 @@ export function deleteRoom(roomId: string, token: string) {
 
 /**
  * 멤버가 방장에게 플랜을 바꿔 달라고 요청한다. 방장의 방 알림(🔔)에 PLAN_UPGRADE_REQUESTED로 들어간다.
- * Free 방의 일반 멤버만 보낼 수 있다 (방장이거나 Lite·Pro 방이면 403)
+ * FREE·LITE 방의 일반 멤버가 상위 플랜을 요청한다. 생략하면 다음 상위 플랜을 요청한다
  */
-export function requestPlanUpgrade(roomId: string, reason: PlanRequestReason) {
+export function requestPlanUpgrade(roomId: string, reason: PlanRequestReason, targetPlan?: 'LITE' | 'PRO') {
   if (USE_MOCK) return Promise.resolve()
-  return request(`/rooms/${roomId}/plan-requests`, { method: 'POST', body: { reason }, idempotent: true })
+  return request(`/rooms/${roomId}/plan-requests`, { method: 'POST', body: { reason, ...(targetPlan ? { targetPlan } : {}) }, idempotent: true })
 }

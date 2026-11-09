@@ -26,7 +26,7 @@ type Person = { id: string | number; nickname: string; flowerCode: FlowerCode; p
  * 자리는 들어온 순서대로 고정(1번째는 맨 왼쪽 칸…)이고, 아직 아무것도 남기지 않은 사람 자리는 비워 둔다.
  * 꽃의 숫자는 그 사람이 한 모든 활동(사진 + 이야기). 꽃을 누르면 참여한 사진별로 그 활동을 모아 넘겨 본다.
  */
-export default function BranchFlowers({ roomId, status, members, cards }: { roomId: string; status: RoomStatus; members: Person[]; cards: CirculationCard[] | null }) {
+export default function BranchFlowers({ roomId, status, members, cards, myMemberId }: { myMemberId?: string; roomId: string; status: RoomStatus; members: Person[]; cards: CirculationCard[] | null }) {
   const [open, setOpen] = useState<Person | null>(null)
 
   // 꽃의 숫자 = 그 사람이 한 모든 활동(올린 사진 + 남긴 이야기). 꽃을 누르면 그 활동들을 사진별로 모아 넘겨 본다
@@ -75,7 +75,7 @@ export default function BranchFlowers({ roomId, status, members, cards }: { room
           )
         })}
       </div>
-      {open && <FlowerSheet editable={canEditRoomRecords(status)} person={open} roomId={roomId} slides={cards ? slidesFor(cards, open) : null} onClose={() => setOpen(null)} />}
+      {open && <FlowerSheet own={String(open.id) === myMemberId} editable={canEditRoomRecords(status)} person={open} roomId={roomId} slides={cards ? slidesFor(cards, open) : null} onClose={() => setOpen(null)} />}
     </>
   )
 }
@@ -102,7 +102,7 @@ function slidesFor(cards: CirculationCard[], person: Person): Slide[] {
 type Slide = { photoId: string; imageUrl: string; at: string; entries: { id: string; first: boolean; text: string }[] }
 
 /** 꽃을 눌렀을 때: 그 사람이 올린 사진을 한 장씩 넘겨 본다. 장마다 덧붙이러 갈 수 있다 */
-function FlowerSheet({ person, roomId, slides, onClose, editable }: { editable: boolean; person: Person; roomId: string; slides: Slide[] | null; onClose: () => void }) {
+function FlowerSheet({ person, roomId, slides, onClose, editable, own }: { own: boolean; editable: boolean; person: Person; roomId: string; slides: Slide[] | null; onClose: () => void }) {
   const navigate = useNavigate()
   const [page, setPage] = useState(0)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -128,7 +128,7 @@ function FlowerSheet({ person, roomId, slides, onClose, editable }: { editable: 
         <header className="flex items-center gap-2.5 px-5 pt-4 pb-3">
           <Flower code={person.flowerCode} size={28} />
           <div className="min-w-0 flex-1">
-            <h2 id="flower-sheet-title" className="truncate text-[17px] font-bold">{person.nickname}님이 올린 사진</h2>
+            <h2 id="flower-sheet-title" className="truncate text-[17px] font-bold">{own ? '내가 올렸어요' : `${person.nickname} 님이 올렸어요`}</h2>
             {/* 꽃 숫자(사진 + 이야기)를 풀어서 보여 준다 */}
             <p className="text-[12px] text-sub">사진 {person.photoCount ?? 0}장 · 이야기 {person.storyCount ?? 0}개</p>
           </div>

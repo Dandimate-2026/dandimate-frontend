@@ -55,7 +55,7 @@ export function prepareKakaoShare(): Promise<void> {
   return loading
 }
 
-export function shareKakaoInvitation(text: string, url: string): 'opened' | 'loading' | 'unavailable' {
+export function shareKakaoInvitation(text: string, url: string, title = '💌 두루두루에 초대됐어요!', buttonTitle = '추억 남기러 가기'): 'opened' | 'loading' | 'unavailable' {
   if (!APP_KEY) return 'unavailable'
   if (!window.Kakao?.isInitialized()) {
     void prepareKakaoShare().catch(() => {})
@@ -64,7 +64,6 @@ export function shareKakaoInvitation(text: string, url: string): 'opened' | 'loa
   const target = new URL(url)
   if (target.protocol !== 'https:') throw new Error('Invitation requires HTTPS')
   // 본문에도 URL 전체를 남긴다. 제한을 넘는 URL은 호출부의 전체 문구 복사로 대체한다.
-  const title = '💌 두루두루에 초대됐어요!'
   const available = 200 - title.length - target.href.length - 4
   if (available < 0) throw new Error('Invitation URL exceeds text limit')
   const message = `${title}\n\n${text.slice(0, available)}\n\n${target.href}`
@@ -73,7 +72,7 @@ export function shareKakaoInvitation(text: string, url: string): 'opened' | 'loa
     objectType: 'text',
     text: message,
     link,
-    buttons: [{ title: '추억 남기러 가기', link }],
+    buttons: [{ title: buttonTitle, link }],
   })
   return 'opened'
 }

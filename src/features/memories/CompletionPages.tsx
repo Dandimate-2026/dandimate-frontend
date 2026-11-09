@@ -12,7 +12,7 @@ export function CirculationComplete({ addedCount = 3, photoCount = 4, onBack, on
       <p>사진 {photoCount}장 중 {addedCount}장에 기억을 보탰어요<br />엮이면 단톡방으로 알려드릴게요</p>
       <div className="memory-stats"><MemoryCard><p>내가 보탠 이야기</p><strong>{addedCount}개</strong></MemoryCard><MemoryCard><p>두루마리까지</p><strong>엮기 전</strong></MemoryCard></div>
     </div>
-    <footer className="memory-complete-footer"><Button onClick={onHome}>홈으로</Button><ShareMemoryButton roomName={roomName} /></footer>
+    <footer className="memory-complete-footer"><Button onClick={onHome}>홈으로</Button><ShareMemoryButton context="circulating" roomName={roomName} /></footer>
   </main>
 }
 
@@ -35,6 +35,6 @@ export function WeavingPage({ onBack, onReady, durationMs = 30000, autoReady = t
     <footer className="memory-weaving-footer">{reweavingCount ? <p>
       {photoCount !== undefined && <>사진 {photoCount}장 · </>}{participantDetail && <>참여 {participantDetail} · </>}
       {remaining !== undefined && <strong>재엮기 {remaining}{limit !== undefined ? `/${limit}` : ''}회 남음 · </strong>}완료되면 두루마리가 열려요
-    </p> : <><p>완료되면 두루마리가 열려요</p><ShareMemoryButton roomName={title} label="기다리는 동안 단톡방에 알리기" /></>}</footer>
+    </p> : <><p>완료되면 두루마리가 열려요</p><ShareMemoryButton context="weaving" roomName={title} label="기다리는 동안 단톡방에 알리기" /></>}</footer>
   </main>
 }

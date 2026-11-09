@@ -36,16 +36,24 @@ export default function EarlyCloseButton({ home, token }: { home: RoomHome; toke
       <span className="min-w-0"><span className="block text-[14px] font-semibold">{empty ? '엮을 게 없어요' : '지금 엮기'}</span><span className="mt-1 block text-[12px] leading-5 text-sub">지금까지 모인 사진과 이야기로 시작해요</span></span>
       <span className="shrink-0 text-sub" aria-hidden="true">›</span>
     </button>
-    {open && <dialog ref={dialogRef} aria-labelledby="early-close-title" aria-describedby="early-close-description" onCancel={(event) => { event.preventDefault(); if (!busy) setOpen(false) }} className="fixed inset-0 m-auto w-[calc(100%_-_48px)] max-w-[340px] rounded-[28px] border-0 bg-surface p-6 text-ink shadow-xl backdrop:bg-ink/35" onClick={(event) => { if (event.target === event.currentTarget && !busy) { const box = event.currentTarget.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) setOpen(false) } }}>
-      <div className="flex justify-center pt-2" aria-hidden="true"><Flower code="AZALEA" size={36} /></div>
-      <h2 id="early-close-title" className="mt-5 text-center text-[20px] font-bold leading-7">이제 두루마리로 엮을까요?</h2>
+    {open && <dialog ref={dialogRef} aria-labelledby="early-close-title" aria-describedby="early-close-description" onCancel={(event) => { event.preventDefault(); if (!busy) setOpen(false) }} className="fixed inset-0 m-auto w-[calc(100%_-_32px)] max-h-[calc(100dvh-32px)] max-w-[380px] overflow-y-auto rounded-[28px] border-0 bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/35" onClick={(event) => { if (event.target === event.currentTarget && !busy) { const box = event.currentTarget.getBoundingClientRect(); if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) setOpen(false) } }}>
+      <div className="max-h-[calc(100dvh-120px)] overflow-y-auto px-5 pt-5 pb-4">
+      <div className="flex justify-center" aria-hidden="true"><Flower code="AZALEA" size={28} /></div>
+      <h2 id="early-close-title" className="mt-3 text-center text-[20px] font-bold leading-7">이제 두루마리로 엮을까요?</h2>
       <p id="early-close-description" className="mt-3 text-center text-[13px] leading-[22px] text-sub">지금까지 모은 사진과 이야기를<br />하나의 두루마리로 엮어요.</p>
-      <p className="mt-4 text-center text-[14px] font-semibold">현재 {home.room.planType ?? 'FREE'} 플랜으로 엮어요</p>
-      <button type="button" disabled={busy} onClick={() => navigate(paths.roomPlan(home.room.id))} className="mt-2 w-full text-center text-[13px] text-point underline">플랜 변경하기</button>
-      <p className="mt-4 rounded-2xl bg-bg px-4 py-3 text-[12px] leading-5 text-sub">두루마리 엮기를 시작하면 기존 기록은 더 이상 수정할 수 없어요.</p>
-      <p className="mt-2 text-[12px] leading-5 text-sub">현재 플랜의 재엮기 한도를 확인해 주세요. 엮은 뒤 플랜을 바꾸더라도 기존 사진과 첫 한마디 수정은 다시 열리지 않아요.</p>
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 rounded-2xl border border-line bg-bg p-3">
+        <div><p className="text-[10px] text-sub">이번 두루마리의 플랜</p><p className="mt-1 text-[18px] font-bold">{home.room.planType ?? 'FREE'} <span className="text-[12px] font-normal text-sub">플랜</span></p></div>
+        <button type="button" disabled={busy} onClick={() => navigate(paths.roomPlan(home.room.id))} className="min-h-10 rounded-full border border-ink/20 bg-surface px-3 text-[11px] font-semibold">플랜 변경하기 <span aria-hidden="true">›</span></button>
+        <p className="col-span-2 border-t border-line pt-3 text-[12px] text-sub">재엮기 <strong className="text-ink">{home.room.quota?.regenerationsRemaining === undefined ? '플랜에서 확인해 주세요' : `${home.room.quota.regenerationsRemaining}회 남음`}</strong></p>
+      </div>
+      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
+        <p className="flex items-center gap-2 text-[13px] font-bold text-amber-950"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>엮으면 원본 기록이 잠겨요</p>
+        <p className="mt-2 text-[12px] leading-5 text-amber-950">기존 <strong>사진과 첫 한마디는 더 이상 수정할 수 없어요.</strong> 엮은 뒤 플랜을 바꿔도 다시 열리지 않아요.</p>
+        <p className="mt-3 border-t border-amber-200 pt-3 text-[12px] leading-5 text-amber-900">완성된 문장은 플랜에 남은 <strong>재엮기 횟수 안에서</strong> 고칠 수 있어요.</p>
+      </div>
       {error && <p role="alert" className="mt-3 text-[12px] leading-5 text-point">{error}</p>}
-      <div className="mt-6 grid grid-cols-2 gap-2.5"><Button variant="outline" className="h-12 rounded-full text-[13px]" disabled={busy} onClick={() => setOpen(false)} autoFocus>{soloAtLimit ? '닫기' : '더 모을게요'}</Button><Button className="h-12 text-[13px]" disabled={busy} onClick={() => void close()}>{busy ? '엮기 시작 중…' : '두루마리 엮기'}</Button></div>
+      </div>
+      <div className="grid grid-cols-2 gap-2.5 border-t border-line bg-surface p-4"><Button variant="outline" className="h-12 rounded-full text-[13px]" disabled={busy} onClick={() => setOpen(false)} autoFocus>{soloAtLimit ? '닫기' : '더 모을게요'}</Button><Button className="h-12 text-[13px]" disabled={busy} onClick={() => void close()}>{busy ? '엮기 시작 중…' : '두루마리 엮기'}</Button></div>
     </dialog>}
   </>
 }

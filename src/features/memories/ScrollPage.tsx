@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Button from '../../components/Button'
-import MoreMenu from '../../components/MoreMenu'
 import { BottomSheet, MemoryCard, MemoryFlower, PhotoSlot, StoryCard, TripHeading } from './components'
 import type { MemoryContribution } from './types'
 
@@ -23,7 +22,7 @@ const CHAPTERS = [
   },
 ]
 
-export default function ScrollPage({ onBack, onReply, replies }: { onBack: () => void; onReply: (chapter: string, quote: string) => void; replies: Record<string, MemoryContribution[]> }) {
+export default function ScrollPage({ onBack, onReply }: { onBack: () => void; onReply: (chapter: string, quote: string) => void; replies: Record<string, MemoryContribution[]> }) {
   const [liked, setLiked] = useState<Record<string, boolean>>({})
   const [rating, setRating] = useState<number>()
   const [original, setOriginal] = useState<string | null>(null)
@@ -46,9 +45,8 @@ export default function ScrollPage({ onBack, onReply, replies }: { onBack: () =>
       <div className="memory-chapter-actions">
         <button type="button" className="memory-reaction" aria-pressed={Boolean(liked[chapter.id])} onClick={() => setLiked((value) => ({ ...value, [chapter.id]: !value[chapter.id] }))}>나도 이렇게 기억해요 <strong>{chapter.count + (liked[chapter.id] ? 1 : 0)}</strong></button>
         <button type="button" className="memory-original-link" onClick={() => setOriginal(chapter.id)}>AI가 엮었어요 · 원문보기</button>
-        <MoreMenu label="문단 더 보기" items={[{ label: '다시 엮기', onSelect: () => onReply(chapter.id, chapter.text) }]} />
+        <button type="button" className="paragraph-reweave-button" onClick={() => onReply(chapter.id, chapter.text)}>이 문단 다시 엮기</button>
       </div>
-      {(replies[chapter.id] ?? []).map((reply, i) => <div className="memory-added-reply" key={i}><StoryCard mine story={{ ...reply, author: '민지', flower: 'orange', kind: '답가' }} /></div>)}
     </section>)}
     <MemoryCard className="memory-rating">
       <h2>AI가 내 이야기를 잘 옮겼나요?</h2><p>내가 말한 문단 2개 기준이에요</p>

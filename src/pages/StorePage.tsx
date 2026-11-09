@@ -49,7 +49,7 @@ function StorePage() {
       await buyCredits(pack)
       goBack()
     } catch (e) {
-      // 서버에 크레딧 주문 API가 아직 없으면 404("요청한 리소스가 없습니다")가 온다 → 준비 중으로 안내
+      // 배포 서버의 주문 경로를 찾지 못하면 결제 준비 상태를 안내한다
       setError(
         e instanceof ApiError && e.status === 404
           ? '크레딧 결제는 아직 준비 중이에요. 조금만 기다려 주세요'

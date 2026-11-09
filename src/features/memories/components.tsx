@@ -1,3 +1,7 @@
+import { prepareKakaoShare } from '../../lib/kakaoShare'
+import { shareRoomContent, type RoomShareContext } from '../../lib/share'
+import { siteUrl } from '../../lib/siteUrl'
+import SwipeActions from '../../components/SwipeActions'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Card from '../../components/Card'
 import { ChevronLeftIcon, ImagePlaceholderIcon, PlayIcon } from '../../components/entry/EntryIcons'
@@ -29,23 +33,12 @@ export function MemoryCard({ children, className = '' }: { children: ReactNode; 
 }
 
 export function PhotoSlot({ label, date, src, icon = false, onShare, onDelete }: { label: string; date?: string; src?: string; icon?: boolean; onShare?: () => void; onDelete?: () => void }) {
-  const start = useRef<{ x: number; y: number } | null>(null)
-  const swiped = useRef(false)
-  return <div className={`memory-photo ${src ? 'has-photo' : ''}`} style={{ touchAction: 'pan-y' }}
-    onTouchStart={event => { const point = event.touches[0]; start.current = { x: point.clientX, y: point.clientY }; swiped.current = false }}
-    onTouchEnd={event => {
-      if (!start.current) return
-      const point = event.changedTouches[0]
-      const dx = point.clientX - start.current.x, dy = point.clientY - start.current.y
-      start.current = null
-      if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return
-      const action = dx < 0 ? onShare : onDelete
-      if (action) { swiped.current = true; action() }
-    }}
-    onClickCapture={event => { if (swiped.current) { event.preventDefault(); event.stopPropagation(); swiped.current = false } }}>
-    {src ? <ViewablePhoto src={src} alt={label} /> : <div className="memory-photo-label">{icon && <ImagePlaceholderIcon />}<span>사진 · {label}</span></div>}
-    {date && <span className="memory-photo-date">{date}</span>}
-  </div>
+  return <SwipeActions share={onShare ? { label: '공유하기', onClick: onShare } : undefined} remove={onDelete ? { label: '삭제하기', onClick: onDelete, danger: true } : undefined}>
+    <div className={`memory-photo ${src ? 'has-photo' : ''}`}>
+      {src ? <ViewablePhoto src={src} alt={label} /> : <div className="memory-photo-label">{icon && <ImagePlaceholderIcon />}<span>사진 · {label}</span></div>}
+      {date && <span className="memory-photo-date">{date}</span>}
+    </div>
+  </SwipeActions>
 }
 
 export function TextModeToggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
@@ -138,15 +131,7 @@ export function BottomSheet({ title, children, onClose }: { title: string; child
   }}><div className="memory-sheet-body"><button type="button" className="memory-sheet-close" {...sheetDrag.handleProps} onClick={onClose} aria-label="닫기"><span /></button><h2 tabIndex={-1}>{title}</h2>{children}</div></dialog>
 }
 
-export function ShareMemoryButton({ label = '단톡방에 알리기', roomName = '경주 1박2일', url }: { label?: string; roomName?: string; url?: string }) {
-  const [message, setMessage] = useState('')
-  async function share() {
-    const text = `${roomName}, 함께 모은 기억을 확인해 주세요.`
-    try {
-      if (navigator.share) await navigator.share({ title: `두루두루 · ${roomName}`, text, ...(url ? { url } : {}) })
-      else if (navigator.clipboard) { await navigator.clipboard.writeText(`${text}${url ? `\n${url}` : ''}`); setMessage(url ? '공유 링크를 복사했어요.' : '공유 문구를 복사했어요.') }
-      else setMessage(`${text}${url ? `\n${url}` : ''}`)
-    } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setMessage('공유하지 못했어요. 다시 시도해 주세요.') }
-  }
-  return <div className="memory-share"><button type="button" onClick={() => void share()}><ShareIcon />{label}</button>{message && <p role="status">{message}</p>}</div>
+export function ShareMemoryButton({ label = '카카오톡으로 공유', roomName = '우리 모임방', url, context = 'completed' }: { label?: string; roomName?: string; url?: string; context?: RoomShareContext }) {
+  useEffect(() => { void prepareKakaoShare().catch(() => {}) }, [])
+  return <div className="memory-share"><button type="button" onClick={() => void shareRoomContent(context, roomName, url ?? siteUrl(window.location.pathname))}><ShareIcon />{label}</button></div>
 }

@@ -2,6 +2,7 @@ import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { cityMarkerPosition, getMyRecordMap, groupPlaces, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
+import { getMyRooms } from '../api/rooms'
 import { getMe } from '../lib/auth'
 import recordMapImage from '../assets/record-map.webp'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
@@ -133,7 +134,7 @@ function PlacePhotoCard({
   if (!canOpen) note = '이 기기에서 들어간 방이 아니라 열 수 없어요'
   else if (completed)
     action = {
-      label: '답가 남기기',
+      label: '두루마리 보기',
       path: paths.roomScrollReply(place.roomId, place.photoId),
     }
   else
@@ -181,7 +182,7 @@ function PlacePhotoCard({
           <p className="mt-0.5 flex items-center gap-1 text-[12px] text-sub">
             {uploader && <Flower code={uploader.flowerCode as FlowerCode} size={14} />}
             {roomName}
-            {uploader && ` · ${own ? '내' : `${uploader.nickname}님`} 사진`}
+            {uploader && ` · ${own ? '내가 올렸어요' : `${uploader.nickname} 님이 올렸어요`}`}
             {completed && ' · 두루마리 완성'}
           </p>
           {place.firstEntrySnippet && (
@@ -640,10 +641,12 @@ function RoomFilter({
   rooms,
   value,
   onChange,
+  onCreate,
 }: {
   rooms: { roomId: string; name: string }[]
   value: string
   onChange: (roomId: string) => void
+  onCreate: () => void
 }) {
   const [open, setOpen] = useState(false)
   const label = value === ALL_ROOMS ? '전체 모임방' : (rooms.find((r) => r.roomId === value)?.name ?? '전체 모임방')
@@ -695,6 +698,7 @@ function RoomFilter({
             </li>
           ))}
           </ul>
+          <button type="button" onClick={() => { setOpen(false); onCreate() }} className="mt-1 flex min-h-11 w-full items-center gap-2 rounded-xl border-t border-line px-3 text-left text-[13px] font-semibold text-point"><span aria-hidden="true">＋</span> 새 모임방 만들기</button>
           {options.length === 0 && <p className="px-3 py-3 text-[12px] text-sub">일치하는 모임방이 없어요.</p>}
         </div>
       )}
@@ -719,10 +723,7 @@ function RecordMapPage() {
   // 개요에서는 커스텀 행정구역 지도를, 충분히 확대하면 이 좌표를 중심으로 카카오 상세 지도를 보여 준다.
   const [detailCenter, setDetailCenter] = useState<{ lat: number; lng: number } | null>(null)
   const pins = visiblePins
-  // 지도에 장소가 있는 방들 (방 고르기 목록)
-  const roomOptions = allPins
-    ? [...new Map(allPins.flatMap((p) => p.rooms).map((r) => [r.roomId, { roomId: r.roomId, name: r.name }])).values()]
-    : []
+  const [roomOptions, setRoomOptions] = useState<{ roomId: string; name: string }[] | null>(null)
 
   useEffect(() => {
     let sequence = 0
@@ -731,11 +732,13 @@ function RecordMapPage() {
       void getReviewerDemo().then((demo) => {
         if (current !== sequence) return
         syncChatScope(demo.enabled ? demo.hostRoomId ?? 'REAL' : 'REAL')
-        return getMyRecordMap()
+        return Promise.all([getMyRecordMap(), getMyRooms().catch(() => undefined)])
       }).then((next) => {
         if (!next || current !== sequence) return
         setOpenCity(null); setOpenPlace(undefined); setRoomId(ALL_ROOMS); setDetailCenter(null)
-        setPins(next); setVisiblePins(next); setError(false)
+        const [mapPins, joinedRooms] = next
+        setRoomOptions(joinedRooms === undefined ? null : joinedRooms?.map(room => ({ roomId: room.roomId, name: room.name })) ?? [...new Map(mapPins.flatMap(pin => pin.rooms).map(room => [room.roomId, { roomId: room.roomId, name: room.name }])).values()])
+        setPins(mapPins); setVisiblePins(mapPins); setError(false)
       }).catch(() => { if (current === sequence) { setPins(null); setVisiblePins(null); setOpenCity(null); setError(true) } })
     }
     load()
@@ -786,13 +789,14 @@ function RecordMapPage() {
         </p>
         <div>
           <RoomFilter
-            rooms={roomOptions}
+            rooms={roomOptions ?? []}
             value={roomId}
             onChange={changeRoom}
+            onCreate={() => navigate(paths.roomCreate())}
           />
         </div>
-        <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface">＋ 새 모임방 만들기</button>
-        <p className="mt-2 text-[11px] text-sub">친구에게 초대 링크를 받았다면 그 링크로 들어오면 돼요.</p>
+        {roomOptions?.length === 0 && <button type="button" onClick={() => navigate(paths.roomCreate())} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-ink px-4 text-[14px] font-semibold text-surface">＋ 첫 모임방 만들기</button>}
+        {roomOptions?.length === 0 && <p className="mt-2 text-[11px] text-sub">친구에게 초대 링크를 받았다면 그 링크로 들어오면 돼요.</p>}
       </header>
 
       {/* 개요는 시안의 커스텀 경계 지도, 확대하면 카카오 상세 지도. */}

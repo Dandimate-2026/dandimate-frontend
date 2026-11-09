@@ -50,7 +50,7 @@ function RoomSharePage() {
           <p className="flex h-[52px] flex-1 items-center truncate rounded-2xl bg-line px-[14px] text-[15px] text-sub">
             {link}
           </p>
-          <Button variant="outline" onClick={() => copy(shareText)} className="flex h-[52px] w-[85px] items-center justify-center gap-1.5 text-[13px]">
+          <Button variant="outline" onClick={() => copy()} className="flex h-[52px] w-[85px] items-center justify-center gap-1.5 text-[13px]">
             <CopyIcon />
             {copied ? '복사됨' : '복사'}
           </Button>
