@@ -113,7 +113,7 @@
 <table>
   <tr><th align="center">우리 기록 지도</th><th align="center">두루에게 물어보기</th></tr>
   <tr>
-    <td align="center"><img src="./docs/readme/record-map.jpg" alt="대구·경북 도시별 추억이 꽃 핀으로 표시된 기록 지도" width="270" /></td>
+    <td align="center"><img src="./docs/readme/record-map-current.png" alt="대구·경북 도시별 추억이 꽃 핀으로 표시된 기록 지도" width="270" /></td>
     <td align="center"><img src="./docs/readme/duru-chat.jpg" alt="여행의 단서를 질문하고 관련 원문을 확인하는 두루 챗봇" width="270" /></td>
   </tr>
 </table>

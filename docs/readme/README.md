@@ -10,7 +10,7 @@
 | `templates.jpg` | 템플릿 펼치기 탭 | `/rooms/scroll-review/weaving?capture=1` |
 | `template-preview.jpg` | 경주 템플릿 미리보기 | 같은 화면의 미리보기 탭 |
 | `scroll.jpg` | 두루마리 펼쳐 읽기 | 같은 화면에서 템플릿 적용 후 펼치기 |
-| `record-map.jpg` | 도시별 기록 지도 | `/map` |
+| `record-map-current.png` | 도시별 기록 지도 | 사용자가 제공한 `/map` 화면 원본 |
 | `duru-chat.jpg` | 두루 질문·답변·인용 | 모임방 목록의 ‘두루에게 물어보기’ |
 | `plan-sheet.jpg` | 사진 한도 바텀시트 | `/rooms/free-limit/photos/new` — 한도 안내 열기 |
 | `plans.jpg` | Lite가 선택된 플랜 안내 | `/rooms/free-limit/plan` — 한도 바텀시트에서 선택해 진입 |
@@ -22,3 +22,5 @@
 - 일부 예시 사진은 기존 데모의 외부 샘플 사진이므로 문장의 장소와 사진 내용이 일치하지 않을 수 있습니다.
 
 - `circulation-friends-2026-11-10.jpg`와 `contribution.jpg`는 최신 UI에서 다시 촬영했습니다. 로컬 모의 API로 친구 사진 한 장을 제공하고, 덧붙임은 입력만 했으며 실제 서버에 저장하지 않았습니다.
+
+- `record-map-current.png`는 사용자가 제공한 「기록 지도.png」 원본을 변형 없이 복사한 이미지입니다. 위 로컬 캡처 조건과는 별개입니다.
