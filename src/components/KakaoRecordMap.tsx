@@ -112,6 +112,7 @@ function KakaoRecordMap({
         const onZoom = () => {
           const nextLevel = map.getLevel()
           setLevel(nextLevel)
+          if (nextLevel >= 10) onOverview()
         }
         km.event.addListener(map, 'zoom_changed', onZoom)
         const observer = new ResizeObserver(() => { const center = map.getCenter(); map.relayout(); map.setCenter(center) })
