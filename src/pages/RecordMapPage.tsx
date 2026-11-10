@@ -1,6 +1,6 @@
 import { useAppNavigate } from '../hooks/useAppNavigate'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { getMyRecordMap, cityMarkerPosition, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { getMyRecordMap, cityMarkerPosition, groupPlaces, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import { getMyRooms } from '../api/rooms'
 import { getMe } from '../lib/auth'
@@ -19,12 +19,26 @@ import { deletePhoto } from '../api/photos'
 import { getReviewerDemo } from '../api/reviewerDemo'
 import { syncChatScope } from '../lib/chatStore'
 
-// Illustration anchors are navigation targets, not geographic coordinates.
-const CITY_ANCHORS: Record<string, [number, number]> = {
-  대구: [320,655], 경산: [421,670], 영천: [436,565], 청도: [445,733], 경주: [600,674], 포항: [595,515],
-  영덕: [620,360], 울진: [620,170], 울릉: [716,144], 봉화: [480,150], 영양: [550,280], 청송: [530,390],
-  안동: [420,300], 영주: [330,180], 예천: [300,310], 문경: [170,280], 상주: [150,410], 의성: [375,410],
-  구미: [270,500], 군위: [370,515], 김천: [175,560], 성주: [230,615], 고령: [260,700], 칠곡: [310,565],
+// 시안 지도 그림(840×860) 크기. 그림 속 도시 위치(안동·구미·대구·포항·경주)에 맞춰 좌표 → 픽셀 식을 구했다
+const MAP_W = 840
+const MAP_H = 860
+// x = 376.4 × 경도 − 48060.7, y = −466.3 × 위도 + 17363.6 (그림 픽셀)
+const toMapX = (lng: number) => 376.4 * lng - 48060.7
+const toMapY = (lat: number) => -466.3 * lat + 17363.6
+// 울릉도·독도 쪽 사진은 그림의 울릉도 자리에 둔다
+const ULLEUNG = { x: 713, y: 142 }
+
+/** 좌표를 지도 그림 안의 % 위치로 바꾼다 */
+function project(lat: number, lng: number) {
+  const point = lng > 130.3 ? ULLEUNG : { x: toMapX(lng), y: toMapY(lat) }
+  const x = (point.x / MAP_W) * 100
+  const y = (point.y / MAP_H) * 100
+  return { x: Math.max(4, Math.min(96, x)), y: Math.max(4, Math.min(96, y)) }
+}
+
+/** 커스텀 지도 그림의 픽셀 위치를 대략적인 실제 좌표로 되돌린다. 확대 시 카카오맵 중심을 이어 주는 용도다. */
+function unproject(x: number, y: number) {
+  return { lat: (17363.6 - y) / 466.3, lng: (x + 48060.7) / 376.4 }
 }
 
 const CITY_FLOWERS: FlowerCode[] = [
@@ -314,53 +328,323 @@ function CitySheet({ pin, place: focus, onClose, onChanged, onMap }: { pin: City
 }
 
 
-function CityOverview({ pins, activeCity, onOpenCity, onZoom, children }: { pins: CityPin[]; activeCity?: string; onOpenCity: (pin: CityPin) => void; onZoom: (pin?: CityPin) => void; children?: ReactNode }) {
-  const surface = useRef<HTMLDivElement>(null)
-  const zoomAt = (clientX: number, clientY: number) => {
-    const box = surface.current?.getBoundingClientRect()
-    if (!box) return
-    const x = (clientX - box.left) / box.width * 840, y = (clientY - box.top) / box.height * 860
-    const nearest = pins.filter(pin => CITY_ANCHORS[pin.city]).reduce<CityPin | undefined>((best, pin) => {
-      const distance = (item: CityPin) => Math.hypot(CITY_ANCHORS[item.city][0] - x, CITY_ANCHORS[item.city][1] - y)
-      return !best || distance(pin) < distance(best) ? pin : best
-    }, undefined)
-    onZoom(nearest)
+const DETAIL_SCALE = 2
+/** 이 배율까지 더 확대하면 카카오 상세 지도로 넘어간다 (세부 장소 핀을 먼저 충분히 보게) */
+const KAKAO_SCALE = 4
+const MAX_SCALE = 5
+
+
+/**
+ * 확대·이동되는 지도. 두 손가락(또는 휠·+/- 버튼)으로 확대하고 한 손가락으로 끌어 옮긴다.
+ * 핀은 확대해도 크기가 그대로이고, 위치만 지도를 따라간다
+ */
+function ZoomableMap({
+  pins,
+  activeCity,
+  onOpenCity,
+  onEnterDetail,
+  children,
+}: {
+  pins: CityPin[]
+  activeCity?: string
+  /** placeName이 있으면 확대해서 누른 세부 장소 하나만 보여준다 */
+  onOpenCity: (pin: CityPin, place?: MapPlaceItem) => void
+  /** 충분히 확대한 시점에 실제 좌표 기반 카카오 상세 지도로 전환한다 */
+  onEnterDetail: (center: { lat: number; lng: number }) => void
+  children?: ReactNode
+}) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  const sizeRef = useRef(size)
+  const [view, setRenderedView] = useState({ s: 1, x: 0, y: 0 })
+  const viewRef = useRef(view)
+  const frameRef = useRef<number | null>(null)
+  const setView = (update: typeof view | ((previous: typeof view) => typeof view)) => {
+    viewRef.current = typeof update === 'function' ? update(viewRef.current) : update
+    if (frameRef.current !== null) return
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null
+      setRenderedView(viewRef.current)
+    })
   }
+  useEffect(() => () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current) }, [])
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const [interacting, setInteracting] = useState(false)
+  const gesture = useRef({ dist: 0, moved: 0 })
+  const pinchCenter = useRef<{ x: number; y: number } | null>(null)
+  const detailEntered = useRef(false)
+  const zoomFocus = useRef<{ x: number; y: number } | null>(null)
+  const zoomAnchor = useRef<{ lat: number; lng: number } | null>(null)
+  const zoomPin = useRef<{ lat: number; lng: number } | null>(null)
+  const lastZoom = useRef(0)
+
+  // 지도 상자 크기를 재 둔다 (핀 위치 계산용)
   useEffect(() => {
-    const element = surface.current
-    if (!element) return
-    let startDistance = 0
-    const distance = (event: TouchEvent) => Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY)
-    const start = (event: TouchEvent) => { startDistance = event.touches.length === 2 ? distance(event) : 0 }
-    const move = (event: TouchEvent) => {
-      if (event.touches.length !== 2 || !startDistance) return
-      event.preventDefault()
-      if (distance(event) > startDistance * 1.12) {
-        startDistance = 0
-        zoomAt((event.touches[0].clientX + event.touches[1].clientX) / 2, (event.touches[0].clientY + event.touches[1].clientY) / 2)
+    const el = boxRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => {
+      const next = { w: entry.contentRect.width, h: entry.contentRect.height }
+      sizeRef.current = next
+      setSize(next)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // 지도가 상자 밖으로 빠져나가 빈 곳이 보이지 않게 맞춘다
+  const clamp = (v: { s: number; x: number; y: number }) => {
+    const { w, h } = sizeRef.current
+    const s = Math.min(MAX_SCALE, Math.max(1, v.s))
+    return { s, x: Math.min(0, Math.max(w - w * s, v.x)), y: Math.min(0, Math.max(h - h * s, v.y)) }
+  }
+  const coordinateAt = (cx: number, cy: number, v: typeof view) =>
+    unproject((cx - v.x) / v.s / sizeRef.current.w * MAP_W, (cy - v.y) / v.s / sizeRef.current.h * MAP_H)
+  const pinAt = (cx: number, cy: number) => {
+    const box = boxRef.current?.getBoundingClientRect()
+    if (!box) return null
+    const marker = document.elementFromPoint(box.left + cx, box.top + cy)?.closest<HTMLElement>('[data-map-lat]')
+    return marker && boxRef.current?.contains(marker) ? { lat: Number(marker.dataset.mapLat), lng: Number(marker.dataset.mapLng) } : null
+  }
+  const zoomAt = (factor: number, cx: number, cy: number) =>
+    setView((v) => {
+      const previousFocus = zoomFocus.current
+      const continuing = performance.now() - lastZoom.current < 500 && previousFocus && Math.hypot(cx - previousFocus.x, cy - previousFocus.y) < 24
+      if (!continuing) {
+        zoomPin.current = pinAt(cx, cy)
+        zoomAnchor.current = coordinateAt(cx, cy, v)
       }
-    }
-    const wheel = (event: WheelEvent) => { if (event.deltaY < 0) { event.preventDefault(); zoomAt(event.clientX, event.clientY) } }
-    element.addEventListener('touchstart', start, { passive: true })
-    element.addEventListener('touchmove', move, { passive: false })
-    element.addEventListener('wheel', wheel, { passive: false })
-    return () => { element.removeEventListener('touchstart', start); element.removeEventListener('touchmove', move); element.removeEventListener('wheel', wheel) }
+      zoomFocus.current = { x: cx, y: cy }
+      lastZoom.current = performance.now()
+      const s = Math.min(MAX_SCALE, Math.max(1, v.s * factor))
+      const k = s / v.s
+      return clamp({ s, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k })
+    })
+  const zoomRef = useRef(zoomAt)
+  useEffect(() => {
+    zoomRef.current = zoomAt
   })
-  return <section aria-label="도시별 추억 지도" className="mx-3 mt-4">
-    <div ref={surface} onDoubleClick={event => zoomAt(event.clientX, event.clientY)} style={{ touchAction: 'pan-y' }} className="relative aspect-[840/860] overflow-hidden rounded-[20px]">
-      <img src={recordMapImage} alt="대구·경북 도시별 추억 안내 그림" draggable={false} className="absolute inset-0 size-full select-none" />
-      {pins.map(pin => {
-        const point = CITY_ANCHORS[pin.city]
-        if (!point) return null
-        return <button key={pin.city} type="button" onClick={() => onOpenCity(pin)} aria-label={`${pin.city} 기록 ${pin.recordCount}개`} aria-pressed={activeCity === pin.city} style={{ left: `${point[0] / 840 * 100}%`, top: `${point[1] / 860 * 100}%` }} className="absolute flex min-h-11 min-w-11 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center"><span className="rounded-full bg-surface p-1 shadow-sm"><Flower code={cityFlower(pin.city)} size={22} /></span><span className="rounded-full bg-surface/95 px-2 text-[11px] font-bold whitespace-nowrap">{pin.city}</span><span className="h-2 w-0.5 bg-point" aria-hidden="true" /><span className="size-2 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" /></button>
-      })}
-      {children}
-      <button type="button" aria-label="확대하여 카카오맵 보기" onClick={() => onZoom(pins.find(pin => pin.city === activeCity) ?? pins[0])} className="absolute right-2 bottom-2 flex size-12 items-center justify-center rounded-xl border border-line bg-surface text-[24px] shadow-sm">＋</button>
+
+  // 휠 확대: 페이지가 같이 스크롤되지 않게 passive가 아닌 리스너로 막는다
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1)
+      zoomRef.current(Math.exp(-Math.max(-100, Math.min(100, delta)) * .002), e.clientX - rect.left, e.clientY - rect.top)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+  const local = (e: PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    zoomPin.current = null
+    zoomAnchor.current = null
+    lastZoom.current = 0
+    if (pointers.current.size === 0) gesture.current = { dist: 0, moved: 0 }
+    pointers.current.set(e.pointerId, local(e))
+    setInteracting(true)
+    if (!(e.target instanceof Element && e.target.closest('button'))) e.currentTarget.setPointerCapture(e.pointerId)
+    gesture.current.dist = 0
+    pinchCenter.current = null
+  }
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const prev = pointers.current.get(e.pointerId)
+    if (!prev) return
+    const now = local(e)
+    pointers.current.set(e.pointerId, now)
+    const pts = [...pointers.current.values()]
+    if (pts.length === 1) {
+      // 한 손가락: 끌어서 옮기기
+      const dx = now.x - prev.x
+      const dy = now.y - prev.y
+      gesture.current.moved += Math.abs(dx) + Math.abs(dy)
+      setView((v) => clamp({ ...v, x: v.x + dx, y: v.y + dy }))
+    } else if (pts.length === 2) {
+      // 두 손가락: 벌리면 확대, 오므리면 축소
+      const [a, b] = pts
+      const dist = Math.hypot(a.x - b.x, a.y - b.y)
+      const center = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      const previousCenter = pinchCenter.current
+      if (!previousCenter) {
+        zoomPin.current = pinAt(center.x, center.y)
+        zoomAnchor.current = coordinateAt(center.x, center.y, viewRef.current)
+      }
+      if (gesture.current.dist && previousCenter) {
+        const factor = dist / gesture.current.dist
+        zoomFocus.current = center
+        setView(v => {
+          const s = Math.min(MAX_SCALE, Math.max(1, v.s * factor)), k = s / v.s
+          return clamp({ s, x: center.x - (previousCenter.x - v.x) * k, y: center.y - (previousCenter.y - v.y) * k })
+        })
+      }
+      pinchCenter.current = center
+      gesture.current.dist = dist
+      gesture.current.moved += 10
+    }
+  }
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size === 0) setInteracting(false)
+    gesture.current.dist = 0
+    pinchCenter.current = null
+  }
+
+  // 지도 그림 위 % 위치 → 지금 확대·이동 상태의 화면 위치(px)
+  const toScreen = (lat: number, lng: number) => {
+    const { x, y } = project(lat, lng)
+    return { left: (x / 100) * size.w * view.s + view.x, top: (y / 100) * size.h * view.s + view.y }
+  }
+  const detail = view.s >= DETAIL_SCALE
+  const places = detail ? pins.flatMap((pin) => groupPlaces(pin.places).map((g) => ({ pin, ...g }))) : []
+
+  useEffect(() => {
+    if (view.s < KAKAO_SCALE) {
+      detailEntered.current = false
+      return
+    }
+    if (interacting) return
+    if (detailEntered.current || size.w === 0 || size.h === 0) return
+    detailEntered.current = true
+    const imageX = (-view.x + (zoomFocus.current?.x ?? size.w / 2)) / view.s
+    const imageY = (-view.y + (zoomFocus.current?.y ?? size.h / 2)) / view.s
+    const viewportCenter = unproject(imageX * (MAP_W / size.w), imageY * (MAP_H / size.h))
+    onEnterDetail(zoomPin.current ?? zoomAnchor.current ?? viewportCenter)
+  }, [interacting, onEnterDetail, pins, size.h, size.w, view.s, view.x, view.y])
+
+  return (
+    <div className="relative mx-3 mt-4">
+      <div
+        ref={boxRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        // 끌어서 옮긴 뒤 손을 뗄 때 핀이 눌리지 않게 막는다
+        onClickCapture={(e) => {
+          if (gesture.current.moved > 6) {
+            e.stopPropagation()
+            e.preventDefault()
+          }
+        }}
+        className="relative aspect-[840/860] touch-none overflow-hidden rounded-[20px] select-none"
+      >
+        <img
+          src={recordMapImage}
+          alt=""
+          draggable={false}
+          style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})`, transformOrigin: '0 0' }}
+          className="absolute inset-0 size-full will-change-transform"
+        />
+
+        {/* 멀리서: 도시 핀 */}
+        {!detail &&
+          pins.map((pin) => {
+            const position = cityMarkerPosition(pin)
+            const pos = toScreen(position.latitude, position.longitude)
+            const active = activeCity === pin.city
+            return (
+              <button
+                key={pin.city}
+                data-map-lat={position.latitude}
+                data-map-lng={position.longitude}
+                type="button"
+                onClick={() => onOpenCity(pin)}
+                aria-label={`${pin.city} 기록 ${pin.recordCount}개`}
+                style={pos}
+                // 점(높이 8px)의 가운데가 도시 자리에 오도록 아래로 4px 내린다
+                className="absolute flex w-max -translate-x-1/2 translate-y-[calc(-100%+4px)] flex-col items-center"
+              >
+                <span
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-1.5 pl-2 text-[14px] font-bold whitespace-nowrap shadow-[0_3px_12px_rgba(42,38,35,0.12)] ${
+                    active ? 'bg-ink text-surface' : 'bg-surface'
+                  }`}
+                >
+                  <Flower code={cityFlower(pin.city)} size={20} />
+                  {pin.city}
+                  <span
+                    className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] ${
+                      pin.bloomed ? 'bg-point text-surface' : 'bg-ink text-surface'
+                    }`}
+                  >
+                    {pin.recordCount}
+                  </span>
+                </span>
+                <span className="h-3 w-0.5 bg-ink" aria-hidden="true" />
+                <span className="-mt-0.5 size-2 rounded-full bg-ink" aria-hidden="true" />
+              </button>
+            )
+          })}
+
+        {/* 확대했을 때: 사진마다 검색으로 고른 세부 장소 핀 */}
+        {places.map(({ pin, place, count }) => {
+          const pos = toScreen(place.latitude, place.longitude)
+          return (
+            <button
+              key={place.photoId}
+              data-map-lat={place.latitude}
+              data-map-lng={place.longitude}
+              type="button"
+              onClick={() => onOpenCity(pin, place)}
+              aria-label={`${place.placeName} (${pin.city})`}
+              style={pos}
+              className="absolute flex w-max -translate-x-1/2 -translate-y-full flex-col items-center"
+            >
+              <span className="flex max-w-[120px] items-center gap-1 rounded-full bg-surface py-0.5 pr-2 pl-1 text-[11px] font-semibold shadow-[0_2px_8px_rgba(42,38,35,0.15)]">
+                <Flower code={(place.uploader?.flowerCode as FlowerCode | undefined) ?? cityFlower(pin.city)} size={14} />
+                <span className="truncate">{place.placeName}</span>
+                {count > 1 && <span className="shrink-0 text-point">{count}</span>}
+              </span>
+              <span className="mt-0.5 size-1.5 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
+            </button>
+          )
+        })}
+
+        {children}
+      </div>
+
+      {/* 확대·축소 버튼 (마우스로도 쓸 수 있게) */}
+      <div className="absolute right-2 bottom-2 flex flex-col overflow-hidden rounded-[12px] border border-line bg-surface shadow-sm">
+        <button
+          type="button"
+          aria-label="확대"
+          onClick={() => zoomAt(1.6, size.w / 2, size.h / 2)}
+          className="size-12 text-[22px] active:bg-bg"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          aria-label="축소"
+          onClick={() => zoomAt(1 / 1.6, size.w / 2, size.h / 2)}
+          className="size-12 border-t border-line text-[22px] active:bg-bg"
+        >
+          −
+        </button>
+      </div>
+      {view.s > 1 && (
+        <button
+          type="button"
+          onClick={() => setView({ s: 1, x: 0, y: 0 })}
+          className="absolute top-2 right-2 rounded-full bg-surface px-3 py-1.5 text-[11px] font-semibold shadow-sm active:opacity-80"
+        >
+          전체 보기
+        </button>
+      )}
+      {!detail && pins.some((p) => p.places.length > 0) && (
+        <p className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-surface/90 px-2.5 py-1 text-[10px] text-sub">
+          확대하면 다녀온 곳이 보여요
+        </p>
+      )}
     </div>
-
-  </section>
+  )
 }
-
 
 const ALL_ROOMS = 'all'
 
@@ -567,11 +851,11 @@ function RecordMapPage() {
           onFail={() => { setDetailCenter(null); setNotice('실제 지도를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.') }}
         />
       ) : (
-        <CityOverview
+        <ZoomableMap
           pins={pins ?? []}
           activeCity={openCity?.city}
           onOpenCity={openSheet}
-          onZoom={pin => pin ? showRealMap(pin) : setDetailCenter({ lat: 36.2, lng: 128.6, city: '', level: 10 })}
+          onEnterDetail={center => setDetailCenter({ ...center, city: '', level: 8 })}
         >
           {pins?.length === 0 && (
             <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
@@ -585,7 +869,7 @@ function RecordMapPage() {
               지도를 불러오지 못했어요. 잠시 후 다시 열어 주세요
             </p>
           )}
-        </CityOverview>
+        </ZoomableMap>
       )}
 
       <p className="mx-5 mt-4 mb-4 rounded-[18px] bg-surface px-5 py-3.5 text-[13px] text-sub">
