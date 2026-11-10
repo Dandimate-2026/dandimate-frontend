@@ -89,19 +89,3 @@ export async function isPushEnabled() {
     return false
   }
 }
-
-const DISMISS_KEY = 'duruduru:push-banner-dismissed'
-export function isPushBannerDismissed() {
-  try {
-    return localStorage.getItem(DISMISS_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-export function dismissPushBanner() {
-  try {
-    localStorage.setItem(DISMISS_KEY, '1')
-  } catch {
-    // 무시
-  }
-}
