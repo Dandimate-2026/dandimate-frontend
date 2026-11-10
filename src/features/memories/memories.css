@@ -87,7 +87,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-share button { display: inline-flex; align-items: center; justify-content: center; gap: 20px; min-height: 34px; margin-top: 9px; }
 .memory-share p { margin-top: 6px; }
 .memory-weaving-main { text-align: center; padding-top: 186px; }
-.memory-scroll-flower { display: block; margin: 0 auto; }
 .memory-weaving h1 { font-size: 20px; font-weight: 650; margin-top: 26px; }
 .memory-weaving-main p { font-size: 16px; line-height: 20px; color: var(--color-sub); margin-top: 7px; }
 .memory-loading { display: flex; gap: 10px; justify-content: center; margin-top: 23px; }
@@ -120,13 +119,11 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-differences .memory-quote + .memory-quote { margin-top: 5px; }
 .memory-afterword { margin-top: 20px; }
 .memory-chapter-actions { display: flex; gap: 5px; align-items: center; margin-top: 10px; }
-.memory-reaction, .memory-reply { padding: 6px 12px; border: 1px solid var(--color-line); background: var(--color-surface); border-radius: 999px; min-height: 33px; white-space: nowrap; font-size: 12px; }
+.memory-reaction { padding: 6px 12px; border: 1px solid var(--color-line); background: var(--color-surface); border-radius: 999px; min-height: 33px; white-space: nowrap; font-size: 12px; }
 .memory-reaction[aria-pressed="true"] { background: #f6e3ea; border-color: var(--color-point); color: var(--color-point); }
-.memory-reply { border-color: var(--color-ink); }
 .memory-original-link { margin-left: auto; color: var(--color-sub); font-size: 10px; white-space: nowrap; padding: 6px 0; }
 .memory-chapter-actions > .memory-reaction { flex-shrink: 0; }
 .memory-chapter-actions > .memory-original-link { flex: 1; min-width: 0; white-space: normal; text-align: right; }
-.memory-added-reply { margin-top: 12px; }
 .memory-app .memory-rating { padding: 18px 19px 13px; margin-top: 0; }
 .memory-app .memory-chapter-actions + .memory-rating { margin-top: 10px; }
 .memory-app .scroll-paragraph-story + .memory-rating, .memory-app .scroll-rewoven + .memory-rating { margin-top: 10px; }
@@ -139,12 +136,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-rating-options input:checked + span { background: var(--color-point); border-color: var(--color-point); }
 .memory-rating-options input:focus-visible + span { outline: 2px solid var(--color-point); outline-offset: 3px; }
 .memory-rating-scale { display: flex; justify-content: space-between; color: var(--color-sub); font-size: 10px; }
-.memory-app .memory-rating .memory-rating-thanks { color: var(--color-point); margin-top: 10px; }
-.memory-more { border: 1px dashed var(--color-line); border-radius: 24px; padding: 17px 24px; margin-top: 15px; text-align: center; }
-.memory-more h2 { font-size: 16px; font-weight: 650; margin-bottom: 9px; }
-.memory-more button { width: 100%; font-size: 16px; background: var(--color-surface); color: var(--color-ink); }
-.memory-app .memory-extra { margin-top: 15px; }
-.memory-extra p { margin-top: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .memory-sheet { position: fixed; inset: auto 0 0; margin: 0 auto; width: min(100%, 430px); max-width: 430px; max-height: calc(100dvh - 40px); background: #f5f5f3; border: 0; border-radius: 24px 24px 0 0; padding: 0; overflow: auto; }
 .memory-sheet::backdrop { background: rgb(42 38 35 / 45%); }
 .memory-sheet-body { padding: 28px 20px max(40px, env(safe-area-inset-bottom)); position: relative; }
@@ -168,10 +159,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-sheet-preview-photo { padding: 28px 14px; }
 .memory-reopen-sheet { margin: 30px 14px 0; }
 .memory-original-stories { display: grid; gap: 10px; margin-top: 20px; }
-.memory-upload { margin-top: 20px; }
-.memory-upload label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; }
-.memory-upload input { max-width: 100%; font-size: 12px; }
-.memory-upload .memory-photo { margin-top: 12px; }
 .memory-preview-index { padding: 48px 24px 32px; }
 .memory-preview-eyebrow { font-size: 12px; color: var(--color-point); margin-top: 12px; }
 .memory-preview-index h1 { margin-top: 8px; font-size: 27px; font-weight: 650; line-height: 1.3; letter-spacing: -.7px; }
@@ -197,7 +184,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-live, .scroll-document { background: var(--scroll-bg, var(--color-bg)); }
 .scroll-live { position: relative; padding-top: max(64px, env(safe-area-inset-top)); }
 .scroll-preview-banner { text-align: center; padding: 8px; font-size: 11px; background: #efe9df; color: var(--color-sub); }
-.scroll-template-control { display: flex; justify-content: flex-end; margin-top: 8px; }
 .scroll-save-button { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; border: 1px solid var(--color-line); border-radius: 30px; padding: 8px 14px; background: var(--color-surface); font-size: 14px; font-weight: 650; }
 .scroll-template-hero { display: block; width: 100%; height: auto; object-fit: cover; }
 .scroll-live > .scroll-template-hero { margin: -64px -20px 20px; width: calc(100% + 40px); max-width: none; }
@@ -209,13 +195,8 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-narrative { white-space: pre-wrap; overflow-wrap: anywhere; }
 .scroll-rewoven { margin-top: 12px; }
 .scroll-rewoven .scroll-rewoven-heading { margin-top: 0; }
-.scroll-reweave-button { width: 100%; padding: 12px; margin-top: 12px; }
 .scroll-bottom-reweave { padding: 16px 0; text-align: center; }
 .scroll-bottom-reweave > p { color: var(--color-sub); font-size: 13px; }
-.scroll-reweave-targets { display: grid; gap: 12px; margin-top: 16px; }
-.scroll-reweave-targets button { padding: 16px; text-align: left; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); }
-.scroll-reweave-targets strong, .scroll-reweave-targets span { display: block; }
-.scroll-reweave-targets span { margin-top: 8px; color: var(--color-sub); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .scroll-complete-footer { text-align: center; padding: 24px 0; }
 .scroll-end-flowers { display: flex; justify-content: center; gap: 4px; margin-bottom: 10px; }
 .scroll-complete-footer h2 { font-size: 18px; font-weight: 700; }
@@ -235,26 +216,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-sheet:has(.download-options) { background: var(--color-surface); }
 .memory-sheet:has(.download-options) .memory-sheet-body { padding-top: 30px; }
 .template-picker > h1 { font-size: 28px; font-weight: 750; line-height: 1.4; margin: 8px 0; }
-.template-eyebrow { color: var(--color-point); font-size: 14px; font-weight: 650; margin-top: 24px; }
-.template-subtitle { color: var(--color-sub); font-size: 14px; }
-.template-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 8px; margin-top: 24px; }
-.template-featured { display: flex; gap: 14px; padding: 12px; border: 2px solid var(--color-point); border-radius: 20px; background: var(--color-surface); margin-top: 20px; }
-.template-featured > img { width: 88px; height: 110px; border-radius: 12px; object-fit: cover; }
-.template-featured > div { flex: 1; min-width: 0; }
-.template-featured h2 { font-size: 20px; font-weight: 750; margin-top: 4px; }
-.template-featured p { font-size: 12px; color: var(--color-sub); margin-top: 5px; }
-.template-featured span { display: inline-block; margin-top: 8px; color: var(--color-point); font-size: 10px; font-weight: 700; }
-.template-group-title { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
-.template-group-title h2 { font-size: 16px; font-weight: 750; }
-.template-group-title > span { font-size: 11px; color: var(--color-sub); }
-.template-group-title + .template-grid { margin-top: 10px; }
-.template-tile { position: relative; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); overflow: hidden; text-align: left; }
-.template-tile[aria-pressed="true"] { outline: 2px solid var(--color-point); outline-offset: 2px; }
-.template-tile img { display: block; width: 100%; height: 100px; object-fit: cover; }
-.template-tile strong { display: block; padding: 10px 7px; font-size: 13px; }
-.template-plan { position: absolute; top: 6px; right: 5px; border-radius: 7px; background: var(--color-point); color: white; padding: 3px 5px; font-size: 9px; font-weight: 700; }
-.template-plan.free { color: var(--color-sub); background: #e8e2d8; }
-.template-plan.pro { background: var(--color-ink); }
 .template-note { margin: 24px 0 12px; text-align: center; color: var(--color-sub); font-size: 12px; line-height: 1.6; }
 .template-later { margin-top: 14px; padding: 8px; }
 .template-document-preview { border: 1px solid var(--color-line); border-radius: 24px; overflow: hidden; margin-top: 20px; max-height: 65dvh; overflow-y: auto; }
@@ -299,7 +260,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-live.has-template { padding-top: 0; }
 .scroll-design.has-template > .scroll-template-hero { margin: 0 -20px 0; width: calc(100% + 40px); aspect-ratio: 1.5; object-fit: cover; }
 .scroll-cover-back { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 16px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; background: #fffdf7ed; font-size: 30px; line-height: 1; display: grid; place-items: center; padding-bottom: 3px; }
-.scroll-cover-save { position: absolute; top: max(20px, env(safe-area-inset-top)); right: 16px; z-index: 2; }
 .scroll-live.has-template .scroll-save-button { width: 36px; height: 36px; padding: 8px; overflow: hidden; font-size: 0; border: 0; background: #fffdf7ed; }
 .scroll-live.has-template .scroll-save-button svg { width: 20px; height: 20px; flex-shrink: 0; }
 .scroll-design.has-template .memory-trip-heading { position: relative; border-bottom: 0; border-left: 1px solid var(--scroll-accent); padding: 16px 0 4px 16px; margin: 18px 0 0 4px; }
@@ -326,7 +286,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-bottom-rating .memory-rating-options label:nth-child(2) span,
 .scroll-bottom-rating .memory-rating-options label:nth-child(4) span { width: 32px; height: 32px; }
 .scroll-bottom-rating .memory-rating-options label:nth-child(3) span { width: 36px; height: 36px; }
-.scroll-rating-complete { padding: 16px; text-align: center; color: var(--color-point); font-size: 13px; }
 .memory-reweave-content { margin-top: 36px; }
 .memory-reweave-content blockquote { padding: 20px; margin-bottom: 24px; border-radius: 16px; background: #efe9df; white-space: pre-wrap; }
 .memory-reweave-content h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
@@ -335,49 +294,18 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .template-picker .memory-header .memory-back { width: 100%; justify-content: center; font-size: 14px; }
 .template-picker .memory-header .memory-back svg { position: absolute; left: 0; }
 .template-picker > h1 { font-size: 24px; }
-.template-picker .template-featured { border-color: var(--color-ink); border-radius: 20px; padding: 12px; }
-.template-picker .template-featured > img { width: 100px; height: 100px; }
-.template-picker .template-featured h2 { font-size: 18px; }
-.template-picker .template-grid { display: flex; overflow-x: auto; gap: 10px; padding: 3px 2px 8px; }
-.template-picker .template-tile { flex: 0 0 94px; border-radius: 14px; }
-.template-picker .template-tile img { height: 84px; }
-.template-picker .template-tile strong { padding: 8px; }
-.template-picker .template-plan.lite { background: #f6d9e4; color: #ba3f73; }
-.template-picker .template-plan.pro { background: #302b26; }
 .template-picker .template-document-preview { border: 0; border-radius: 22px; max-height: 61dvh; }
 .template-picker .template-chips button img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
 .template-picker .template-note { margin-top: auto; padding-top: 24px; font-size: 11px; }
 @media (max-width: 350px) { .scroll-design.has-template > .scroll-template-hero { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); } .scroll-bottom-rating .memory-rating-options label { width: 40px; } }
-@media (max-width: 350px) { .scroll-live > .scroll-template-hero { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); } .template-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 350px) { .scroll-live > .scroll-template-hero { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); } }
 
 /* 템플릿 고르기 (시안 S11-3) */
 .template-picker-top { position: relative; }
 .template-picker-top .template-later { position: absolute; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 8px 4px; font-size: 13px; color: var(--color-sub); background: none; }
-.template-picker .template-eyebrow { font-size: 12px; margin-top: 18px; }
 .template-picker > h1 { font-size: 24px; margin: 6px 0 4px; }
-.template-picker .template-featured { position: relative; width: 100%; align-items: center; text-align: left; border: 2px solid var(--color-ink); margin-top: 26px; padding: 14px; }
-.template-picker .template-featured[aria-pressed="false"] { border: 1px solid var(--color-line); }
-.template-featured-badge { position: absolute; top: -11px; left: 16px; border-radius: 999px; background: var(--color-point); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 9px; }
-.template-picker .template-featured > img { width: 104px; height: 78px; border-radius: 10px; }
-.template-featured-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
-.template-featured-name { display: flex; align-items: center; gap: 6px; font-size: 18px; font-weight: 750; }
-.template-featured-desc { font-size: 12px; color: var(--color-sub); }
-.template-featured-why { font-size: 11px; font-weight: 700; color: var(--color-point); }
-.template-row { display: flex; gap: 10px; overflow-x: auto; margin: 10px -20px 0; padding: 4px 20px 6px; scrollbar-width: none; }
-.template-row::-webkit-scrollbar { display: none; }
-.template-row .template-tile { flex: 0 0 96px; border: 0; background: none; overflow: visible; }
-.template-tile-art { position: relative; display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-line); }
-.template-row .template-tile img { height: 72px; }
-.template-row .template-tile[aria-pressed="true"] { outline: none; }
-.template-row .template-tile[aria-pressed="true"] .template-tile-art { border: 2px solid var(--color-ink); }
-.template-row .template-tile strong { padding: 6px 2px 0; font-size: 12px; font-weight: 600; }
-.template-plan.lite { background: #fff; color: var(--color-point); border: 1px solid #f0c9d8; }
-.template-plan.pro { background: var(--color-ink); color: #fff; }
-.template-plan.inline { position: static; font-size: 9px; }
 
 /* 두루마리 위 "템플릿 바꾸기" 버튼 */
-.scroll-template-control .template-change-button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 12px; font-weight: 600; color: var(--color-ink); }
-.scroll-template-control .template-change-button:active { opacity: .8; }
 
 /* 기본 미니멀 (시안): 위쪽 두루마리 막대 + 가운데 흰 종이 */
 .scroll-rod { height: 22px; border-radius: 11px; background: #302b26; border-left: 14px solid #79523b; border-right: 14px solid #79523b; }
@@ -391,7 +319,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .template-chips button[aria-pressed="true"] { border-width: 2px; padding: 6px 9px; }
 
 /* 템플릿 바꾸기 줄도 왼쪽 세로줄을 이어 그린다 */
-.scroll-design.has-template .scroll-template-control { margin: 0 0 0 4px; padding: 6px 0 4px; border-left: 1px solid var(--scroll-accent); }
 
 /* 긴 이름: 한 사람 이름이 줄을 넘지 않게 말줄임 */
 .scroll-design .memory-members li { min-width: 0; max-width: 100%; }
@@ -431,24 +358,17 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-member-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .memory-members li > :first-child { flex-shrink: 0; }
 
-/* 템플릿 바꾸기: 위쪽 뒤로가기와 저장 사이 가운데 */
-.scroll-cover-template { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 2; }
-.scroll-cover-template .template-change-button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid rgba(42, 38, 35, .14); box-shadow: 0 2px 8px rgba(42, 38, 35, .14); font-size: 12px; font-weight: 600; color: var(--color-ink); white-space: nowrap; }
-
-/* 엮는 중 그림: 위아래 막대 사이로 종이가 펼쳐지고, 왼쪽 줄을 따라 점이 내려간다 */
+/* 엮는 중 그림: 위아래 막대 사이로 종이가 펼쳐진다 */
 .weave-anim { position: relative; width: 120px; height: 150px; margin: 0 auto; }
 .weave-rod { position: absolute; left: 0; right: 0; height: 14px; border-radius: 7px; background: #302b26; border-left: 10px solid #79523b; border-right: 10px solid #79523b; z-index: 1; }
 .weave-rod-top { top: 0; }
 .weave-rod-bottom { top: 8px; animation: weave-rod-down 3.2s ease-in-out infinite; }
 .weave-paper { position: absolute; left: 14px; right: 14px; top: 7px; height: 0; background: #fffdf7; border: 1px solid #e4dccf; border-top: 0; border-bottom: 0; overflow: hidden; animation: weave-paper-open 3.2s ease-in-out infinite; }
 .weave-paper img { position: absolute; left: 50%; top: 42px; width: 46px; height: auto; transform: translateX(-50%); opacity: .9; }
-.weave-line { position: absolute; left: 12px; top: 10px; bottom: 10px; width: 1px; background: #302b26; }
-.weave-dot { position: absolute; left: 8.5px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-point); animation: weave-dot-move 3.2s ease-in-out infinite; }
 @keyframes weave-paper-open { 0% { height: 0; } 45%, 85% { height: 128px; } 100% { height: 0; } }
 @keyframes weave-rod-down { 0% { top: 8px; } 45%, 85% { top: 134px; } 100% { top: 8px; } }
-@keyframes weave-dot-move { 0%, 30% { top: 10px; opacity: 0; } 40% { opacity: 1; } 80% { top: 104px; opacity: 1; } 90%, 100% { top: 104px; opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .weave-paper, .weave-rod-bottom, .weave-dot { animation: none; }
+  .weave-paper, .weave-rod-bottom { animation: none; }
   .weave-paper { height: 128px; }
   .weave-rod-bottom { top: 134px; }
 }
@@ -515,11 +435,9 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-design.has-template .memory-chapter + .memory-chapter { border-top: 0; }
 /* 두루마리 아래 영역(평가 · 다시 엮기 · 끝까지 읽었어요 · 더 보태기) 사이 구분선 */
 .scroll-live .scroll-bottom-reweave,
-.scroll-live .scroll-complete-footer,
-.scroll-live .memory-more { position: relative; margin-top: 28px; padding-top: 28px; }
+.scroll-live .scroll-complete-footer { position: relative; margin-top: 28px; padding-top: 28px; }
 .scroll-live .scroll-bottom-reweave::before,
-.scroll-live .scroll-complete-footer::before,
-.scroll-live .memory-more::before { content: ''; position: absolute; top: 0; left: 8px; right: 8px; border-top: 1px solid var(--color-line); }
+.scroll-live .scroll-complete-footer::before { content: ''; position: absolute; top: 0; left: 8px; right: 8px; border-top: 1px solid var(--color-line); }
 
 /* 말린 두루마리를 묶은 끈: 누르거나 당기면 풀리고 나서 펼쳐진다 */
 /* 끈 색은 템플릿마다 (--scroll-ribbon). 진한 쪽·밝은 쪽은 같은 색에서 섞어 만든다 */
@@ -543,8 +461,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-unroll-tie { top: -21px; height: 42px; z-index: 2; }
 .scroll-unroll-bow { top: 10px; }
 /* 더 보태기 상자는 테두리가 있어서, 구분선을 상자 바깥 위에 긋는다 */
-.scroll-live .memory-more { margin-top: 57px; padding-top: 24px; overflow: visible; }
-.scroll-live .memory-more::before { top: -29px; left: 8px; right: 8px; }
 
 /* ===== 템플릿 고르기 (새 디자인) ===== */
 .tp { padding-bottom: 0; }
@@ -555,11 +471,9 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .tp-featured[aria-pressed="true"] { border-color: var(--color-ink); box-shadow: 0 0 0 1px var(--color-ink); }
 .tp-featured-art { position: relative; display: block; }
 .tp-featured-art img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
-.tp-reco { position: absolute; top: 12px; left: 12px; padding: 4px 10px; border-radius: 999px; background: var(--color-point); color: #fff; font-size: 11px; font-weight: 700; }
 .tp-featured-body { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px 16px; }
 .tp-featured-name { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 750; color: var(--color-ink); }
 .tp-featured-desc { font-size: 12.5px; line-height: 1.5; color: var(--color-sub); }
-.tp-featured-why { margin-top: 2px; font-size: 11.5px; font-weight: 650; color: var(--color-point); }
 .tp-section { margin-top: 26px; }
 .tp-section-head { display: flex; align-items: baseline; justify-content: space-between; }
 .tp-section-head h2 { font-size: 15px; font-weight: 750; }
@@ -583,11 +497,9 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 
 /* 문단 ⋮ 메뉴 */
 .memory-chapter-actions { position: relative; }
-.scroll-paragraph-more { margin-left: auto; }
 .tp-row { scroll-padding-inline: 20px; }
 .tp-footer { display: block; width: auto; align-self: stretch; }
 .tp-footer > button { width: 100%; }
-.scroll-paragraph-more button, .scroll-paragraph-more [role="menuitem"] { white-space: nowrap; }
 
 /* ===== 두루마리 아래 영역 새 순서 ===== */
 /* 끝까지 읽었어요: 아래 봉 바로 밑, 구분선 없이 */
@@ -602,8 +514,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .scroll-reweave-chip { flex-shrink: 0; height: 34px; padding: 0 14px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 13px; font-weight: 650; color: var(--color-ink); white-space: nowrap; }
 .scroll-reweave-chip:disabled { opacity: .4; }
 .scroll-bottom-save { margin-top: 20px; }
-/* 더 보태기: 진짜 버튼처럼 테두리 */
-.scroll-live .memory-more button { height: 48px; border: 1px solid var(--color-ink); border-radius: 999px; background: var(--color-surface); font-size: 15px; font-weight: 650; }
 
 /* 다시 엮었어요·다운로드 안내 스낵바: 내용 사이가 아니라 화면 위쪽에 떠 있게 */
 .scroll-live .memory-toast-anchor { position: static; height: 0; }
@@ -623,11 +533,6 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 /* 덧붙이기·답가 녹음 듣기 / 다시 녹음 (처음 한마디 화면과 같은 모양) */
 .memory-voice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; width: 100%; }
 .memory-voice-actions > button { display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 999px; font-size: 14px; }
-
-/* 문단 아래 답가 목록: 작은 글씨, 왼쪽에 템플릿 색 선 */
-.scroll-replies { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 2px solid var(--scroll-accent, var(--color-line)); }
-.scroll-replies li { font-size: 13px; line-height: 1.5; color: var(--color-ink); }
-.scroll-replies strong { margin-right: 4px; font-size: 12px; font-weight: 700; color: var(--color-sub); }
 
 .memory-header .memory-back { min-height: 44px; }
 .memory-circulation .memory-actions { position: sticky; bottom: 0; padding: 16px 0 max(16px, env(safe-area-inset-bottom)); background: #f7f3ec; flex-shrink: 0; }
@@ -660,7 +565,5 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-chapter-actions .paragraph-reweave-button { margin-top: 0; min-height: 40px; border-radius: 999px; padding: 6px 10px; font-size: 11px; }
 .scroll-live .memory-chapter-actions { flex-wrap: wrap; gap: 8px; }
 .scroll-live .memory-chapter-actions .memory-reaction { min-height: 40px; padding: 6px 10px; font-size: 11px; }
-
-.paragraph-reweave-action { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--scroll-rule, #e8e0d5); }
 .scroll-bottom-save > .template-change-button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #ded5ca; border-radius: 16px; background: #fffdf9; font-size: 13px; font-weight: 600; color: #504539; }
 .scroll-bottom-save > .template-change-button > span { font-size: 20px; font-weight: 400; }
