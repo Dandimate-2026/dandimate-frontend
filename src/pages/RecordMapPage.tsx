@@ -872,10 +872,6 @@ function RecordMapPage() {
         </ZoomableMap>
       )}
 
-      <p className="mx-5 mt-4 mb-4 rounded-[18px] bg-surface px-5 py-3.5 text-[13px] text-sub">
-        확대하면 카카오맵에서 사진을 남긴 장소의 핀을 볼 수 있어요.
-      </p>
-
       {openCity && <CitySheet key={`${openCity.city}:${openPlace?.photoId ?? "all"}`} pin={openCity} place={openPlace} onClose={() => setOpenCity(null)} onChanged={reloadAfterChange} onMap={showRealMap} />}
       {notice && (
         <p role="status" className="fixed inset-x-0 top-[max(16px,env(safe-area-inset-top))] z-50 mx-auto w-fit rounded-full bg-ink px-4 py-2 text-[13px] text-surface">
