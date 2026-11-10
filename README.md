@@ -14,7 +14,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-B03A6A?style=flat-square&logo=pwa&logoColor=white)
 
-[서비스 바로가기](https://43-201-73-60.sslip.io/) · [기능 둘러보기](#핵심-기능) · [로컬 실행](#실행-방법) · [API 연동 노트](./docs/api-audit-2026-11-09.md)
+[서비스 바로가기](https://43-201-73-60.sslip.io/) · [기능 둘러보기](#핵심-기능) · [로컬 실행](#실행-방법) · [API 연동 노트](./docs/api-integration.md)
 
 </div>
 
@@ -257,7 +257,7 @@ PR에는 변경 동작, 관련 화면, 검증 결과와 확인하지 못한 범�
 | 문서 | 내용 |
 | --- | --- |
 | [배포 API 연결](./docs/api-integration.md) | 개발·배포 API 연결과 확인 순서 |
-| [API 연동 결과와 남은 계약](./docs/api-audit-2026-11-09.md) | 연동한 기능과 백엔드 계약 확인 사항 |
-| [백엔드 전달 사항](./docs/api-backend-message-2026-11-09.md) | 서버 확인·추가 요청 정리 |
+| [11월 9일 API 점검 기록](./docs/api-audit-2026-11-09.md) | 과거 연동 점검 결과와 조건부 서버 확장 제안 |
+| [최신 API 연동 결과](./docs/api-integration-2026-11-10.md) | 템플릿·알림 삭제·사진 처리·동의 버전 연동 |
 | [플랜·결제 검증](./docs/plan-payment-qa.md) | 주문·승인·완료·실패 화면과 검증 기록 |
 | [README 화면 캡처](./docs/readme/README.md) | 소개 이미지의 화면 경로와 촬영 조건 |

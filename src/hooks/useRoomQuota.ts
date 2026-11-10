@@ -31,15 +31,6 @@ export function isLimitError(e: unknown) {
   return typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 422
 }
 
-/** 방장에게 한도를 늘려 달라고 단톡방 등으로 부탁하는 메시지를 보낸다 */
-export async function askHost(text: string) {
-  if (navigator.share) {
-    await navigator.share({ text }).catch(() => {})
-    return
-  }
-  await navigator.clipboard?.writeText(text).catch(() => {})
-}
-
 /**
  * 한도 시트의 플랜 버튼. 사진·말하기·재엮기 모두 같은 규칙을 쓴다.
  * - 방장: [플랜 보기] → 플랜 화면. 뒤로 가면 보던 화면으로 돌아온다

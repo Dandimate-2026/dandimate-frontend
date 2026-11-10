@@ -1,42 +1,40 @@
-# 배포 API 연결 및 확인
+# 개발·배포 API 연결 안내
 
-2026-11-06 추가한 평가 숨김·템플릿·파일 다운로드·평가 후 재엮기는 [두루마리 기능 연결 및 검증](scroll-features.md)을 먼저 참고하세요. 최신 스웨거의 인증은 로그인 쿠키와 CSRF 토큰이며, 아래의 기존 방별 토큰 설명보다 새 문서의 두루마리 연결 기준이 우선합니다.
+현재 프론트엔드 코드 기준의 실행 안내입니다. 날짜별 검증 기록과 실제 서버에서 확인하지 못한 범위는 아래 문서를 참고합니다.
 
-기준: [Swagger UI](https://43-201-73-60.sslip.io/swagger-ui.html) / [OpenAPI 원문](https://43-201-73-60.sslip.io/openapi/public-api.yaml), Duruduru Public API 0.1.0.
+## 실행 모드
 
-## 연결된 화면
+```sh
+npm ci
+npm run dev
+```
 
-| 화면 | API |
-|---|---|
-| 돌려보기 카드 | `GET /rooms/{roomId}/circulation` (커서 페이지 전체 조회) |
-| 패스 / 패스 취소 | `PUT` / `DELETE /photos/{photoId}/passes/me` |
-| 덧붙임 | `POST /photos/{photoId}/transcriptions` (음성), `POST /photos/{photoId}/entries` (`kind: ADDON`) |
-| 엮는 중 | `GET /jobs/{jobId}`, `GET /rooms/{roomId}` 5초 간격 조회, 완료 후 `GET /rooms/{roomId}/scroll` |
-| 실패한 엮기 재시도 | `POST /rooms/{roomId}/weave-jobs` (방장) |
-| 두루마리·원문 | `GET /rooms/{roomId}/scroll`의 `paragraphs`와 `sources` |
-| 아 맞다·문단 평가 | `PUT` / `DELETE /paragraphs/{paragraphId}/reactions/ah-matda`, `PUT /paragraphs/{paragraphId}/fidelity-rating` |
-| 답가 | `POST /paragraphs/{paragraphId}/transcriptions` (음성), `POST /paragraphs/{paragraphId}/replies`, `GET /jobs/{jobId}` |
-| 설정: 모임 이름·날짜 변경 (방장) | `PATCH /rooms/{roomId}` |
-| 설정: 초대 링크 새로 만들기 (방장) | `POST /rooms/{roomId}/invite-token/rotate` |
-| 설정: 모임방 삭제 (방장) | `DELETE /rooms/{roomId}` |
-| 플랜 선택·결제 화면 | `GET /plans` (가격·한도·생성 가능 여부), 고른 플랜으로 `POST /rooms` |
-| 설정: 첫 두루마리 시각 변경 (방장) | `PATCH /rooms/{roomId}`의 `deadlineAt` |
-| 알림 목록·읽음 | `GET /rooms/{roomId}/notifications`, `POST /notifications/{notificationId}/read` |
-| 모임방 홈 실시간 갱신 | `POST /rooms/{roomId}/event-token` → `GET /rooms/{roomId}/events` (SSE). 실패하면 `GET /rooms/{roomId}` 5초 간격 조회 |
+`.env.example`을 `.env.local`로 복사해 필요한 값을 설정합니다.
 
-요청은 카카오 로그인 세션 쿠키로 인증합니다(`credentials: 'include'`). 쓰기 요청에는 `GET /auth/csrf`로 받은 `X-CSRF-TOKEN`을 넣습니다. 덧붙임·답가 저장 및 엮기 재시도에는 `Idempotency-Key`를 보냅니다. 쓰기 후에는 카드나 두루마리를 서버에서 다시 읽습니다.
+- 실제 API: `VITE_USE_MOCK`을 비우거나 `false`로 둡니다. `VITE_API_BASE_URL`이 비어 있으면 개발 서버의 `/api` 프록시를 사용하고, 배포 빌드는 기본 배포 API를 사용합니다.
+- 예시 데이터: 개발 환경에서 `VITE_USE_MOCK=true`로 실행합니다. 로그인 화면에서 방장·멤버 역할을 선택할 수 있습니다. 배포 빌드에는 적용되지 않습니다.
+- 독립 UI 미리보기: 개발 서버의 `/memories.html`을 사용합니다. 실행 방법과 화면 경로는 [미리보기 안내](../MEMORIES_PREVIEW.md)에 있습니다.
 
-## 로컬에서 확인
+기본 API 주소는 `https://43-201-73-60.sslip.io/api/v1`이며, [Swagger UI](https://43-201-73-60.sslip.io/swagger-ui.html)에서 공개 명세를 확인할 수 있습니다.
 
-1. `npm ci` 후 `npm run dev`를 실행합니다. `.env.local`이 없다면 Vite가 `/api` 요청을 `https://43-201-73-60.sslip.io`로 프록시합니다. `.env.local`의 `VITE_USE_MOCK`은 비우거나 `false`로 둡니다.
-2. 앱에서 방을 만들거나 초대 링크로 입장합니다. 방 만들기에서 함께할 인원(2~8명)을 고르고, 플랜은 FREE로 만듭니다. 로그인은 카카오 로그인 세션 쿠키로 동작합니다(로컬 개발 제약은 `backend-gaps.md` 0번 참고).
-3. 두 사용자(다른 브라우저 프로필/기기)를 방에 입장시키고 친구 사진과 첫 이야기를 올립니다. 방 홈 → **이야기 붙이기**에서 카드가 실제 사진과 이야기로 채워지는지 확인합니다.
-4. **패스**와 **패스 취소**, 글 또는 음성 **덧붙이기**를 실행합니다. 개발자 도구 Network에서 위 경로의 2xx 응답과 뒤따르는 `GET /circulation`을 확인합니다. 새로고침 후에도 응답 상태가 유지되어야 합니다.
-5. 방장이 엮기를 시작하면 `GET /jobs/{jobId}`의 `status`가 `SUCCEEDED`가 될 때 두루마리가 열립니다. 홈의 **두루마리 보기**로 다시 들어가도 서버 문단이 보여야 합니다. 문단별 **원문보기**, **아 맞다**, **평가**, **답가**를 확인합니다. 답가는 202 작업 완료 후 문단이 갱신됩니다.
-6. UI 시안만 보려면 `memories.html`을 엽니다. 이 경로는 서버 저장을 확인하는 용도가 아닙니다.
+## 인증과 개발 환경
 
-## 서버 계약상 남은 부분
+요청은 로그인 세션 쿠키를 포함합니다. 쓰기 요청에는 공통 API 클라이언트가 발급받은 CSRF 토큰을 넣습니다. 필요한 저장·주문 요청의 멱등성 키도 기존 API 함수에서 관리합니다.
 
-- 공개 Swagger에는 플랜 조회, 쿠폰 검증, 주문·결제·결제 결과 조회 API가 없습니다. 실제 모드에서는 결제 버튼을 비활성화하고 성공 화면으로 이동하지 않습니다. 결제창·실패 사유·영수증·환불은 API 계약과 결제대행 연동이 있어야 검증할 수 있습니다.
-- `ScrollResponse.paragraphs`는 `replyCount`만 제공하고 답가 본문 목록은 제공하지 않습니다. `ahMatdaCount`와 평가 저장 API에도 현재 사용자의 선택 값이 없어 새로고침 후 선택 표시를 복원할 수 없습니다.
-- API의 `servers` 항목은 `api.example.com` 예시 값이므로 실제 배포 주소는 위 URL을 사용합니다. 로컬 Chrome에서 배포 API를 직접 `fetch`하면 실패했고, Vite의 같은 출처 `/api` 프록시를 통한 요청은 서버 JSON 응답을 받았습니다. 다른 도메인에 프론트를 배포한다면 백엔드 CORS 허용 또는 같은 출처 리버스 프록시가 필요합니다.
+로컬에서 로그인·API 연결이 실패하면 카카오 로그인 복귀 주소, 서버 쿠키 정책과 허용 출처를 확인합니다. 로그인 시작은 배포 서버를 사용하므로 `/api` 프록시만으로 모든 로그인 환경이 해결되는 것은 아닙니다. 새 출처에서 검증할 때는 서버 설정을 함께 확인하거나 예시 데이터 모드를 사용합니다.
+
+같은 카카오 계정은 같은 방의 동일한 멤버입니다. 실제 방장·멤버 시나리오는 서로 다른 계정으로 검증합니다. 모의 역할 선택과 실제 서버의 권한 처리를 구분합니다.
+
+## 기능별 유지보수 문서
+
+| 문서 | 내용 |
+| --- | --- |
+| [최신 API 연동](api-integration-2026-11-10.md) | 알림 삭제, 공통 템플릿, 사진 처리, 동의 버전, 방 생성 예약, 지도 연동 |
+| [실시간 갱신·결제 복구](api-realtime-implementation.md) | SSE와 재연결, 질문 처리, 결제 결과 재확인 |
+| [두루마리 기능](scroll-features.md) | 평가, 재엮기, 템플릿, 이미지·PDF 저장 |
+| [플랜·결제 검증](plan-payment-qa.md) | 결제 화면과 검증 범위 |
+| [심사용 데모 상태](reviewer-demo-integration.md) | GET/PUT 기반 계정 데모 모드 |
+| [카카오톡 초대 공유](kakao-invitation.md) | JavaScript 키, 공유 도메인과 실제 기기 확인 |
+| [11월 9일 API 점검 기록](api-audit-2026-11-09.md) | 과거 점검 결과와 조건부 서버 확장 제안 |
+
+실제 서버의 현재 지원 여부를 과거 미연결 목록만으로 판단하지 않습니다. 모의 API 테스트 통과와 실제 계정·결제·기기 검증 결과는 각 문서에서 구분합니다.

@@ -17,12 +17,6 @@ export function todayIsoDate() {
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
-/** ISO 시각 → 'MM월 DD일 HH:mm' (기기 시간대) */
-export function formatDateTime(iso: string) {
-  const d = new Date(iso)
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
-}
-
 /** ISO 시각 → datetime-local 입력값 ('2026-10-31T21:00') */
 export function toLocalDateTimeInput(iso: string) {
   const d = new Date(iso)
