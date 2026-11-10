@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useSearchParams } from 'react-router'
 import Button from '../../components/Button'
 import { DownloadIcon } from '../../components/ShareIcons'
 import { rateParagraph, setAhMatda } from '../../api/memories'
@@ -15,6 +16,7 @@ import { canUseTemplate, fromServerTemplate, getTemplate, templateStyle, type Sc
 import type { DownloadResult } from './scrollDownload'
 import type { ReweaveResult } from './types'
 import { siteUrl } from '../../lib/siteUrl'
+import { clearPlanReturn } from '../../lib/planReturn'
 
 export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh, onReweave, onReweaveLimit, pendingParagraphId, reweaveResult, completionMessage, onDismissCompletion }: {
   scroll: Scroll
@@ -30,6 +32,8 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
   completionMessage?: string
   onDismissCompletion?: () => void
 }) {
+  const [params, setParams] = useSearchParams()
+  const location = useLocation()
   const [liked, setLiked] = useState<Record<string, boolean>>({})
   const [ratings, setRatings] = useState<Record<string, number>>({})
   const [ratingRetry, setRatingRetry] = useState<{ score: number; paragraphs: ScrollParagraph[] } | null>(null)
@@ -44,7 +48,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
   // 템플릿은 방 단위로 서버에 저장된다. 방금 고른 값은 서버에서 다시 받아 올 때까지만 먼저 보여 준다
   const [chosenTemplate, setChosenTemplate] = useState<ScrollTemplateId | null>(null)
   const selectedTemplate = chosenTemplate ?? fromServerTemplate(home.room.scrollTemplateId)
-  const [pickingTemplate, setPickingTemplate] = useState(() => { try { return scroll.paragraphs.length > 0 && !localStorage.getItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`) } catch { return scroll.paragraphs.length > 0 } })
+  const [pickingTemplate, setPickingTemplate] = useState(() => { if (params.get('templates') === '1') return true; try { return scroll.paragraphs.length > 0 && !localStorage.getItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`) } catch { return scroll.paragraphs.length > 0 } })
   const [downloading, setDownloading] = useState(false)
   const [notice, setNotice] = useState('')
   const savedDownload = useRef<DownloadResult | null>(null)
@@ -58,8 +62,19 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
     return () => window.clearTimeout(timer)
   }, [notice])
 
-  if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={() => { try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ } setPickingTemplate(false) }} onSelect={async (id) => {
-    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ } setChosenTemplate(id); setPickingTemplate(false); await onRefresh(); setChosenTemplate(null); window.scrollTo(0, 0) }
+  const closeTemplatePicker = () => {
+    clearPlanReturn(home.room.id)
+    try { localStorage.setItem(`duruduru:template-picked:${home.room.id}:${home.me.id}`, '1') } catch { /* optional */ }
+    setPickingTemplate(false)
+    setParams(current => {
+      const next = new URLSearchParams(current)
+      next.delete('templates'); next.delete('template'); next.delete('templateTab')
+      return next
+    }, { replace: true, state: location.state })
+  }
+
+  if (pickingTemplate) return <TemplatePicker scroll={scroll} home={home} value={templateId} onClose={closeTemplatePicker} onSelect={async (id) => {
+    try { await updateRoom(home.room.id, { scrollTemplateId: id }, token); setChosenTemplate(id); closeTemplatePicker(); await onRefresh(); setChosenTemplate(null); window.scrollTo(0, 0) }
     catch (cause) { throw cause instanceof Error ? cause : new Error('템플릿을 저장하지 못했어요.') }
   }} />
 

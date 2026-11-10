@@ -6,6 +6,7 @@ import { useLocation, useParams } from 'react-router'
 import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
 import { MAX_PHOTOS } from '../api/photos'
+import { findPlan } from '../lib/plans'
 import { getRoomHome, ROOM_CAPACITY } from '../api/rooms'
 import type { CirculationCard, FlowerCode, Member, RoomHome, RoomStatus, RoomSummary } from '../api/types'
 import Button from '../components/Button'
@@ -306,8 +307,8 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
 function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] | null }) {
   const navigate = useAppNavigate()
   const { room, me, members, myTodo } = home
-  // 사진 한도는 플랜마다 다르다(1인 3/6/10장). 서버가 준 한도를 쓰고, 없으면 기본 3장으로 본다
-  const maxPhotos = room.quota?.photosPerMember ?? MAX_PHOTOS
+  // 서버가 한도를 생략하면 현재 플랜의 사진 한도를 쓴다.
+  const maxPhotos = room.quota?.photosPerMember ?? findPlan(room.planType?.toLowerCase() ?? 'free')?.photosPerMember ?? MAX_PHOTOS
   const myPhotos = room.quota?.myPhotoCount ?? me.photoCount ?? 0
   const canAddPhotos = (room.quota?.myPhotosRemaining ?? (maxPhotos - myPhotos)) > 0
   // 친구 사진 수는 돌려보기 목록으로 센다 (목록을 아직 못 받았으면 서버 숫자로). 친구 사진이 있으면 늘 둘러볼 수 있다

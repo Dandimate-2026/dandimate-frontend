@@ -48,8 +48,8 @@ export const PLANS: Plan[] = [
     firstMaxSeconds: 60,
     otherMaxSeconds: 30,
     available: false,
-    decor: '일반 꾸미기 전부',
-    summary: ['사진 1인 6장 · 말하기 40분 · 재엮기 6회 · 꾸미기 전부'],
+    decor: '기본 + 지역 템플릿 5종',
+    summary: ['사진 1인 6장 · 말하기 40분 · 재엮기 6회 · 지역 템플릿 5종'],
   },
   {
     id: 'pro',
@@ -127,7 +127,7 @@ export function mergePlanCatalog(items: PlanCatalogItem[]): Plan[] {
       firstMaxSeconds: item.firstMaxSeconds,
       otherMaxSeconds: item.otherMaxSeconds,
       available: item.roomCreationAvailable,
-      summary: [`${limits}${plan.id === 'free' ? '' : plan.id === 'lite' ? ' · 꾸미기 전부' : ' · 특별 꾸미기'}`],
+      summary: [`${limits}${plan.id === 'free' ? '' : plan.id === 'lite' ? ' · 지역 템플릿 5종' : ' · 특별 꾸미기'}`],
     }
   })
 }
