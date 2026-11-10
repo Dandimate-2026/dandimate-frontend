@@ -162,7 +162,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       {changes && <div className="scroll-rewoven-heading"><strong>✓ 재엮기 완료 · 보탠 이야기가 반영됐어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
       <ParagraphStory paragraph={paragraph} changes={changes} />
       <div className="memory-chapter-actions">
-        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>공감해요 <strong>{paragraph.ahMatdaCount}</strong></button>
+        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>나도 이렇게 기억해요 <strong>{paragraph.ahMatdaCount}</strong></button>
         {onReweave && !pendingParagraphId && <button type="button" className="paragraph-reweave-button" disabled={busy !== null} onClick={() => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else setConfirmReweave(paragraph) }}><span aria-hidden="true">↻</span> 다시 엮기</button>}
       </div>
       <div className="mt-1 text-right"><button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button></div>
