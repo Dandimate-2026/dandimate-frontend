@@ -82,7 +82,7 @@ export function usePlanLimitAction(
   const onSelectPlan = isHost && !isPro ? (plan: PlanId) => {
     const current = (home?.room.planType ?? 'FREE').toLowerCase()
     if (['free', 'lite', 'pro'].indexOf(plan) <= ['free', 'lite', 'pro'].indexOf(current)) return
-    navigate(paths.roomCheckout(roomId, plan), { state: { returnPath, selectedPlan: plan } })
+    navigate(paths.roomPlan(roomId), { state: { fromLimit: true, returnPath, selectedPlan: plan } })
   } : undefined
 
   return { isHost, action, notice, onSelectPlan }

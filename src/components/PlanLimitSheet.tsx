@@ -129,7 +129,7 @@ function PlanLimitSheet({
                     isCurrent ? 'border-ink' : 'border-[#d5ccbf]'
                   }`}
                 >
-                  {onSelectPlan ? <button type="button" disabled={!selectable} onClick={() => onSelectPlan(plan.id)} aria-label={`${plan.name} ${value(plan)}${isCurrent ? ' 현재 플랜' : ' 결제하기'}`} className="flex size-full flex-col items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-point disabled:cursor-default">
+                  {onSelectPlan ? <button type="button" disabled={!selectable} onClick={() => onSelectPlan(plan.id)} aria-label={`${plan.name} ${value(plan)}${isCurrent ? ' 현재 플랜' : ' 플랜 보기'}`} className="flex size-full flex-col items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-point disabled:cursor-default">
                     <span className="text-[12px] text-[#6b635b]">{plan.name}</span>
                     <span className="mt-0.5 text-[13px] font-semibold text-ink">{value(plan)}</span>
                   </button> : <><span className="text-[12px] text-[#6b635b]">{plan.name}</span><span className="mt-0.5 text-[13px] font-semibold text-ink">{value(plan)}</span></>}
@@ -138,6 +138,7 @@ function PlanLimitSheet({
             })}
           </ul>
         )}
+        {showPlans && onSelectPlan && <p className="mt-2 text-center text-[11px] leading-4 text-sub">플랜을 선택하면 가격과 자세한 혜택을 확인할 수 있어요</p>}
 
         <button type="button" onClick={primary.onClick} className={`${PILL_CLASS} mt-2.5 bg-ink text-surface`}>
           {primary.label}
