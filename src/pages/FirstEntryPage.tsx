@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { createEntry, transcribe } from '../api/entries'
-import { USE_MOCK } from '../api/mock'
 import { deletePhoto, uploadPhotos } from '../api/photos'
 import { setPhotoLocation, type Place } from '../api/places'
 import { readPhotoDraft, removePhotoDraft, saveRecordingDraft } from '../lib/photoDraft'
@@ -32,7 +31,6 @@ const MIN_VOICE_MS = 5_000
 const MAX_TEXT_LENGTH = 300
 
 // mock 모드에서 사진 올리기를 거치지 않고 바로 들어왔을 때 보여줄 사진
-const MOCK_PHOTOS: FirstEntryState['photos'] = [{ photoId: 'mock-1' }, { photoId: 'mock-2' }, { photoId: 'mock-3' }]
 
 type Step = 'idle' | 'recording' | 'recorded' | 'text'
 
@@ -42,7 +40,7 @@ function FirstEntryPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const session = getRoomSession(roomId)
-  const [photos, setPhotos] = useState<FirstEntryState['photos']>(() => (location.state as FirstEntryState | null)?.photos ?? (USE_MOCK ? MOCK_PHOTOS : []))
+  const [photos, setPhotos] = useState<FirstEntryState['photos']>(() => (location.state as FirstEntryState | null)?.photos ?? ([]))
   const [restoring, setRestoring] = useState(!photos.length)
   useEffect(() => { if (photos.length) return; let active = true; readPhotoDraft(roomId).then(items => { if (active) { setPhotos(items.map(item => ({ photoId: item.id, file: item.file, pending: true }))); setRestoring(false) } }); return () => { active = false } }, [roomId, photos.length])
 

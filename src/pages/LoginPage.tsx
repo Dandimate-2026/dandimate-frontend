@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router'
-import { type MockRole, USE_MOCK } from '../api/mock'
 import { getInvitePreview } from '../api/rooms'
 import { getMe, loginWithKakao, takeLoginRedirect } from '../lib/auth'
 import { paths } from '../routes/paths'
@@ -46,19 +45,19 @@ function LoginPage() {
     return <Navigate to={stored ? safeRedirect(stored) : redirect} replace />
   }
 
-  const handleLogin = (mockRole?: MockRole) => {
+  const handleLogin = () => {
     setLoggingIn(true)
-    loginWithKakao(redirect, mockRole)
+    loginWithKakao(redirect)
   }
 
-  // 초대받은 사람은 멤버로 들어온다 (데모에서도 멤버로 로그인)
+  // 초대 링크의 방 정보와 함께 로그인 화면을 보여준다
   if (inviteToken) {
     return (
       <WelcomeView
         invite
         inviteRoomName={inviteRoomName}
         inviterNickname={inviterNickname}
-        actions={<><KakaoButton disabled={loggingIn} onClick={() => handleLogin('MEMBER')} /><InviteLinkHelp invitePath={redirect} /></>}
+        actions={<><KakaoButton disabled={loggingIn} onClick={handleLogin} /><InviteLinkHelp invitePath={redirect} /></>}
       />
     )
   }
@@ -67,18 +66,7 @@ function LoginPage() {
   return (
     <WelcomeView
       invite={false}
-      actions={
-        USE_MOCK ? (
-          // 데모(mock)에서는 같은 방들을 방장 또는 멤버 입장에서 볼 수 있게 역할을 고르고 들어간다
-          <div className="flex flex-col gap-2">
-            <p className="mb-1 text-center text-[11px] text-sub">데모 모드 · 어떤 입장으로 볼까요?</p>
-            <KakaoButton label="방장으로 시작하기" disabled={loggingIn} onClick={() => handleLogin('HOST')} />
-            <KakaoButton label="멤버로 시작하기" disabled={loggingIn} onClick={() => handleLogin('MEMBER')} />
-          </div>
-        ) : (
-          <KakaoButton disabled={loggingIn} onClick={() => handleLogin()} />
-        )
-      }
+      actions={<KakaoButton disabled={loggingIn} onClick={handleLogin} />}
       note={
         <>
           로그인하면{' '}

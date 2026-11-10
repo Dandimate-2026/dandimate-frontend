@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router'
 import type { ReviewerDemo } from '../api/reviewerDemo'
 import { ApiError } from '../api/client'
-import { USE_MOCK } from '../api/mock'
 import { createReply, getJob, getScroll, retryWeave, transcribeReply } from '../api/memories'
 import { getRoomHome } from '../api/rooms'
 import type { RoomHome, Scroll, ScrollParagraph } from '../api/types'
@@ -24,7 +23,6 @@ function RoomWeavingPage() {
   const reviewerDemo = (location.state as { reviewerDemo?: ReviewerDemo } | null)?.reviewerDemo
   const { roomId = '' } = useParams()
   const [params, setParams] = useSearchParams()
-  const captureMode = import.meta.env.DEV && params.get('capture') === '1'
   const updateJobParam = useCallback((id: string | null) => {
     setParams((current) => {
       const next = new URLSearchParams(current)
@@ -212,8 +210,8 @@ function RoomWeavingPage() {
   }
 
   return <div className="memory-app w-full">
-    {USE_MOCK && !captureMode && <p className="scroll-preview-banner" role="note">기능 미리보기 · 예시 데이터</p>}
-    {reweaving && replyTarget ? null : jobId && pendingParagraph && !jobFailed ? <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name} reweavingCount={1} remaining={home?.room.quota?.regenerationsRemaining} limit={home?.room.quota?.regenerationLimit} photoCount={scroll?.paragraphs.length} participantDetail={scroll ? `${scroll.participantCount}/${scroll.memberCount}` : undefined} error={error} /> : scroll && home ? <>
+
+    {reweaving && replyTarget ? null : jobId && pendingParagraph && !jobFailed ? <WeavingPage onBack={backToHome} title={home?.room.name} reweavingCount={1} remaining={home?.room.quota?.regenerationsRemaining} limit={home?.room.quota?.regenerationLimit} photoCount={scroll?.paragraphs.length} participantDetail={scroll ? `${scroll.participantCount}/${scroll.memberCount}` : undefined} error={error} /> : scroll && home ? <>
       {error && <p className="memory-error" role="alert">{error}</p>}
       <LiveScrollPage key={`${home.room.id}:${home.me.id}`} scroll={scroll} home={home} token={token} onBack={backToHome}
         onRefresh={refresh}
@@ -221,7 +219,7 @@ function RoomWeavingPage() {
         onReweave={startReweave}
         pendingParagraphId={jobId && !jobFailed ? pendingParagraph?.id ?? scroll.paragraphs[0]?.id : undefined} reweaveResult={reweaveResult}
         completionMessage={!jobId ? replyNotice : ''} onDismissCompletion={() => setReplyNotice('')} />
-    </> : <WeavingPage onBack={backToHome} onReady={() => {}} autoReady={false} title={home?.room.name ?? session?.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
+    </> : <WeavingPage onBack={backToHome} title={home?.room.name ?? session?.roomName ?? '두루마리'} error={error} onRetry={home?.me.role === 'HOST' && failedWeave ? () => void retry() : undefined} />}
     {replyTarget && <ContributionSheet kind="reply" quote={replyTarget.body} draftKey={reweaving ? undefined : `reply:${replyTarget.id}`} maxLength={200} maxVoiceMs={voiceMaxMs(home?.room.quota, 'other')} startWithText={reweaving} fullPage={reweaving}
       onTranscribe={transcribeReplyWithLimit}
       onSave={saveReply} onClose={() => setReplyTarget(null)} />}

@@ -1,5 +1,4 @@
 import { ApiError, devProxyUrl, request } from './client'
-import { recordMockPhotos, USE_MOCK } from './mock'
 import type { UploadFileRequest, UploadTicket } from './types'
 
 /** 한 사람이 올릴 수 있는 사진 수 */
@@ -16,12 +15,6 @@ export async function uploadPhotos(
   files: { request: UploadFileRequest; blob: Blob }[],
   isCancelled: () => boolean = () => false,
 ): Promise<string[]> {
-  if (USE_MOCK) {
-    const ids = files.map((f) => `mock-${f.request.clientFileId}`)
-    recordMockPhotos(roomId, ids)
-    return ids
-  }
-
   const { uploads } = await request<{ uploads: UploadTicket[] }>(`/rooms/${roomId}/photos/upload-requests`, {
     method: 'POST',
     body: { files: files.map((f) => f.request) },
@@ -64,6 +57,5 @@ export async function uploadPhotos(
 
 /** 내가 올린 사진을 지운다 (한마디를 남기기 전에 사진 올리기를 그만둘 때) */
 export function deletePhoto(photoId: string) {
-  if (USE_MOCK) return Promise.resolve()
   return request<void>(`/photos/${photoId}`, { method: 'DELETE' })
 }

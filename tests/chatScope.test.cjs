@@ -12,8 +12,7 @@ function setup() {
   const deps = {
     react: { useSyncExternalStore: (_subscribe, snapshot) => snapshot() },
     '../api/client': { ApiError: class extends Error {} },
-    '../api/chatQuota': { canAsk: () => true, getChatQuota: async () => ({}), spendMockQuestion() {} },
-    '../api/mock': { USE_MOCK: false },
+    '../api/chatQuota': { canAsk: () => true, getChatQuota: async () => ({}) },
     '../api/recordMap': { askDuru: () => pending },
   }
   const context = { exports: {}, require: name => deps[name], crypto: webcrypto, sessionStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) } }

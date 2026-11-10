@@ -1,6 +1,5 @@
 // 모임방 대표 사진: 서버에 올리고 받은 imageUrl을 방 만들기·수정에 보낸다
 import { request, SERVER_ORIGIN } from './client'
-import { USE_MOCK } from './mock'
 
 export interface CoverPhoto {
   id: string
@@ -9,8 +8,7 @@ export interface CoverPhoto {
 }
 
 /** 대표 사진 올리기 (로그인 필요). 방을 만들기 전에도 올릴 수 있다 */
-export async function uploadRoomCover(file: Blob, previewDataUrl: string): Promise<CoverPhoto> {
-  if (USE_MOCK) return { id: 'mock-cover', imageUrl: previewDataUrl }
+export async function uploadRoomCover(file: Blob): Promise<CoverPhoto> {
   const form = new FormData()
   form.append('file', file, 'cover.jpg')
   return request<CoverPhoto>('/room-covers', { method: 'POST', body: form })

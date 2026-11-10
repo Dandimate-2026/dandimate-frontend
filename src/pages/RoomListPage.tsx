@@ -5,7 +5,6 @@ import { useRoomInvite } from '../hooks/useRoomInvite'
 import { siteUrl } from '../lib/siteUrl'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { getMockRole, USE_MOCK } from '../api/mock'
 import { deleteRoom, leaveRoom, getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomPlanType, RoomStatus } from '../api/types'
 import BottomTabs, { BOTTOM_TABS_SPACE } from '../components/BottomTabs'
@@ -350,11 +349,7 @@ function RoomListPage() {
             <img src={logo} alt="" className="h-7 w-auto select-none" draggable={false} />
             <span className="whitespace-nowrap text-point">두루두루</span>
             {/* 데모에서 지금 어떤 입장으로 보고 있는지. 바꾸려면 로그아웃하고 다시 고른다 */}
-            {USE_MOCK && (
-              <span className="rounded-full bg-[#f6e3ea] px-2 py-0.5 text-[10px] font-semibold text-point">
-                데모 · {getMockRole() === 'HOST' ? '방장으로' : '멤버로'} 보는 중
-              </span>
-            )}
+
           </p>
           <div className="flex shrink-0 items-center gap-1">
             <Link to={paths.notifications()} aria-label="전체 알림" className="flex size-10 items-center justify-center rounded-full border border-line bg-surface"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0v6l2 3H4l2-3V8M9 20h6" /></svg></Link>

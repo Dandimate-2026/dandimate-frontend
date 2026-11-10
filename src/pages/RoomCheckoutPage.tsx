@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
-import { PAYMENT_DEMO, purchasePlan } from '../api/plans'
 import { createPlanOrder, createRoomOrder, openTossPayment, savePendingPayment, TOSS_ENABLED } from '../api/payments'
-import { USE_MOCK } from '../api/mock'
-import { createRoom, getRoomHome } from '../api/rooms'
+import { getRoomHome } from '../api/rooms'
 import Button from '../components/Button'
 import PaymentState from '../components/PaymentState'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import { usePlans } from '../hooks/usePlans'
 import { paymentErrorMessage } from '../lib/paymentErrors'
 import { formatWon } from '../lib/plans'
-import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
-import { attachDraftExtras } from '../lib/roomExtras'
-import { getRoomSession, saveRoomSession } from '../lib/session'
+import { getRoomDraft } from '../lib/roomDraft'
+import { getRoomSession } from '../lib/session'
 import type { RoomHome, RoomPlanType } from '../api/types'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
@@ -31,10 +28,7 @@ function RoomCheckoutPage() {
   const plan = usePlans().find((item) => item.id === searchParams.get('plan'))
   const [home, setHome] = useState<RoomHome | null>(null)
   const [agreed, setAgreed] = useState(true)
-  const [status, setStatus] = useState<'idle' | 'processing' | 'failed'>(
-    USE_MOCK && searchParams.get('preview') === 'processing' ? 'processing'
-      : USE_MOCK && searchParams.get('preview') === 'failure' ? 'failed' : 'idle',
-  )
+  const [status, setStatus] = useState<'idle' | 'processing' | 'failed'>('idle')
   const [failureReason, setFailureReason] = useState('카드 한도 초과')
   const [orderId, setOrderId] = useState<string>()
   const submitting = useRef(false)
@@ -55,7 +49,7 @@ function RoomCheckoutPage() {
   const planPath = isNewRoom ? paths.roomCreatePlan() : paths.roomPlan(roomId)
   const roomName = isNewRoom ? draft?.name : home?.room.name ?? session?.roomName ?? '모임방'
   const returnPath = isNewRoom || !roomId ? planPath : paths.roomHome(roomId)
-  const paymentOpen = USE_MOCK || PAYMENT_DEMO || TOSS_ENABLED
+  const paymentOpen = TOSS_ENABLED
 
   const handlePay = async () => {
     if (!agreed || !plan.available || !paymentOpen || status !== 'idle' || submitting.current) return
@@ -74,27 +68,13 @@ function RoomCheckoutPage() {
           return
         }
       }
-      if (TOSS_ENABLED) {
-        const planType = plan.id.toUpperCase() as RoomPlanType
-        const order = isNewRoom && draft
-          ? await createRoomOrder({ ...draft, planType })
-          : await createPlanOrder(roomId ?? '', planType)
-        setOrderId(order.orderId)
-        savePendingPayment({ orderId: order.orderId, plan: plan.id, roomId: isNewRoom ? undefined : roomId, roomName })
-        await openTossPayment(order, 'CARD')
-        return
-      }
-      await purchasePlan({ roomId: roomId ?? '', plan: plan.id, method: 'CARD' })
-      if (isNewRoom && draft) {
-        const planType: RoomPlanType = USE_MOCK ? plan.id.toUpperCase() as RoomPlanType : 'FREE'
-        const { room, inviteToken } = await createRoom({ ...draft, planType })
-        saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
-        clearRoomDraft()
-        attachDraftExtras(room.id)
-        navigate(draft.capacity === 1 ? paths.roomHome(room.id) : paths.roomPlanDone(room.id, plan.id), { replace: true })
-      } else if (roomId) {
-        navigate(paths.roomPlanDone(roomId, plan.id), { replace: true })
-      }
+      const planType = plan.id.toUpperCase() as RoomPlanType
+      const order = isNewRoom && draft
+        ? await createRoomOrder({ ...draft, planType })
+        : await createPlanOrder(roomId ?? '', planType)
+      setOrderId(order.orderId)
+      savePendingPayment({ orderId: order.orderId, plan: plan.id, roomId: isNewRoom ? undefined : roomId, roomName })
+      await openTossPayment(order, 'CARD')
     } catch (cause) {
       setFailureReason(paymentErrorMessage(cause))
       setStatus('failed')
@@ -136,7 +116,7 @@ function RoomCheckoutPage() {
       </div>
       <footer className="mx-[6px] mt-auto pt-8 text-center">
         <p className="text-[11px] leading-[18px] text-[#8a8178]">안전한 결제를 위해 외부 결제창으로 연결돼요</p>
-        {PAYMENT_DEMO && !USE_MOCK && <p className="mt-1 text-[11px] text-sub" role="status">시연용 화면이에요. 실제로 결제되지 않아요.</p>}
+
         {!paymentOpen && <p className="mt-1 text-[11px] text-sub" role="status">지금은 결제를 준비하고 있어요. 잠시 후 다시 시도해 주세요.</p>}
         {!plan.available && <p className="mt-1 text-[11px] text-point" role="status">이 플랜은 결제 준비 중이에요</p>}
         <Button onClick={() => void handlePay()} disabled={!agreed || !plan.available || !paymentOpen || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))} className="mt-[11px] w-full text-[16px] font-bold">{formatWon(plan.price)} 결제하기</Button>

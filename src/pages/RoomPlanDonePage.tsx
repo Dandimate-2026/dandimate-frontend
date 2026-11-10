@@ -9,8 +9,6 @@ import { subjectParticle } from '../lib/plans'
 import { getRoomSession } from '../lib/session'
 import { paths } from '../routes/paths'
 import NotFoundPage from './NotFoundPage'
-import { USE_MOCK } from '../api/mock'
-import { PAYMENT_DEMO } from '../api/plans'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 import { clearPlanReturn, readPlanReturn } from '../lib/planReturn'
 
@@ -71,10 +69,6 @@ function RoomPlanDonePage() {
         {plan.name} 플랜이 됐어요
       </h1>
       <p className="mt-1 text-center text-[13px] leading-5 text-sub">{canAddRecords === true ? `한 사람당 사진 ${plan.photosPerMember}장까지, 친구들도 함께 더 올릴 수 있어요. 다 모은 뒤 두루마리로 엮어 주세요.` : canAddRecords === false ? '꾸미기와 재엮기 한도가 늘었어요. 이미 엮은 원본 사진과 첫 한마디는 다시 열리지 않아요.' : '변경된 플랜의 한도와 꾸미기를 방에서 확인해 주세요.'}</p>
-      {/* 결제 시연 모드에서는 실제 서버 플랜이 달라질 수 있으므로 구분한다 */}
-      {!USE_MOCK && PAYMENT_DEMO && (
-        <p className="mt-1 text-center text-[11px] text-[#9a9085]">시연용 화면이에요. 실제 한도는 아직 Free예요.</p>
-      )}
 
       <dl className="mt-3 flex flex-col gap-1.5 rounded-[20px] border border-line bg-surface px-6 py-4">
         {changes.map((c) => (

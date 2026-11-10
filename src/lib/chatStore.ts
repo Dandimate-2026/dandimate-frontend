@@ -2,8 +2,7 @@
 // 새로고침해도 남도록 이 탭의 sessionStorage에도 적어 둔다. 답을 기다리는 중에 시트를 내려도 답은 들어온다
 import { useSyncExternalStore } from 'react'
 import { ApiError } from '../api/client'
-import { CHAT_LIMIT_CODE, canAsk, getChatQuota, spendMockQuestion, type ChatQuota } from '../api/chatQuota'
-import { USE_MOCK } from '../api/mock'
+import { CHAT_LIMIT_CODE, canAsk, getChatQuota, type ChatQuota } from '../api/chatQuota'
 import { askDuru, type ChatCitation, type ChatOutcome, type ChatSource } from '../api/recordMap'
 
 export interface ChatLine {
@@ -77,7 +76,7 @@ export async function sendChat(text: string) {
   try {
     const res = await askDuru(message, state.conversationId)
     if (state.conversationId !== conversationId) return
-    if (USE_MOCK) spendMockQuestion()
+
     setState({
       lines: [
         ...state.lines,

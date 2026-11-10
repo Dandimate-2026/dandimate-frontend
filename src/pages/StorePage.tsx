@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
-import { buyCredits, CREDIT_PACKS, FREE_DAILY_LIMIT, getChatQuota, type ChatQuota } from '../api/chatQuota'
+import { CREDIT_PACKS, FREE_DAILY_LIMIT, getChatQuota, type ChatQuota } from '../api/chatQuota'
 import { createCreditOrder, openTossPayment, savePendingPayment, TOSS_ENABLED } from '../api/payments'
 import Button from '../components/Button'
 import { StoreIcon } from '../components/ChatFab'
@@ -45,9 +45,7 @@ function StorePage() {
         await openTossPayment(order, 'CARD')
         return
       }
-      // 토스 키가 없는 데모: 바로 충전하고 챗봇으로 돌아간다
-      await buyCredits(pack)
-      goBack()
+      throw new Error('크레딧 결제는 곧 열려요. 조금만 기다려 주세요')
     } catch (e) {
       // 배포 서버의 주문 경로를 찾지 못하면 결제 준비 상태를 안내한다
       setError(

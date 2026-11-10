@@ -1,31 +1,4 @@
 import { request } from './client'
-import {
-  asMockRole,
-  withMockActivity,
-  MOCK_DONE_ROOM_ID,
-  MOCK_SCROLL_PREVIEW_ROOM_ID,
-  withMockQuota,
-  MOCK_INVITE_TOKEN,
-  MOCK_NEW_ROOM_ID,
-  MOCK_READY_ROOM_ID,
-  MOCK_TIMEUP_ROOM_ID,
-  MOCK_LIMIT_ROOM_ID,
-  MOCK_UNLIMITED_ROOM_ID,
-  MOCK_LIVELY_ROOM_ID,
-  mockLivelyRoomHome,
-  mockCloseRoom,
-  mockCreateRoom,
-  mockDoneRoomHome,
-  mockInvitePreview,
-  mockJoinRoom,
-  mockNewRoomHome,
-  mockReadyRoomHome,
-  mockRoomHome,
-  mockTimeUpRoomHome,
-  mockLimitRoomHome,
-  mockUnlimitedRoomHome,
-  USE_MOCK,
-} from './mock'
 import type {
   CloseRoomResult,
   Consent,
@@ -56,7 +29,6 @@ export const CONSENT: Consent = {
  * 버전이 다르면 서버가 CONSENT_REQUIRED로 거절해서, 서버 값을 따른다. 조회에 실패하면 동의를 임의의 버전으로 보내지 않는다
  */
 export async function currentConsent(): Promise<Consent> {
-  if (USE_MOCK) return CONSENT
   const { version } = await request<{ version: string; consented: boolean }>('/consents/current')
   if (!version?.trim()) throw new Error('약관 정보를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.')
   return { ...CONSENT, version }
@@ -64,25 +36,22 @@ export async function currentConsent(): Promise<Consent> {
 
 /** 로그인한 계정이 참여 중인 방 목록 */
 export function getMyRooms() {
-  if (USE_MOCK) return Promise.resolve<MyRoom[] | null>(null)
   return request<MyRoom[]>('/users/me/rooms')
 }
 
 /** 로그인한 사용자가 방을 만들고 방장이 된다 */
 export async function createRoom(body: Omit<CreateRoomRequest, 'consent'>) {
   const payload: CreateRoomRequest = { ...body, consent: await currentConsent() }
-  const result = USE_MOCK ? mockCreateRoom(payload) : await request<CreateRoomResult>('/rooms', { method: 'POST', body: payload, idempotent: true })
-  if (USE_MOCK && body.deadlineAt) { result.room.deadlineAt = body.deadlineAt; result.room.deadlineChangedByHost = true }
+  const result = await request<CreateRoomResult>('/rooms', { method: 'POST', body: payload, idempotent: true })
+
   return result
 }
 
 export function getInvitePreview(inviteToken: string) {
-  if (USE_MOCK) return Promise.resolve(mockInvitePreview)
   return request<InvitePreview>(`/invites/${inviteToken}`)
 }
 
 export async function joinRoom(inviteToken: string, nickname: string) {
-  if (USE_MOCK) return Promise.resolve(mockJoinRoom(nickname))
   return request<JoinRoomResult>(`/invites/${inviteToken}/join`, {
     method: 'POST',
     body: { nickname, consent: await currentConsent() },
@@ -90,40 +59,12 @@ export async function joinRoom(inviteToken: string, nickname: string) {
   })
 }
 
-// 데모: 방 정보 수정(이름·엮는 시각·장소 등)을 이 화면 동안 기억해서 다시 불러와도 남게 한다
-const mockRoomEdits = new Map<string, Partial<RoomHome['room']>>()
-const withMockEdits = (home: RoomHome): RoomHome => {
-  const edits = mockRoomEdits.get(home.room.id)
-  return edits ? { ...home, room: { ...home.room, ...edits } } : home
-}
-
 export function getRoomHome(roomId: string, token: string) {
-  if (USE_MOCK && roomId === MOCK_SCROLL_PREVIEW_ROOM_ID) {
-    const preview = { ...mockDoneRoomHome, room: { ...mockDoneRoomHome.room,
-      id: MOCK_SCROLL_PREVIEW_ROOM_ID, name: '경주 1박2일', planType: 'PRO' as const,
-      quota: { ...mockDoneRoomHome.room.quota, regenerationLimit: 12, regenerationCount: 0, regenerationsRemaining: 12 },
-    } }
-    return Promise.resolve(withMockEdits(withMockQuota(withMockActivity(asMockRole(preview)))))
-  }
-  // 역할을 먼저 정하고, 그 '나'에게 이 기기에서 남긴 사진·한마디를 반영한다
-  if (USE_MOCK) return Promise.resolve(withMockEdits(withMockActivity(asMockRole(mockRoomHomeById(roomId)))))
   return request<RoomHome>(`/rooms/${roomId}`, { token })
-}
-
-function mockRoomHomeById(roomId: string) {
-  if (roomId === MOCK_NEW_ROOM_ID) return mockNewRoomHome
-  if (roomId === MOCK_DONE_ROOM_ID) return mockDoneRoomHome
-  if (roomId === MOCK_READY_ROOM_ID) return mockReadyRoomHome
-  if (roomId === MOCK_TIMEUP_ROOM_ID) return mockTimeUpRoomHome
-  if (roomId === MOCK_LIMIT_ROOM_ID) return mockLimitRoomHome
-  if (roomId === MOCK_UNLIMITED_ROOM_ID) return mockUnlimitedRoomHome
-  if (roomId === MOCK_LIVELY_ROOM_ID) return mockLivelyRoomHome
-  return mockRoomHome
 }
 
 /** 방장이 마감 시각 전에 방을 닫고 두루마리 엮기를 시작한다 */
 export function closeRoom(roomId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve(mockCloseRoom())
   return request<CloseRoomResult>(`/rooms/${roomId}/close`, {
     method: 'POST',
     body: { mode: 'EARLY' },
@@ -140,20 +81,11 @@ export function updateRoom(
   body: { name?: string; meetingDate?: string; deadlineAt?: string | null; capacity?: number; coverImageUrl?: string; place?: RoomPlace | null; scrollTemplateId?: string },
   token: string,
 ) {
-  if (USE_MOCK) {
-    const { place, ...rest } = body
-    const edit: Partial<RoomHome['room']> = { ...mockRoomEdits.get(roomId), ...rest, ...(place !== undefined ? { place } : {}) }
-    // 서버처럼 방장이 엮는 시각을 정하면 '방장이 정함'으로 표시한다
-    if (body.deadlineAt !== undefined) edit.deadlineChangedByHost = body.deadlineAt !== null
-    mockRoomEdits.set(roomId, edit)
-    return Promise.resolve()
-  }
   return request(`/rooms/${roomId}`, { method: 'PATCH', body: { ...body, ...(body.scrollTemplateId ? { scrollTemplateId: body.scrollTemplateId === 'minimal' ? 'CLASSIC' : body.scrollTemplateId.toUpperCase() } : {}) }, token })
 }
 
 /** 이 방에서 쓰는 내 닉네임을 바꾼다. 방 안에 같은 이름이 있으면 409(NICKNAME_TAKEN) */
 export function updateMyNickname(roomId: string, nickname: string, token: string) {
-  if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/members/me`, { method: 'PATCH', body: { nickname }, token })
 }
 
@@ -162,32 +94,27 @@ export function updateMyNickname(roomId: string, nickname: string, token: string
  * 같은 초대 링크로 다시 들어오면 예전 이름·기록을 이어 쓴다. 방장은 나갈 수 없다(403)
  */
 export function leaveRoom(roomId: string) {
-  if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/members/me`, { method: 'DELETE' })
 }
 
 /** 방장이 같은 방의 다른 멤버에게 방장을 넘긴다. 나는 일반 멤버가 된다 */
 export function transferHost(roomId: string, memberId: string) {
-  if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/host-transfer`, { method: 'POST', body: { memberId }, idempotent: true })
 }
 
 /** 방장이 멤버를 방에서 내보낸다 (강퇴). 방장만 할 수 있고, 내보낸 사람은 같은 초대 링크로 다시 들어올 수 없다 */
 export function kickMember(roomId: string, memberId: string) {
-  if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/members/${memberId}`, { method: 'DELETE' })
 }
 
 /** 이 방의 고정 초대 토큰 (방 참가자 누구나). 초대 링크는 바뀌지 않는다 */
 export async function getRoomInvite(roomId: string) {
-  if (USE_MOCK) return MOCK_INVITE_TOKEN
   const { inviteToken } = await request<{ inviteToken: string }>(`/rooms/${roomId}/invite`)
   return inviteToken
 }
 
 /** 방장이 방과 모든 사진·이야기를 지운다 */
 export function deleteRoom(roomId: string, token: string) {
-  if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}`, { method: 'DELETE', token })
 }
 
@@ -196,6 +123,5 @@ export function deleteRoom(roomId: string, token: string) {
  * FREE·LITE 방의 일반 멤버가 상위 플랜을 요청한다. 생략하면 다음 상위 플랜을 요청한다
  */
 export function requestPlanUpgrade(roomId: string, reason: PlanRequestReason, targetPlan?: 'LITE' | 'PRO') {
-  if (USE_MOCK) return Promise.resolve()
   return request(`/rooms/${roomId}/plan-requests`, { method: 'POST', body: { reason, ...(targetPlan ? { targetPlan } : {}) }, idempotent: true })
 }
