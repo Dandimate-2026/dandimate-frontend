@@ -23,3 +23,9 @@ export function getAllNotifications() {
   if (USE_MOCK) return Promise.resolve(mockNotifications.map(item => ({ ...item, roomId: mockRoomHome.room.id, roomName: mockRoomHome.room.name })))
   return request<(RoomNotification & { roomId: string; roomName: string })[]>('/notifications')
 }
+
+/** Delete the signed-in user's notification across all devices. */
+export function deleteNotification(notificationId: string) {
+  if (USE_MOCK) { const index = mockNotifications.findIndex(item => item.id === notificationId); if (index >= 0) mockNotifications.splice(index, 1); return Promise.resolve() }
+  return request<void>(`/notifications/${notificationId}`, { method: 'DELETE' })
+}

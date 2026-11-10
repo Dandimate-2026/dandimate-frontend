@@ -37,14 +37,11 @@ function urlBase64ToUint8Array(base64: string) {
 }
 
 async function getVapidKey() {
-  try {
-    const { publicKey } = await request<{ publicKey: string }>('/push/vapid-public-key')
-    if (publicKey) return publicKey
-  } catch {
-    // 서버에 없으면 빌드 설정 값을 쓴다
-  }
-  if (ENV_VAPID_KEY) return ENV_VAPID_KEY
-  throw new Error('알림은 곧 열려요. 조금만 기다려 주세요')
+  const { enabled, publicKey } = await request<{ enabled: boolean; publicKey: string | null }>('/push/vapid-public-key')
+  if (!enabled) throw new Error('현재 알림 서비스를 준비하고 있어요. 잠시 후 다시 시도해 주세요')
+  const key = publicKey || ENV_VAPID_KEY
+  if (!key) throw new Error('알림 설정을 확인하지 못했어요. 잠시 후 다시 시도해 주세요')
+  return key
 }
 
 /** 알림을 켠다: 허용을 묻고 → 구독하고 → 서버에 등록. 거절하거나 못 켜면 이유를 던진다 */
@@ -55,12 +52,13 @@ export async function enablePush() {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') throw new Error('알림이 꺼져 있어요. 휴대폰 설정에서 알림을 허용해 주세요')
   if (USE_MOCK) return
+  const vapidKey = await getVapidKey()
   const registration = await navigator.serviceWorker.ready
   const subscription =
     (await registration.pushManager.getSubscription()) ??
     (await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(await getVapidKey()),
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
     }))
   await request('/push/subscriptions', { method: 'POST', body: subscription.toJSON() })
 }
@@ -71,7 +69,7 @@ export async function disablePush() {
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.getSubscription()
   if (!subscription) return
-  await request('/push/subscriptions', { method: 'DELETE', body: { endpoint: subscription.endpoint } }).catch(() => {})
+  await request('/push/subscriptions', { method: 'DELETE', body: { endpoint: subscription.endpoint } })
   await subscription.unsubscribe()
 }
 
@@ -84,6 +82,7 @@ export async function isPushEnabled() {
   if (USE_MOCK) return true
   // 서버 세션/등록이 사라졌어도 기존 브라우저 구독을 다시 등록하여 복구한다.
   try {
+    await getVapidKey()
     await request('/push/subscriptions', { method: 'POST', body: subscription.toJSON() })
     return true
   } catch {
