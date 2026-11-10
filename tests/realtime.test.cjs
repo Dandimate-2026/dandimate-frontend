@@ -105,7 +105,7 @@ test('알림 목록을 연 상태에서도 실시간 구독을 시작한다', as
     '../hooks/useRoomLiveUpdates': { useRoomLiveUpdates: () => subscriptions++ },
     '../lib/date': {}, '../routes/paths': {}, '../pages/NotFoundPage': {}, './NotFoundPage': {},
   }
-  const page = load('src/pages/RoomNotificationsPage.tsx', {}, dependencies)
+  const page = load('src/pages/RoomNotificationsPage.tsx', { document: { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible' } }, dependencies)
   page.default(); effects.forEach(effect => effect()); await flush()
   assert.equal(queries, 1)
   assert.equal(subscriptions, 1, '알림 화면이 진입 시 1회 조회만 하고 SSE 구독은 하지 않음')
