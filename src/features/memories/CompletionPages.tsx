@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import Button from '../../components/Button'
 import Flower from '../../components/Flower'
 import { MemoryCard, MemoryFlower, MemoryHeader, ShareMemoryButton } from './components'
@@ -16,9 +15,8 @@ export function CirculationComplete({ addedCount = 3, photoCount = 4, onBack, on
   </main>
 }
 
-// UI 확인용 타이머. 실제 서비스에서는 서버의 엮기 완료 상태로 onReady를 호출한다.
-export function WeavingPage({ onBack, onReady, durationMs = 30000, autoReady = true, title = '경주 1박2일', error, onRetry, reweavingCount, remaining, limit, photoCount, participantDetail }: { onBack: () => void; onReady: () => void; durationMs?: number; autoReady?: boolean; title?: string; error?: string; onRetry?: () => void; reweavingCount?: number; remaining?: number; limit?: number; photoCount?: number; participantDetail?: string }) {
-  useEffect(() => { if (!autoReady) return; const timer = window.setTimeout(onReady, durationMs); return () => window.clearTimeout(timer) }, [autoReady, durationMs, onReady])
+/** 엮기 완료 여부는 호출 화면이 서버 작업 상태로 판단한다. */
+export function WeavingPage({ onBack, title = '두루마리', error, onRetry, reweavingCount, remaining, limit, photoCount, participantDetail }: { onBack: () => void; title?: string; error?: string; onRetry?: () => void; reweavingCount?: number; remaining?: number; limit?: number; photoCount?: number; participantDetail?: string }) {
   return <main className={`memory-page memory-weaving ${reweavingCount ? 'memory-reweaving' : ''}`}>
     <MemoryHeader title={title} onBack={onBack} />
     <div className="memory-weaving-main" role="status" aria-live="polite">

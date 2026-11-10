@@ -3,7 +3,6 @@
 import { ANONYMOUS, loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { paths } from '../routes/paths'
 import { request } from './client'
-import { USE_MOCK } from './mock'
 import { currentConsent } from './rooms'
 import type { CreateRoomRequest, RoomPlanType } from './types'
 
@@ -11,7 +10,7 @@ import type { CreateRoomRequest, RoomPlanType } from './types'
 const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY as string | undefined
 
 /** 백엔드와 같은 상점의 테스트 키가 있을 때만 결제창을 연다. */
-export const TOSS_ENABLED = !USE_MOCK && Boolean(TOSS_CLIENT_KEY?.startsWith('test_ck_'))
+export const TOSS_ENABLED = Boolean(TOSS_CLIENT_KEY?.startsWith('test_ck_'))
 
 export type PaymentOrderStatus = 'READY' | 'PROCESSING' | 'DONE' | 'FAILED'
 

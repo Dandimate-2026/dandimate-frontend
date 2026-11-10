@@ -1,7 +1,6 @@
 // 웹 푸시 알림: 알림 허용을 받고, 브라우저 구독 정보를 서버에 등록한다.
 // 안드로이드·PC는 브라우저에서 바로, 아이폰(iOS 16.4+)은 홈 화면에 추가한 앱에서만 받을 수 있다
 import { request } from '../api/client'
-import { USE_MOCK } from '../api/mock'
 
 /** 서버의 VAPID 공개키. 서버에서 받아 오고, 없으면 빌드 설정 값을 쓴다 */
 const ENV_VAPID_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
@@ -51,7 +50,7 @@ export async function enablePush() {
   if (state === 'unsupported') throw new Error('이 브라우저에서는 알림을 받을 수 없어요')
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') throw new Error('알림이 꺼져 있어요. 휴대폰 설정에서 알림을 허용해 주세요')
-  if (USE_MOCK) return
+
   const vapidKey = await getVapidKey()
   const registration = await navigator.serviceWorker.ready
   const subscription =
@@ -65,7 +64,7 @@ export async function enablePush() {
 
 /** 알림을 끈다: 서버 등록을 지우고 이 기기 구독을 해제한다 */
 export async function disablePush() {
-  if (USE_MOCK || !('serviceWorker' in navigator)) return
+  if (!('serviceWorker' in navigator)) return
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.getSubscription()
   if (!subscription) return
@@ -79,7 +78,7 @@ export async function isPushEnabled() {
   const registration = await navigator.serviceWorker.getRegistration()
   const subscription = await registration?.pushManager.getSubscription()
   if (!subscription) return false
-  if (USE_MOCK) return true
+
   // 서버 세션/등록이 사라졌어도 기존 브라우저 구독을 다시 등록하여 복구한다.
   try {
     await getVapidKey()

@@ -2,7 +2,6 @@ import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
-import { USE_MOCK } from '../api/mock'
 import {
   deleteRoom,
   getRoomHome,
@@ -360,7 +359,7 @@ function RoomSettingsPage() {
     }
     try {
       const blob = await (await fetch(preview)).blob()
-      const cover = await uploadRoomCover(blob, preview)
+      const cover = await uploadRoomCover(blob)
       await updateRoom(home.room.id, { coverImageUrl: cover.imageUrl }, session.memberAccessToken)
       setHome({ ...home, room: { ...home.room, coverImageUrl: cover.imageUrl } })
       updatePlaceCover({ ...placeCover, coverPhoto: preview })
@@ -404,10 +403,10 @@ function RoomSettingsPage() {
       await updateRoom(room.id, { capacity }, session.memberAccessToken)
       // 서버가 인원 변경을 아직 모르면 요청을 받고도 그대로 둘 수 있어서, 다시 불러와 실제로 바뀌었는지 확인한다
       const fresh = await getRoomHome(room.id, session.memberAccessToken)
-      if (!USE_MOCK && fresh.room.capacity !== capacity) {
+      if (fresh.room.capacity !== capacity) {
         throw new Error('아직 인원을 바꿀 수 없어요. 서버 준비가 끝나면 다시 시도해 주세요')
       }
-      setHome(USE_MOCK ? { ...home, room: { ...room, capacity } } : fresh)
+      setHome(fresh)
     } else if (editing === 'meetingDate') {
       if (room.status === 'GROWING' && value > todayIsoDate()) throw new Error('완료된 모임의 놀았던 날은 오늘 이후로 바꿀 수 없어요')
       await updateRoom(room.id, { meetingDate: value }, session.memberAccessToken)

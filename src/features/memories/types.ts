@@ -9,7 +9,6 @@ export interface ReweaveResult {
 
 /** 꽃 코드(8색) 또는 예전 3색 이름 */
 export type FlowerColor = 'pink' | 'blue' | 'orange' | FlowerCode
-export type PreviewScreen = 'screens' | 's6-1' | 's6-2' | 's6-3' | 's6-4' | 's6-5' | 's8' | 's9' | 's10'
 
 export interface MemoryContribution {
   text: string

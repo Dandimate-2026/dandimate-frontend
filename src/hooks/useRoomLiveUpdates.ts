@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { devProxyUrl } from '../api/client'
-import { USE_MOCK } from '../api/mock'
 import { issueEventToken } from '../api/notifications'
 
 /**
@@ -47,7 +46,7 @@ export function useRoomLiveUpdates(roomId: string, token: string | undefined, on
   })
 
   useEffect(() => {
-    if (USE_MOCK || token === undefined) return
+    if (token === undefined) return
     let source: EventSource | null = null
     let timer: ReturnType<typeof setInterval> | null = null
     let stopped = false

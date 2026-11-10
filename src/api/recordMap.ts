@@ -1,6 +1,5 @@
 // 기록 지도와 두루 챗봇 API
 import { request } from './client'
-import { USE_MOCK } from './mock'
 import type { FlowerCode } from './types'
 
 export interface MapRoomItem {
@@ -97,34 +96,8 @@ function inDaeguGyeongbuk(pin: CityPin) {
   return inBox && DAEGU_GYEONGBUK_CITIES.includes(pin.city)
 }
 
-const MOCK_MAP: CityPin[] = [
-  {
-    city: '경주',
-    latitude: 35.84,
-    longitude: 129.22,
-    photoCount: 9,
-    recordCount: 12,
-    bloomed: true,
-    summary: '비 오던 날 황리단길에서 다 같이 젖었던 여행. 다음엔 보문호수 가자던 얘기가 남아 있어요.',
-    rooms: [
-      { roomId: 'demo', name: '경주 1박2일', meetingDate: '2026-10-17', status: 'GROWING', scrollReady: true, photoCount: 6, recordCount: 9, summary: null },
-      { roomId: 'demo2', name: '칩셋 가을 MT', meetingDate: '2026-11-01', status: 'CIRCULATING', scrollReady: false, photoCount: 3, recordCount: 3, summary: null },
-    ],
-    places: [
-      { photoId: 'p1', roomId: 'demo', placeName: '첨성대', latitude: 35.8347, longitude: 129.219 },
-      { photoId: 'p2', roomId: 'demo', placeName: '황리단길', latitude: 35.8381, longitude: 129.2097 },
-      { photoId: 'p3', roomId: 'demo2', placeName: '보문호수', latitude: 35.8455, longitude: 129.2836 },
-    ],
-  },
-  { city: '포항', latitude: 36.04, longitude: 129.36, photoCount: 6, recordCount: 9, bloomed: true, summary: '영일대에서 해 뜨는 걸 기다렸던 새벽.', rooms: [{ roomId: 'demo2', name: '칩셋 가을 MT', meetingDate: '2026-11-01', status: 'CIRCULATING', scrollReady: false, photoCount: 1, recordCount: 2, summary: null }], places: [{ photoId: 'p4', roomId: 'demo2', placeName: '영일대 해수욕장', latitude: 36.0568, longitude: 129.378 }] },
-  { city: '대구', latitude: 35.87, longitude: 128.6, photoCount: 5, recordCount: 7, bloomed: false, summary: null, rooms: [], places: [] },
-  { city: '구미', latitude: 36.12, longitude: 128.34, photoCount: 4, recordCount: 5, bloomed: false, summary: null, rooms: [], places: [] },
-  { city: '안동', latitude: 36.57, longitude: 128.73, photoCount: 2, recordCount: 3, bloomed: false, summary: null, rooms: [], places: [] },
-]
-
 /** 내가 참여 중인 방의 사진 장소를 도시별로 묶은 지도 */
 export async function getMyRecordMap(roomId?: string): Promise<CityPin[]> {
-  if (USE_MOCK) return MOCK_MAP.filter(inDaeguGyeongbuk)
   const query = roomId ? `?roomId=${encodeURIComponent(roomId)}` : ''
   const res = await request<{ cities: CityPin[] }>(`/users/me/map${query}`)
   return res.cities.filter(inDaeguGyeongbuk)
@@ -166,22 +139,12 @@ export interface ChatAnswer {
 
 /** 두루에게 묻기. conversationId가 같으면 이어서 대화한다 */
 export function askDuru(message: string, conversationId: string) {
-  if (USE_MOCK) {
-    return Promise.resolve<ChatAnswer>({
-      answer: `첨성대 앞 단체 사진 얘기 같아요! 그런데 친구들 기억이 조금 달라요 😆 (데모 답이에요: "${message}")`,
-      sources: [{ room: { roomId: 'demo', name: '경주 1박2일' }, photo: { photoId: 'p1', imageUrl: null, uploader: { nickname: '서연', flowerCode: 'AZALEA' } }, firstEntry: { text: '첨성대 앞에서 다 같이 찍은 사진!', author: { nickname: '서연', flowerCode: 'AZALEA' } } }],
-      citations: [
-        { statementIndex: 0, entryId: 'e1', photoId: 'p1', kind: 'FIRST_ENTRY', quote: '민지가 계단에서 미끄러졌는데 다같이 빵 터짐', author: { nickname: '서연', flowerCode: 'AZALEA' } },
-        { statementIndex: 0, entryId: 'e2', photoId: 'p1', kind: 'ADDON', quote: '사실 일부러 앉은거임', author: { nickname: '민지', flowerCode: 'FORSYTHIA' } },
-      ],
-    })
-  }
   // 같은 질문을 두 번 차감하지 않도록 Idempotency-Key를 보낸다 (서버가 이 키로 결과를 다시 돌려준다)
   return request<ChatAnswer>('/chat/messages', { method: 'POST', body: { message, conversationId }, idempotent: true, timeoutMs: 60000 })
 }
 
 /** 챗봇 추천에는 지도 표시 지역 밖의 실제 기록 장소도 사용한다. */
 export async function getChatPlaceNames(): Promise<string[]> {
-  const cities = USE_MOCK ? MOCK_MAP : (await request<{ cities: CityPin[] }>('/users/me/map')).cities
+  const cities = (await request<{ cities: CityPin[] }>('/users/me/map')).cities
   return [...new Set(cities.flatMap(city => [city.city, ...city.places.map(place => place.placeName)]).filter(Boolean))].slice(0, 12)
 }

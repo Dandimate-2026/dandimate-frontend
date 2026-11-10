@@ -6,7 +6,7 @@ import { createEntry, deleteEntry, editEntry, transcribe } from '../api/entries'
 import PlaceSheet from '../components/PlaceSheet'
 import { setPhotoLocation, type Place } from '../api/places'
 import { deletePhoto } from '../api/photos'
-import { getCirculation, getCirculationPage, recordMockAddon, undoPass } from '../api/memories'
+import { getCirculation, getCirculationPage, undoPass } from '../api/memories'
 import type { CirculationCard, Entry, FlowerCode, RoomHome } from '../api/types'
 import Button from '../components/Button'
 import CirculationPage from '../features/memories/CirculationPage'
@@ -230,7 +230,6 @@ function RoomCirculationPage() {
     } else {
       await createEntry(card.photo.id, token, { kind: 'ADDON', inputMode: 'TEXT', transcript: contribution.text })
     }
-    recordMockAddon(card.photo.id)
     await refresh()
     if (contribution.audioUrl) audioUrls.current.add(contribution.audioUrl)
     setResponses((current) => ({ ...current, [card.photo.id]: contribution }))

@@ -255,7 +255,7 @@ function RoomCreatePage() {
     setUploadingCover(true)
     try {
       const blob = await (await fetch(preview)).blob()
-      const cover = await uploadRoomCover(blob, preview)
+      const cover = await uploadRoomCover(blob)
       setCoverImageUrl(cover.imageUrl)
     } catch {
       setCoverImageUrl(undefined)
@@ -357,7 +357,6 @@ function RoomCreatePage() {
               />
             </Field>
           </div>
-
 
           <div className="mt-3">
             <Field htmlFor="weave-deadline" label="두루마리 엮는 날" hint="선택 · 나중에 정해도 돼요">

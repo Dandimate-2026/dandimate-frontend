@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const vm = require('node:vm')
 const ts = require('typescript')
 const code = ts.transpileModule(fs.readFileSync('src/api/recordMap.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
-const context = { exports: {}, require: name => name === './mock' ? { USE_MOCK: false } : {} }
+const context = { exports: {}, require: () => ({}) }
 vm.runInNewContext(code, context)
 const { cityMarkerPosition } = context.exports
 

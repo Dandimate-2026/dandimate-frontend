@@ -13,7 +13,7 @@ function load(file, globals = {}, dependencies = {}) {
 }
 const flush = () => new Promise(resolve => setImmediate(resolve))
 
-function liveEnvironment({ rejectToken = false, mock = false } = {}) {
+function liveEnvironment({ rejectToken = false } = {}) {
   const effects = [], intervals = new Map(), sources = [], documentListeners = new Map()
   let changes = 0, issued = 0, nextId = 0
   const document = { visibilityState: 'visible', addEventListener: (name, callback) => documentListeners.set(name, callback), removeEventListener: name => documentListeners.delete(name) }
@@ -25,7 +25,7 @@ function liveEnvironment({ rejectToken = false, mock = false } = {}) {
   }
   const react = { useRef: current => ({ current }), useEffect: effect => effects.push(effect) }
   const dependencies = {
-    react, '../api/client': { devProxyUrl: url => url }, '../api/mock': { USE_MOCK: mock },
+    react, '../api/client': { devProxyUrl: url => url },
     '../api/notifications': { issueEventToken: () => { issued++; return rejectToken ? Promise.reject(Error('offline')) : Promise.resolve({ eventsUrl: '/api/v1/rooms/test/events?streamToken=one-use' }) } },
   }
   const { useRoomLiveUpdates } = load('src/hooks/useRoomLiveUpdates.ts', {
@@ -134,7 +134,7 @@ test('서버 구독 등록에 실패하면 푸시가 켜졌다고 판단하지 �
   const push = load('src/lib/push.ts', {
     navigator: { userAgent: 'Chrome', platform: 'Win32', serviceWorker: { ready: Promise.resolve(registration), getRegistration: async () => registration } },
     window: { PushManager: {}, Notification, matchMedia: () => ({ matches: false }) }, Notification,
-  }, { '../api/client': { request: async () => { throw Error('server unavailable') } }, '../api/mock': { USE_MOCK: false } })
+  }, { '../api/client': { request: async () => { throw Error('server unavailable') } } })
   await assert.rejects(push.enablePush())
   assert.equal(await push.isPushEnabled(), false, '브라우저 구독만 검사하여 서버 등록 실패를 감지하지 못함')
 })

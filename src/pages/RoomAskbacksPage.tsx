@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import { getMyAskbacks, getNextAskback, runAskbackAnalysis } from '../api/askbacks'
 import { getJob } from '../api/memories'
-import { USE_MOCK } from '../api/mock'
 import type { Askback, AskbackQueue, AskbackStatus } from '../api/types'
 import Button from '../components/Button'
 import { useRoomHomeForQuota } from '../hooks/useRoomQuota'
@@ -75,8 +74,8 @@ export default function RoomAskbacksPage() {
     setRunning(true); setError(''); setNotice('')
     try {
       const result = await runAskbackAnalysis(roomId)
-      if (USE_MOCK) { await reload(); setNotice('예시 질문을 다시 준비했어요') }
-      else { setJobId(result.job.id); setNotice('사진과 이야기를 읽고 질문을 준비하고 있어요') }
+      setJobId(result.job.id)
+      setNotice('사진과 이야기를 읽고 질문을 준비하고 있어요')
     } catch (cause) { setError(cause instanceof Error ? cause.message : '질문 생성을 요청하지 못했어요') }
     finally { setRunning(false) }
   }
