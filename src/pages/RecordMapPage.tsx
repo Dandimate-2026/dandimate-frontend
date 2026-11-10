@@ -1,6 +1,6 @@
 import { useAppNavigate } from '../hooks/useAppNavigate'
-import { useEffect, useState, type ReactNode } from 'react'
-import { getMyRecordMap, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { getMyRecordMap, cityMarkerPosition, samePlace, type CityPin, type MapPlaceItem } from '../api/recordMap'
 import type { FlowerCode } from '../api/types'
 import { getMyRooms } from '../api/rooms'
 import { getMe } from '../lib/auth'
@@ -314,18 +314,50 @@ function CitySheet({ pin, place: focus, onClose, onChanged, onMap }: { pin: City
 }
 
 
-function CityOverview({ pins, activeCity, onOpenCity, children }: { pins: CityPin[]; activeCity?: string; onOpenCity: (pin: CityPin) => void; children?: ReactNode }) {
+function CityOverview({ pins, activeCity, onOpenCity, onZoom, children }: { pins: CityPin[]; activeCity?: string; onOpenCity: (pin: CityPin) => void; onZoom: (pin?: CityPin) => void; children?: ReactNode }) {
+  const surface = useRef<HTMLDivElement>(null)
+  const zoomAt = (clientX: number, clientY: number) => {
+    const box = surface.current?.getBoundingClientRect()
+    if (!box) return
+    const x = (clientX - box.left) / box.width * 840, y = (clientY - box.top) / box.height * 860
+    const nearest = pins.filter(pin => CITY_ANCHORS[pin.city]).reduce<CityPin | undefined>((best, pin) => {
+      const distance = (item: CityPin) => Math.hypot(CITY_ANCHORS[item.city][0] - x, CITY_ANCHORS[item.city][1] - y)
+      return !best || distance(pin) < distance(best) ? pin : best
+    }, undefined)
+    onZoom(nearest)
+  }
+  useEffect(() => {
+    const element = surface.current
+    if (!element) return
+    let startDistance = 0
+    const distance = (event: TouchEvent) => Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY)
+    const start = (event: TouchEvent) => { startDistance = event.touches.length === 2 ? distance(event) : 0 }
+    const move = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || !startDistance) return
+      event.preventDefault()
+      if (distance(event) > startDistance * 1.12) {
+        startDistance = 0
+        zoomAt((event.touches[0].clientX + event.touches[1].clientX) / 2, (event.touches[0].clientY + event.touches[1].clientY) / 2)
+      }
+    }
+    const wheel = (event: WheelEvent) => { if (event.deltaY < 0) { event.preventDefault(); zoomAt(event.clientX, event.clientY) } }
+    element.addEventListener('touchstart', start, { passive: true })
+    element.addEventListener('touchmove', move, { passive: false })
+    element.addEventListener('wheel', wheel, { passive: false })
+    return () => { element.removeEventListener('touchstart', start); element.removeEventListener('touchmove', move); element.removeEventListener('wheel', wheel) }
+  })
   return <section aria-label="도시별 추억 지도" className="mx-3 mt-4">
-    <div className="relative aspect-[840/860] overflow-hidden rounded-[20px]">
+    <div ref={surface} onDoubleClick={event => zoomAt(event.clientX, event.clientY)} style={{ touchAction: 'pan-y' }} className="relative aspect-[840/860] overflow-hidden rounded-[20px]">
       <img src={recordMapImage} alt="대구·경북 도시별 추억 안내 그림" draggable={false} className="absolute inset-0 size-full select-none" />
       {pins.map(pin => {
         const point = CITY_ANCHORS[pin.city]
         if (!point) return null
-        return <button key={pin.city} type="button" onClick={() => onOpenCity(pin)} aria-label={`${pin.city} 기록 ${pin.recordCount}개`} aria-pressed={activeCity === pin.city} style={{ left: `${point[0] / 840 * 100}%`, top: `${point[1] / 860 * 100}%` }} className="absolute flex min-h-11 min-w-11 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center"><span className="rounded-full bg-surface p-1 shadow-sm"><Flower code={cityFlower(pin.city)} size={22} /></span><span className="rounded-full bg-surface/95 px-2 text-[11px] font-bold whitespace-nowrap">{pin.city}</span></button>
+        return <button key={pin.city} type="button" onClick={() => onOpenCity(pin)} aria-label={`${pin.city} 기록 ${pin.recordCount}개`} aria-pressed={activeCity === pin.city} style={{ left: `${point[0] / 840 * 100}%`, top: `${point[1] / 860 * 100}%` }} className="absolute flex min-h-11 min-w-11 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center"><span className="rounded-full bg-surface p-1 shadow-sm"><Flower code={cityFlower(pin.city)} size={22} /></span><span className="rounded-full bg-surface/95 px-2 text-[11px] font-bold whitespace-nowrap">{pin.city}</span><span className="h-2 w-0.5 bg-point" aria-hidden="true" /><span className="size-2 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" /></button>
       })}
       {children}
+      <button type="button" aria-label="확대하여 카카오맵 보기" onClick={() => onZoom(pins.find(pin => pin.city === activeCity) ?? pins[0])} className="absolute right-2 bottom-2 flex size-12 items-center justify-center rounded-xl border border-line bg-surface text-[24px] shadow-sm">＋</button>
     </div>
-    {pins.length > 0 && <nav aria-label="도시 선택" className="mt-3 flex flex-wrap gap-2">{pins.map(pin => <button type="button" key={pin.city} onClick={() => onOpenCity(pin)} className="min-h-11 rounded-full border border-line bg-surface px-3 text-[12px] font-semibold">{pin.city} · {pin.photoCount}장</button>)}</nav>}
+
   </section>
 }
 
@@ -438,7 +470,8 @@ function RecordMapPage() {
   // 도시·장소를 선택한 경우에만 그 실제 좌표로 상세 지도를 연다.
   const [detailCenter, setDetailCenter] = useState<{ lat: number; lng: number; city: string; level: number } | null>(null)
   const showRealMap = (pin: CityPin, place?: MapPlaceItem) => {
-    const latitude = place?.latitude ?? pin.latitude, longitude = place?.longitude ?? pin.longitude
+    const position = place ?? cityMarkerPosition(pin)
+    const latitude = position.latitude, longitude = position.longitude
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) { setNotice('이 장소의 위치를 확인하지 못했어요. 장소를 다시 선택해 주세요.'); return }
     setDetailCenter({ lat: latitude, lng: longitude, city: pin.city, level: place ? 4 : 8 })
     setOpenCity(null); setOpenPlace(undefined)
@@ -524,7 +557,7 @@ function RecordMapPage() {
       {detailCenter ? (
         <KakaoRecordMap
           key={`${detailCenter.city}:${detailCenter.lat}:${detailCenter.lng}`}
-          pins={(pins ?? []).filter(pin => pin.city === detailCenter.city)}
+          pins={pins ?? []}
           activeCity={detailCenter.city}
           initialLevel={detailCenter.level}
           cityFlower={cityFlower}
@@ -538,6 +571,7 @@ function RecordMapPage() {
           pins={pins ?? []}
           activeCity={openCity?.city}
           onOpenCity={openSheet}
+          onZoom={pin => pin ? showRealMap(pin) : setDetailCenter({ lat: 36.2, lng: 128.6, city: '', level: 10 })}
         >
           {pins?.length === 0 && (
             <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-[13px] leading-6 text-sub">
@@ -555,7 +589,7 @@ function RecordMapPage() {
       )}
 
       <p className="mx-5 mt-4 mb-4 rounded-[18px] bg-surface px-5 py-3.5 text-[13px] text-sub">
-        그림에서 도시를 골라 추억을 읽고, 실제 지도에서 정확한 장소를 확인해 보세요
+        확대하면 카카오맵에서 사진을 남긴 장소의 핀을 볼 수 있어요.
       </p>
 
       {openCity && <CitySheet key={`${openCity.city}:${openPlace?.photoId ?? "all"}`} pin={openCity} place={openPlace} onClose={() => setOpenCity(null)} onChanged={reloadAfterChange} onMap={showRealMap} />}
