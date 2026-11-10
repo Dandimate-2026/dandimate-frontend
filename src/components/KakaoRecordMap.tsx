@@ -141,7 +141,7 @@ function KakaoRecordMap({
     if (!maps || !map) return
     const next: Marker[] = detail
       ? pins.flatMap((pin) =>
-          groupPlaces(pin.places).map(({ place, count }) => ({
+          groupPlaces(pin.places.filter(place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude) && Math.abs(place.latitude) <= 90 && Math.abs(place.longitude) <= 180 && !(place.latitude === 0 && place.longitude === 0))).map(({ place, count }) => ({
             key: place.photoId,
             kind: 'place' as const,
             pin,
@@ -245,7 +245,8 @@ function KakaoRecordMap({
                 <span className="truncate">{m.place.placeName}</span>
                 {m.count > 1 && <span className="shrink-0 text-[13px] text-point">{m.count}</span>}
               </span>
-              <span className="mt-1 size-3 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
+              <span className="h-3 w-0.5 bg-point" aria-hidden="true" />
+              <span className="size-2 rounded-full bg-point ring-2 ring-surface" aria-hidden="true" />
             </button>
           ),
           m.el,
