@@ -314,7 +314,7 @@ function CitySheet({ pin, place: focus, onClose, onChanged, onMap }: { pin: City
                       onGo={(path) => navigate(path)}
                       onChanged={onChanged}
                     />
-                    <button type="button" onClick={() => onMap(pin, place)} className="min-h-11 w-full text-right text-[12px] font-semibold text-point">{place.placeName} 지도에서 보기 ›</button>
+                    {!focus && <button type="button" onClick={() => onMap(pin, place)} className="min-h-11 w-full text-right text-[12px] font-semibold text-point">{place.placeName} 지도에서 보기 ›</button>}
                   </li>
                 )
               })}
