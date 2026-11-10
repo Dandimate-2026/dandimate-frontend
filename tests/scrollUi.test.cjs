@@ -54,6 +54,12 @@ for (const score of [1, 2, 5]) {
     if (score <= 2) {
       find(tree, n => n.props.className === 'scroll-reweave-chip').props.onClick()
       find(app.render(), n => n.props.className === 'reweave-paragraph-option' && text(n).includes('이야기 2')).props.onClick()
+      assert.deepEqual(woven, [], '확인 전에는 재엮기 화면으로 이동하지 않는다')
+      find(app.render(), n => n.type === '../../components/Button' && text(n) === '취소').props.onClick()
+      assert.deepEqual(woven, [])
+      find(app.render(), n => n.props.className === 'scroll-reweave-chip').props.onClick()
+      find(app.render(), n => n.props.className === 'reweave-paragraph-option' && text(n).includes('이야기 2')).props.onClick()
+      find(app.render(), n => n.type === '../../components/Button' && text(n) === '이야기 고치러 가기').props.onClick()
       assert.deepEqual(woven, ['p2'])
     }
     assert.ok(!text(tree).includes('답가 남기기'))

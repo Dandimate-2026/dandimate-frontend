@@ -80,8 +80,9 @@ export function groupPlaces(places: MapPlaceItem[]) {
 
 /** 같은 장소인지: 둘 다 카카오 장소 id가 있으면 id로, 아니면 이름으로 */
 export function samePlace(a: MapPlaceItem, b: MapPlaceItem) {
+  if (a.placeGroupKey && b.placeGroupKey) return a.placeGroupKey === b.placeGroupKey
   if (a.placeId && b.placeId) return a.placeId === b.placeId
-  return a.placeName === b.placeName
+  return a.placeName === b.placeName && Math.abs(a.latitude - b.latitude) < 0.0001 && Math.abs(a.longitude - b.longitude) < 0.0001
 }
 
 /** 기록 지도는 대구·경북만 보여준다. 서버가 주소에서 뽑은 도시 이름(시·군 이름) 기준 */

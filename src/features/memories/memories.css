@@ -31,9 +31,12 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-empty-actions button { width: 100%; min-height: 52px; }
 .memory-flower { display: block; flex-shrink: 0; object-fit: contain; }
 .memory-app .memory-card { border-radius: 20px; padding: 14px 13px; border-color: var(--color-line); background: var(--color-surface); }
-.memory-text-mode { display: flex; align-items: center; justify-content: flex-end; position: relative; margin: 12px 0 11px; min-height: 24px; gap: 9px; font-size: 10px; color: var(--color-sub); cursor: pointer; }
+.memory-text-mode { display: flex; align-items: center; justify-content: flex-end; position: relative; margin: 12px 0 11px; min-height: 44px; gap: 9px; font-size: 12px; line-height: 1.5; color: var(--color-sub); cursor: pointer; }
 .memory-text-mode input { position: absolute; right: 0; width: 41px; height: 24px; opacity: 0; cursor: pointer; }
-.memory-switch { width: 41px; height: 24px; border-radius: 20px; background: #efe9df; padding: 2px; pointer-events: none; }
+.memory-switch { width: 41px; height: 24px; flex-shrink: 0; border-radius: 20px; background: #efe9df; padding: 2px; pointer-events: none; }
+.circulation-feed-intro { margin-top: 16px; }
+.circulation-feed-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; margin-top: 8px; border-bottom: 1px solid var(--color-line); padding-bottom: 8px; }
+.circulation-feed-toolbar .memory-text-mode { margin: 0; margin-left: auto; }
 .memory-switch::before { content: ''; display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--color-surface); transition: transform .18s; }
 .memory-text-mode input:checked + .memory-switch { background: var(--color-point); }
 .memory-text-mode input:checked + .memory-switch::before { transform: translateX(17px); }
@@ -68,6 +71,7 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .memory-passed { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 29px; padding-top: 8px; margin-top: 5px; border-top: 1px dashed #d5ccbf; font-size: 12px; color: var(--color-sub); }
 .memory-actions { margin-top: auto; padding-top: 29px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .memory-actions > button { min-height: 52px; height: auto; border-radius: 999px; padding: 10px 8px; font-size: 16px; font-weight: 600; }
+.memory-actions > button:only-child { grid-column: 1 / -1; }
 .memory-actions > button:last-child { background: #fbf8f3; border-color: #eee7df; }
 .memory-complete-main { padding-top: 164px; text-align: center; }
 .memory-flower-garland { display: inline-flex; align-items: center; gap: 1px; padding: 5px 10px; height: 52px; border: 1px solid #eee7df; border-radius: 40px; background: #fbf8f3; }
@@ -652,7 +656,10 @@ html:has(.memory-app)::-webkit-scrollbar { display: none; }
 .template-mode-tabs button[aria-selected="true"] { background: #fffdf9; color: #2a2623; font-weight: 700; box-shadow: 0 1px 5px #2a262312; }
 .paragraph-reweave-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; border: 1px solid var(--scroll-rule, #ded5ca); border-radius: 12px; background: #fffdf9; color: #504539; font-size: 12px; font-weight: 600; }
 .paragraph-reweave-button:disabled { opacity: .45; }
-.memory-chapter-actions .paragraph-reweave-button { margin-top: 8px; }
+.plan-template-preview.scroll-template-minimal { background: #eee8dd; border: 1px solid #ded5c7; box-shadow: inset 0 0 24px #c9bca633; }
+.memory-chapter-actions .paragraph-reweave-button { margin-top: 0; min-height: 40px; border-radius: 999px; padding: 6px 10px; font-size: 11px; }
+.scroll-live .memory-chapter-actions { flex-wrap: wrap; gap: 8px; }
+.scroll-live .memory-chapter-actions .memory-reaction { min-height: 40px; padding: 6px 10px; font-size: 11px; }
 
 .paragraph-reweave-action { display: flex; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--scroll-rule, #e8e0d5); }
 .scroll-bottom-save > .template-change-button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #ded5ca; border-radius: 16px; background: #fffdf9; font-size: 13px; font-weight: 600; color: #504539; }

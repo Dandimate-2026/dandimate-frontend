@@ -1,7 +1,9 @@
+import SwipeActions from '../components/SwipeActions'
+import { ApiError } from '../api/client'
 import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
-import { getAllNotifications, getNotifications, markNotificationRead } from '../api/notifications'
+import { deleteNotification, getAllNotifications, getNotifications, markNotificationRead } from '../api/notifications'
 import type { NotificationType, RoomNotification } from '../api/types'
 import { timeAgo } from '../lib/date'
 import { getRoomSession } from '../lib/session'
@@ -44,8 +46,20 @@ function RoomNotificationsPage() {
   const global = !roomId
   const session = getRoomSession(roomId)
   const [items, setItems] = useState<RoomNotification[] | null>(null)
-  const [hidden, setHidden] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(`duruduru:hidden-notifications:${roomId}`) ?? '[]') } catch { return [] } })
-  const hide = (id: string) => setHidden(previous => { const next = [...previous, id]; try { localStorage.setItem(`duruduru:hidden-notifications:${roomId}`, JSON.stringify(next)) } catch { /* optional */ } return next })
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null)
+  const deleteLock = useRef(false)
+  const remove = async (id: string) => {
+    if (deleteLock.current) return
+    deleteLock.current = true; setDeletingId(id); setDeleteError(null)
+    try {
+      try { await deleteNotification(id) }
+      catch (cause) { if (!(cause instanceof ApiError && cause.status === 404)) throw cause }
+      sequence.current++
+      setItems(previous => previous?.filter(item => item.id !== id) ?? null)
+    } catch { setDeleteError({ id, message: '삭제하지 못했어요. 다시 시도해 주세요.' }) }
+    finally { deleteLock.current = false; setDeletingId(null) }
+  }
   const [error, setError] = useState<string | null>(null)
   const token = global ? '' : session?.memberAccessToken
   const load = () => global ? getAllNotifications() : getNotifications(roomId, token ?? '')
@@ -112,20 +126,23 @@ function RoomNotificationsPage() {
         <button type="button" onClick={reload} className="min-h-11 px-3 text-[12px] font-semibold text-sub">새로고침</button>
       </header>
       {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
+      {items.length > 0 && <p className="mt-3 px-1 text-[11px] text-sub">알림을 왼쪽으로 밀면 지울 수 있어요.</p>}
 
-      {items.filter(item => !hidden.includes(item.id)).length === 0 ? (
+      {items.length === 0 ? (
         <p className="mt-24 text-center text-[13px] text-sub">아직 온 알림이 없어요</p>
       ) : (
         <ul className="mt-5 flex flex-col gap-2">
-          {items.filter(item => !hidden.includes(item.id)).map((item) => {
+          {items.map((item) => {
             const text = NOTIFICATION_TEXT[item.type] ?? { title: '새 소식이 있어요', detail: '방의 소식을 확인해 주세요' }
             const unread = !item.readAt
             return (
-              <li key={item.id}>
+              <li key={item.id} aria-busy={deletingId === item.id}>
+                <SwipeActions disabled={deletingId !== null} remove={{ label: '알림 삭제', iconOnly: true, onClick: () => void remove(item.id) }}>
                 <button
                   type="button"
+                  disabled={deletingId === item.id}
                   onClick={() => handleOpen(item)}
-                  className={`flex w-full items-start gap-3 rounded-[20px] border px-4 py-3.5 text-left active:opacity-80 ${
+                  className={`flex w-full items-start gap-3 rounded-[20px] border px-4 py-3.5 text-left disabled:opacity-60 ${
                     unread ? 'border-[#f0cfdc] bg-[#fbf0f4]' : 'border-line bg-surface'
                   }`}
                 >
@@ -143,7 +160,9 @@ function RoomNotificationsPage() {
                   <span className="shrink-0 text-[10px] text-sub">{timeAgo(item.createdAt)}</span>
                   {unread && <span className="sr-only">안 읽음</span>}
                 </button>
-                <button type="button" onClick={() => hide(item.id)} className="mt-1 min-h-9 px-3 text-[11px] text-sub underline underline-offset-2" aria-label="이 알림을 이 기기에서 숨기기">이 기기에서 숨기기</button>
+                </SwipeActions>
+                {deletingId === item.id && <p role="status" className="mt-1 px-3 text-[11px] text-sub">알림을 삭제하고 있어요…</p>}
+                {deleteError?.id === item.id && <div className="mt-1 flex items-center justify-between gap-2 px-3"><p role="alert" className="text-[12px] text-point">{deleteError.message}</p><button type="button" disabled={deletingId !== null} onClick={() => void remove(item.id)} className="min-h-11 shrink-0 text-[12px] font-semibold text-point">다시 삭제</button></div>}
               </li>
             )
           })}

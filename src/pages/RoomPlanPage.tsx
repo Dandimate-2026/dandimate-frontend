@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { SCROLL_TEMPLATES } from '../features/memories/templates'
+import { getTemplate, SCROLL_TEMPLATES, templateStyle, type ScrollTemplateId } from '../features/memories/templates'
+import '../features/memories/memories.css'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { createRoom, getRoomHome, requestPlanUpgrade } from '../api/rooms'
 import type { RoomHome } from '../api/types'
-import { showToast } from '../lib/share'
 import Button from '../components/Button'
 import { ChevronLeftIcon } from '../components/entry/EntryIcons'
 import Flower from '../components/Flower'
@@ -107,8 +107,9 @@ function RoomPlanPage() {
   const session = roomId ? getRoomSession(roomId) : null
   const plans = usePlans()
   const [selectedId, setSelectedId] = useState<PlanId | null>(() =>
-    routeState?.selectedPlan ?? null,
+    (location.state as { selectedPlan?: PlanId } | null)?.selectedPlan ?? (isNewRoom ? null : 'free'),
   )
+  const [preview, setPreview] = useState<ScrollTemplateId>('minimal')
   const [home, setHome] = useState<RoomHome | null>(null)
   const [requested, setRequested] = useState(false)
   const [requesting, setRequesting] = useState(false)
@@ -118,7 +119,10 @@ function RoomPlanPage() {
   useEffect(() => {
     if (!roomId || !session) return
     getRoomHome(roomId, session.memberAccessToken)
-      .then(setHome)
+      .then((result) => {
+        setHome(result)
+        setSelectedId((location.state as { selectedPlan?: PlanId } | null)?.selectedPlan ?? (result.room.planType ?? 'FREE').toLowerCase() as PlanId)
+      })
       .catch(() => {
         // 인원 수는 안내용이라 불러오지 못해도 플랜은 고를 수 있다
       })
@@ -133,6 +137,15 @@ function RoomPlanPage() {
   const roomName = isNewRoom ? draft?.name : home?.room.name ?? session?.roomName ?? '모임방'
   const capacity = isNewRoom ? draft?.capacity : home?.room.capacity
   const memberCount = isNewRoom ? draft?.capacity : home?.members.length
+
+  const ranks = ['FREE', 'LITE', 'PRO']
+  const currentRank = isNewRoom ? -1 : ranks.indexOf(home?.room.planType ?? 'FREE')
+  const requiredRank = ranks.indexOf(getTemplate(preview).plan)
+  const selectedRank = ['free', 'lite', 'pro'].indexOf(selectedId ?? '')
+  const previewStatus = requiredRank <= currentRank ? '현재 플랜에서 사용할 수 있어요.'
+    : requiredRank === 0 ? '무료로 사용할 수 있어요.'
+    : selectedRank >= requiredRank ? (plan?.available ? `선택한 ${plan.name} 플랜을 결제하면 사용할 수 있어요.` : `${plan?.name} 플랜 결제 준비 중이에요.`)
+    : `${getTemplate(preview).plan === 'LITE' ? 'Lite 이상' : 'Pro'} 플랜이 필요해요.`
 
   const handleNext = async () => {
     if (!plan?.available || (!isNewRoom && (!home || home.me.role !== 'HOST' || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(plan.id)))) return
@@ -149,9 +162,8 @@ function RoomPlanPage() {
     setCreating(true)
     setError(null)
     try {
-      const { room, inviteToken, schedulingFailed } = await createRoom({ ...draft, planType: 'FREE' })
+      const { room, inviteToken } = await createRoom({ ...draft, planType: 'FREE' })
       saveRoomSession(room.id, { memberAccessToken: '', inviteToken, roomName: room.name })
-      if (schedulingFailed) showToast('방은 만들었지만 엮는 날을 저장하지 못했어요. 설정에서 다시 정해 주세요')
       clearRoomDraft()
       attachDraftExtras(room.id)
       navigate(draft.capacity === 1 ? paths.roomHome(room.id) : paths.roomShare(room.id), { replace: true })
@@ -164,7 +176,7 @@ function RoomPlanPage() {
   const handleBack = () => {
     // 새 방은 입력하던 화면으로, 한도 시트에서 왔으면 보던 화면으로 돌아간다
     if (isNewRoom) navigate(paths.roomCreate())
-    else if (fromLimit) navigate(-1)
+    else if (fromLimit || (location.state as { fromWeave?: boolean } | null)?.fromWeave) navigate(-1)
     else if (routeState?.returnPath) navigate(routeState.returnPath, { replace: true })
     else navigate(paths.roomList())
   }
@@ -204,12 +216,31 @@ function RoomPlanPage() {
       </div>
 
       {!isNewRoom && <p className="mt-3 text-[13px] text-sub">현재 플랜: {home?.room.planType ?? '확인 중…'} · 상위 플랜으로 변경할 수 있어요</p>}
-      <div className="mt-3 flex flex-col gap-3">
+      <div id="room-plan-options" className="mt-3 flex scroll-mt-5 flex-col gap-3">
         {plans.map((p) => (
-          <PlanCard key={p.id} plan={p} selected={p.id === selectedId} current={!isNewRoom && home?.room.planType?.toLowerCase() === p.id} disabled={!isNewRoom && (!home || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') >= ['free', 'lite', 'pro'].indexOf(p.id))} onSelect={() => { setSelectedId(p.id); setRequested(false) }} />
+          <PlanCard key={p.id} plan={p} selected={p.id === selectedId} current={!isNewRoom && home?.room.planType?.toLowerCase() === p.id} disabled={!isNewRoom && (!home || ['FREE', 'LITE', 'PRO'].indexOf(home.room.planType ?? 'FREE') > ['free', 'lite', 'pro'].indexOf(p.id))} onSelect={() => { setSelectedId(p.id); setRequested(false) }} />
         ))}
       </div>
       <DecorGuide planId={selectedId ?? home?.room.planType?.toLowerCase() ?? 'free'} />
+      <details className="group mt-4 rounded-[20px] border border-line bg-surface p-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-[14px] font-bold [&::-webkit-details-marker]:hidden">템플릿 미리보기<svg className="shrink-0 text-sub transition-transform group-open:rotate-180 motion-reduce:transition-none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></summary>
+        <p className="mt-1 text-[11px] text-sub">예시 화면 · 실제 적용은 엮은 뒤에</p>
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="미리 볼 템플릿">
+          {SCROLL_TEMPLATES.map(item => <button key={item.id} type="button" aria-pressed={preview === item.id} onClick={() => setPreview(item.id)} className={`min-h-10 rounded-full border px-3 text-[12px] ${preview === item.id ? 'border-point text-point' : 'border-line'}`}>{item.name}</button>)}
+        </div>
+        <article className={`scroll-document scroll-design scroll-template-${preview} has-template plan-template-preview mt-3 rounded-xl`} style={templateStyle(preview)} aria-label={`${getTemplate(preview).name} 템플릿 예시`}>
+          {preview !== 'minimal' && <img className="scroll-template-hero" src={getTemplate(preview).art} alt="" />}
+          <div className="scroll-rod" aria-hidden="true" />
+          <div className="scroll-document-body"><h3 className="text-[20px] font-bold">{roomName}</h3><p className="mt-3 text-[13px] leading-6">함께 웃던 순간을 오래 기억하고 싶어요.</p></div>
+        </article>
+        <p role="status" className="mt-3 rounded-xl bg-bg px-3 py-2 text-[12px] font-semibold leading-5">{previewStatus}</p>
+        {getTemplate(preview).plan !== 'FREE' && <button type="button" className="mt-2 min-h-11 text-[12px] font-semibold text-point" onClick={() => {
+          const targetRank = Math.max(currentRank, ['FREE', 'LITE', 'PRO'].indexOf(getTemplate(preview).plan))
+          setSelectedId((['free', 'lite', 'pro'] as const)[targetRank]); setRequested(false)
+          document.getElementById('room-plan-options')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}>{getTemplate(preview).plan === 'LITE' ? 'Lite' : 'Pro'} 플랜 확인하기 ›</button>}
+      </details>
+      {(isNewRoom || (home && ['COLLECTING', 'CIRCULATING'].includes(home.room.status))) && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-5 text-amber-950"><strong>⚠ 사진을 더 올리려면 엮기 전에 플랜을 바꿔 주세요.</strong></p>}
 
       {!isNewRoom && home?.me.role === 'MEMBER' && <section className="mt-4 rounded-2xl border border-line bg-surface p-4">
         <p className="text-[13px] leading-5 text-sub">플랜은 방장이 변경해요. 요청하면 방장에게 알림을 보내드려요.</p>

@@ -39,6 +39,7 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
   const [ratingRetry, setRatingRetry] = useState<{ score: number; paragraphs: ScrollParagraph[] } | null>(null)
   const [ratingError, setRatingError] = useState('')
   const [reweavePicker, setReweavePicker] = useState(false)
+  const [confirmReweave, setConfirmReweave] = useState<ScrollParagraph | null>(null)
   const ratingSaving = useRef(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -161,11 +162,10 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       {changes && <div className="scroll-rewoven-heading"><strong>✓ 재엮기 완료 · 보탠 이야기가 반영됐어요</strong><button type="button" className="memory-text-link" onClick={() => setPrevious(changes.previous)}>이전 버전</button></div>}
       <ParagraphStory paragraph={paragraph} changes={changes} />
       <div className="memory-chapter-actions">
-        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>나도 이렇게 기억해요 <strong>{paragraph.ahMatdaCount}</strong></button>
-        <button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button>
-
+        <button type="button" className="memory-reaction" disabled={busy !== null || Boolean(pendingParagraphId)} aria-pressed={isLiked(paragraph)} onClick={() => void react(paragraph)}>공감해요 <strong>{paragraph.ahMatdaCount}</strong></button>
+        {onReweave && !pendingParagraphId && <button type="button" className="paragraph-reweave-button" disabled={busy !== null} onClick={() => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else setConfirmReweave(paragraph) }}><span aria-hidden="true">↻</span> 다시 엮기</button>}
       </div>
-      <div className="paragraph-reweave-action">{onReweave && !pendingParagraphId && <button type="button" className="paragraph-reweave-button" disabled={busy !== null} onClick={() => { if (home.room.quota?.regenerationsRemaining === 0 && onReweaveLimit) onReweaveLimit(); else onReweave(paragraph) }}><span aria-hidden="true">↻</span> 이 문단 다시 엮기</button>}</div>
+      <div className="mt-1 text-right"><button type="button" className="memory-original-link" onClick={() => setOriginal(paragraph)}>AI가 엮었어요 · 원문보기</button></div>
       </div>
       {pendingParagraphId === paragraph.id && <p className="memory-sheet-hint" role="status">보탠 이야기로 다시 엮고 있어요. 완료되면 두루마리가 갱신돼요.</p>}
     </section>})}
@@ -199,7 +199,12 @@ export default function LiveScrollPage({ scroll, home, token, onBack, onRefresh,
       <button type="button" className="template-change-button mb-3" onClick={() => setPickingTemplate(true)}>템플릿 변경하기<span aria-hidden="true">›</span></button>
       <div className="scroll-save-actions"><Button disabled={Boolean(pendingParagraphId)} onClick={() => setDownloading(true)}><DownloadIcon />이미지로 저장</Button><ShareMemoryButton roomName={home.room.name} label="단톡방에 공유" url={shareUrl} /></div>
     </div>}
-    {reweavePicker && onReweave && <BottomSheet title="다시 엮을 문단 선택" onClose={() => setReweavePicker(false)}><p className="memory-sheet-hint">고치고 싶은 문단을 골라 주세요.</p>{reweaveTargets.map((paragraph) => <button type="button" className="reweave-paragraph-option" key={paragraph.id} onClick={() => { setReweavePicker(false); onReweave(paragraph) }}><strong>문단 {scroll.paragraphs.findIndex((item) => item.id === paragraph.id) + 1} · {paragraph.photo.uploader.nickname}님의 사진</strong><span>{paragraph.body}</span></button>)}</BottomSheet>}
+    {reweavePicker && onReweave && <BottomSheet title="다시 엮을 문단 선택" onClose={() => setReweavePicker(false)}><p className="memory-sheet-hint">고치고 싶은 문단을 골라 주세요.</p>{reweaveTargets.map((paragraph) => <button type="button" className="reweave-paragraph-option" key={paragraph.id} onClick={() => { setReweavePicker(false); setConfirmReweave(paragraph) }}><strong>문단 {scroll.paragraphs.findIndex((item) => item.id === paragraph.id) + 1} · {paragraph.photo.uploader.nickname}님의 사진</strong><span>{paragraph.body}</span></button>)}</BottomSheet>}
+    {confirmReweave && onReweave && <BottomSheet title="이 문단을 다시 엮을까요?" onClose={() => setConfirmReweave(null)}>
+      <p className="memory-sheet-hint">다음 화면에서 고치거나 보탤 이야기를 적어 주세요. 작성 후 재엮기를 시작하면 1회를 사용해요.</p>
+      {home.room.quota?.regenerationsRemaining !== undefined && <p className="mt-3 text-[13px] font-semibold">재엮기 {home.room.quota.regenerationsRemaining}회 남음</p>}
+      <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" onClick={() => setConfirmReweave(null)}>취소</Button><Button onClick={() => { const target = confirmReweave; setConfirmReweave(null); onReweave(target) }}>이야기 고치러 가기</Button></div>
+    </BottomSheet>}
     {downloading && <DownloadSheet scroll={scroll} home={home} template={templateId} onClose={() => setDownloading(false)} onComplete={(result) => { savedDownload.current = result; onDismissCompletion?.(); setNotice('파일을 준비했어요. 저장 또는 공유를 눌러 주세요.'); }} />}
     {previous && <BottomSheet title="이전 버전" onClose={() => setPrevious(null)}><p className="memory-narrative">{previous.body}</p><button type="button" className="memory-text-link" onClick={() => setPrevious(null)}>닫기</button></BottomSheet>}
     {original && <BottomSheet title="함께 남긴 원문" onClose={() => setOriginal(null)}><div className="memory-original-stories">

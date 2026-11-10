@@ -40,16 +40,15 @@ export default function EarlyCloseButton({ home, token }: { home: RoomHome; toke
       <div className="max-h-[calc(100dvh-120px)] overflow-y-auto px-5 pt-5 pb-4">
       <div className="flex justify-center" aria-hidden="true"><Flower code="AZALEA" size={28} /></div>
       <h2 id="early-close-title" className="mt-3 text-center text-[20px] font-bold leading-7">이제 두루마리로 엮을까요?</h2>
-      <p id="early-close-description" className="mt-3 text-center text-[13px] leading-[22px] text-sub">지금까지 모은 사진과 이야기를<br />하나의 두루마리로 엮어요.</p>
+      <p id="early-close-description" className="mt-3 text-center text-[13px] leading-[22px] text-sub">모은 사진과 이야기로 두루마리를 만들어요.</p>
       <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 rounded-2xl border border-line bg-bg p-3">
-        <div><p className="text-[10px] text-sub">이번 두루마리의 플랜</p><p className="mt-1 text-[18px] font-bold">{home.room.planType ?? 'FREE'} <span className="text-[12px] font-normal text-sub">플랜</span></p></div>
-        {home.room.planType !== 'PRO' && <button type="button" disabled={busy} onClick={() => navigate(paths.roomPlan(home.room.id))} className="min-h-10 rounded-full border border-ink/20 bg-surface px-3 text-[11px] font-semibold">플랜 변경하기 <span aria-hidden="true">›</span></button>}
-        <p className="col-span-2 border-t border-line pt-3 text-[12px] text-sub">재엮기 <strong className="text-ink">{home.room.quota?.regenerationsRemaining === undefined ? '플랜에서 확인해 주세요' : `${home.room.quota.regenerationsRemaining}회 남음`}</strong></p>
+        <div><p className="text-[10px] text-sub">현재 플랜</p><p className="mt-1 text-[18px] font-bold">{home.room.planType ?? 'FREE'} <span className="text-[12px] font-normal text-sub">플랜</span></p></div>
+        <button type="button" disabled={busy} onClick={() => navigate(paths.roomPlan(home.room.id), { state: { fromWeave: true } })} className="col-span-2 min-h-11 rounded-full border border-ink/20 bg-surface px-3 text-[12px] font-semibold">템플릿·플랜 보기 <span aria-hidden="true">›</span></button>
       </div>
       <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
         <p className="flex items-center gap-2 text-[13px] font-bold text-amber-950"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>엮으면 원본 기록이 잠겨요</p>
-        <p className="mt-2 text-[12px] leading-5 text-amber-950">기존 <strong>사진과 첫 한마디는 더 이상 수정할 수 없어요.</strong> 엮은 뒤 플랜을 바꿔도 다시 열리지 않아요.</p>
-        <p className="mt-3 border-t border-amber-200 pt-3 text-[12px] leading-5 text-amber-900">완성된 문장은 플랜에 남은 <strong>재엮기 횟수 안에서</strong> 고칠 수 있어요.</p>
+        <p className="mt-2 text-[12px] leading-5 text-amber-950"><strong>사진·첫 한마디는 수정할 수 없어요.</strong><br />사진을 더 올리려면 엮기 전에 플랜을 바꿔 주세요.</p>
+        <p className="mt-3 border-t border-amber-200 pt-3 text-[12px] leading-5 text-amber-900">완성된 문장은 <strong>재엮기로 수정</strong>할 수 있어요.{home.room.quota?.regenerationsRemaining !== undefined && <span className="mt-1 block font-semibold">재엮기 {home.room.quota.regenerationsRemaining}회 남음</span>}</p>
       </div>
       {error && <p role="alert" className="mt-3 text-[12px] leading-5 text-point">{error}</p>}
       </div>

@@ -53,16 +53,13 @@ export const CONSENT: Consent = {
 
 /**
  * 방 만들기·입장·결제 때 보낼 약관 동의. 서버가 지금 쓰는 약관 버전(GET /consents/current)을 받아서 보낸다.
- * 버전이 다르면 서버가 CONSENT_REQUIRED로 거절해서, 서버 값을 따른다. 못 받으면 기본값으로 보낸다
+ * 버전이 다르면 서버가 CONSENT_REQUIRED로 거절해서, 서버 값을 따른다. 조회에 실패하면 동의를 임의의 버전으로 보내지 않는다
  */
 export async function currentConsent(): Promise<Consent> {
   if (USE_MOCK) return CONSENT
-  try {
-    const { version } = await request<{ version: string }>('/consents/current')
-    return version ? { ...CONSENT, version } : CONSENT
-  } catch {
-    return CONSENT
-  }
+  const { version } = await request<{ version: string; consented: boolean }>('/consents/current')
+  if (!version?.trim()) throw new Error('약관 정보를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.')
+  return { ...CONSENT, version }
 }
 
 /** 로그인한 계정이 참여 중인 방 목록 */
@@ -72,21 +69,11 @@ export function getMyRooms() {
 }
 
 /** 로그인한 사용자가 방을 만들고 방장이 된다 */
-export async function createRoom(body: Omit<CreateRoomRequest, 'consent'> & { deadlineAt?: string }) {
-  const { deadlineAt, ...fields } = body
-  const payload: CreateRoomRequest = { ...fields, consent: await currentConsent() }
+export async function createRoom(body: Omit<CreateRoomRequest, 'consent'>) {
+  const payload: CreateRoomRequest = { ...body, consent: await currentConsent() }
   const result = USE_MOCK ? mockCreateRoom(payload) : await request<CreateRoomResult>('/rooms', { method: 'POST', body: payload, idempotent: true })
-  if (deadlineAt) {
-    try {
-      await updateRoom(result.room.id, { deadlineAt }, '')
-      result.room.deadlineAt = deadlineAt
-      result.room.deadlineChangedByHost = true
-    } catch {
-      // The room already exists: never retry creation just because scheduling failed.
-      return { ...result, schedulingFailed: true }
-    }
-  }
-  return { ...result, schedulingFailed: false }
+  if (USE_MOCK && body.deadlineAt) { result.room.deadlineAt = body.deadlineAt; result.room.deadlineChangedByHost = true }
+  return result
 }
 
 export function getInvitePreview(inviteToken: string) {
@@ -150,18 +137,18 @@ export function updateRoom(
   roomId: string,
   /** capacity: 방장이 인원을 바꾼다 (지금 들어온 인원 이상 ~ 8명). 백엔드 반영 전에는 서버가 무시하거나 거절할 수 있다 */
   /** place: 모임 장소. 빼면 그대로, null이면 지운다 */
-  body: { name?: string; meetingDate?: string; deadlineAt?: string; capacity?: number; coverImageUrl?: string; place?: RoomPlace | null; scrollTemplateId?: string },
+  body: { name?: string; meetingDate?: string; deadlineAt?: string | null; capacity?: number; coverImageUrl?: string; place?: RoomPlace | null; scrollTemplateId?: string },
   token: string,
 ) {
   if (USE_MOCK) {
     const { place, ...rest } = body
     const edit: Partial<RoomHome['room']> = { ...mockRoomEdits.get(roomId), ...rest, ...(place !== undefined ? { place } : {}) }
     // 서버처럼 방장이 엮는 시각을 정하면 '방장이 정함'으로 표시한다
-    if (body.deadlineAt) edit.deadlineChangedByHost = true
+    if (body.deadlineAt !== undefined) edit.deadlineChangedByHost = body.deadlineAt !== null
     mockRoomEdits.set(roomId, edit)
     return Promise.resolve()
   }
-  return request(`/rooms/${roomId}`, { method: 'PATCH', body, token })
+  return request(`/rooms/${roomId}`, { method: 'PATCH', body: { ...body, ...(body.scrollTemplateId ? { scrollTemplateId: body.scrollTemplateId === 'minimal' ? 'CLASSIC' : body.scrollTemplateId.toUpperCase() } : {}) }, token })
 }
 
 /** 이 방에서 쓰는 내 닉네임을 바꾼다. 방 안에 같은 이름이 있으면 409(NICKNAME_TAKEN) */

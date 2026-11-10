@@ -47,7 +47,8 @@ export async function uploadPhotos(
         const result = await request<{ photo?: { status?: string } }>(`/photos/${ticket.photoId}/complete`, { method: 'POST', token, idempotent: true })
         status = result?.photo?.status
         if (status === 'FAILED') throw new Error('사진을 처리하지 못했어요. 다른 사진을 선택해 주세요')
-        if (status !== 'PROCESSING' && status !== 'UPLOADING') break
+        if (status === 'READY') break
+        if (status !== 'PROCESSING' && status !== 'UPLOADING') throw new Error('사진 처리 상태를 확인하지 못했어요. 다시 시도해 주세요')
         if (Date.now() - started >= 60000) throw new Error('사진 처리가 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요')
         await new Promise(resolve => window.setTimeout(resolve, 1000))
       } while (status === 'PROCESSING' || status === 'UPLOADING')

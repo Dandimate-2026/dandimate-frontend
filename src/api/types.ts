@@ -109,6 +109,7 @@ export interface JoinRoomResult {
 export type RoomPlanType = 'FREE' | 'LITE' | 'PRO'
 
 export interface CreateRoomRequest {
+  deadlineAt?: string | null
   name: string
   meetingDate: string
   hostNickname: string

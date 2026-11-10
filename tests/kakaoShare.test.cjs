@@ -91,7 +91,7 @@ test('초대 토큰이 비어 있으면 복사와 공유를 모두 막는다', a
   const attempt = () => { attempts++ }
   const { useInviteShare } = loadModule('src/hooks/useInviteShare.ts', {}, {
     react: { useState: () => [false, () => {}], useEffect: () => {} },
-    '../lib/share': { showToast: (text) => notices.push(text), copyForShare: attempt, shareWithDevice: attempt },
+    '../lib/share': { roomShareCopy: () => ({ title: '', text: '', button: '' }), showToast: (text) => notices.push(text), copyForShare: attempt, shareWithDevice: attempt },
     '../lib/kakaoShare': { shareKakaoInvitation: attempt },
     '../lib/session': { inviteUrl: (token) => `https://example.com/invite/${token}` },
   })

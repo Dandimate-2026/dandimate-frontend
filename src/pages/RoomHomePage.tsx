@@ -1,4 +1,5 @@
 import { siteUrl } from '../lib/siteUrl'
+import { canEditRoomRecords } from '../lib/roomState'
 import { useAppNavigate } from '../hooks/useAppNavigate'
 import { useEffect, useState } from 'react'
 import { useLocation, useParams } from 'react-router'
@@ -216,7 +217,7 @@ const SHARE_BUTTON_CLASS =
 function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: RoomHome; inviteToken?: string; datePrompt?: React.ReactNode; roomCards: CirculationCard[] | null }) {
   const navigate = useAppNavigate()
   const { room, members, myTodo } = home
-  const canAddPhotos = (room.quota?.myPhotosRemaining ?? ((room.quota?.photosPerMember ?? findPlan(room.planType?.toLowerCase() ?? 'free')?.photosPerMember ?? MAX_PHOTOS) - (room.quota?.myPhotoCount ?? home.me.photoCount ?? 0))) > 0
+  const canOpenPhotoPicker = canEditRoomRecords(room.status)
   const { link, copied, copy, share } = useInviteShare(inviteToken ?? '', home.room.name)
   const emptyMemberSlots = Math.min(EMPTY_MEMBER_SLOTS, (room.capacity ?? ROOM_CAPACITY) - members.length)
   const memberNames = members.map((m) => (m.role === 'HOST' ? `${m.nickname} · 방장` : m.nickname)).join(', ')
@@ -228,7 +229,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
 
         <section className="mt-3.5 px-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="shrink-0 text-[11px] text-sub">핀 꽃</h2>
+            <h2 className="shrink-0 text-[11px] font-bold text-ink">핀 꽃</h2>
             {activityTotal(members) > 0 && <FlowerHint />}
           </div>
           {/* 지금 들어온 인원수만큼 자리를 두고 핀 꽃부터 채운다 */}
@@ -271,7 +272,7 @@ function GatheringHome({ home, inviteToken, datePrompt, roomCards }: { home: Roo
           <p className="mt-1 text-[15px] font-bold">
             {myTodo.needsFirstEntry ? '사진 올리고 한 마디 남기기' : '친구들이 모이길 기다리고 있어요'}
           </p>
-          {canAddPhotos && (
+          {canOpenPhotoPicker && (
             <Button onClick={() => navigate(paths.photoUpload(room.id))} className="mt-3 w-full">
               사진 추가하기
             </Button>
@@ -330,12 +331,12 @@ function MyTodoCard({ home, cards }: { home: RoomHome; cards: CirculationCard[] 
                 : '사진을 모두 올렸어요'}
           </p>
         </div>
-        {canAddPhotos && (
+        {canEditRoomRecords(room.status) && (
           <button
             type="button"
             onClick={() => navigate(paths.photoUpload(room.id))}
             // 시안처럼 버튼 가운데를 제목 줄에 맞춘다
-            className="-mt-2.5 h-[39px] shrink-0 rounded-full border border-ink px-[25px] text-[13px] active:opacity-80"
+            className="-mt-1 min-h-11 shrink-0 rounded-full border border-ink px-3 text-[12px] font-semibold active:opacity-80"
           >
             사진 추가하기
           </button>
@@ -437,7 +438,7 @@ function RoomHomePage() {
 
         <section className="mt-2.5 px-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="shrink-0 text-[11px] text-sub">핀 꽃</h2>
+            <h2 className="shrink-0 text-[11px] font-bold text-ink">핀 꽃</h2>
             {activityTotal(members) > 0 && <FlowerHint />}
           </div>
           <BranchFlowers myMemberId={home.me.id} status={room.status} roomId={room.id} members={members} cards={roomCards} />
@@ -470,7 +471,7 @@ function RoomHomePage() {
 
         <section className="mt-2">
           <div className="flex items-center justify-between px-0.5 text-[11px]">
-            <h2 className="text-sub">참여현황</h2>
+            <h2 className="font-bold text-ink">참여현황</h2>
             <p>
               {solo ? '혼자 기록하는 중' : <>{members.length}/{room.capacity ?? ROOM_CAPACITY}명</>}
             </p>
@@ -482,8 +483,8 @@ function RoomHomePage() {
           </ul>
           {/* 모두 100%면: 두루마리를 만들기에 충분해요 (엮기는 방장이 정한 시각에) */}
           {everyoneFull && !grown && room.status !== 'WEAVING' && (
-            <p className="mt-2.5 flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-[12px] leading-5 text-emerald-900" role="status">
-              <span className="mt-0.5 shrink-0" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg></span><span><strong className="block font-semibold">모두 참여했어요</strong><span className="block text-emerald-800">두루마리를 만들기에 충분해요</span></span>
+            <p className="mt-2.5 flex items-start gap-2 rounded-2xl border border-point/20 bg-[#f6e3ea] px-3 py-3 text-[12px] leading-5 text-ink" role="status">
+              <span className="mt-0.5 shrink-0" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-point"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg></span><span><strong className="block font-semibold">모두 참여했어요</strong><span className="block text-sub">두루마리를 만들기에 충분해요</span></span>
             </p>
           )}
         </section>

@@ -158,17 +158,21 @@ function CountedInput({
   maxLength,
   placeholder,
   onChange,
+  invalid = false,
 }: {
   id: string
   value: string
   maxLength: number
   placeholder: string
   onChange: (value: string) => void
+  invalid?: boolean
 }) {
   return (
     <div className="relative">
       <input
         id={id}
+        aria-invalid={invalid}
+        aria-describedby={invalid ? `${id}-error` : undefined}
         value={value}
         maxLength={maxLength}
         onChange={(e) => onChange(clampText(e.target.value, maxLength))}
@@ -187,11 +191,13 @@ function Field({
   htmlFor,
   label,
   hint,
+  error,
   children,
 }: {
   htmlFor: string
   label: string
   hint?: string
+  error?: string
   children: ReactNode
 }) {
   return (
@@ -201,6 +207,7 @@ function Field({
         {hint && <span className="font-normal text-sub"> · {hint}</span>}
       </label>
       <div className="mt-2">{children}</div>
+      {error && <p id={`${htmlFor}-error`} role="alert" className="mt-2 px-3 text-[12px] leading-5 break-keep text-red-700">{error}</p>}
     </div>
   )
 }
@@ -223,11 +230,16 @@ function RoomCreatePage() {
   const [coverImageUrl, setCoverImageUrl] = useState(draft?.coverImageUrl)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [photoError, setPhotoError] = useState('')
+  const [submitted, setSubmitted] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    saveRoomDraft({ name: roomName, meetingDate, deadlineAt: deadline && Number.isFinite(Date.parse(deadline)) ? new Date(deadline).toISOString() : undefined, hostNickname: nickname, capacity, coverImageUrl })
+  }, [roomName, meetingDate, deadline, nickname, capacity, coverImageUrl])
 
   // 대표 사진은 골라도 안 골라도 된다 (올리는 중이면 끝날 때까지 기다린다)
   const canSubmit =
-    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && !uploadingCover && (!deadline || (Number.isFinite(Date.parse(deadline)) && Date.parse(deadline) > now))
+    roomName.trim().length > 0 && meetingDate !== '' && nickname.trim().length > 0 && !uploadingCover && (!deadline || (Number.isFinite(Date.parse(deadline)) && Date.parse(deadline) > now && Date.parse(deadline) <= latestDeadline(new Date(now).toISOString()).getTime()))
 
   const handlePhoto = async (file?: File) => {
     if (!file) return
@@ -256,7 +268,12 @@ function RoomCreatePage() {
   // 서버는 방을 만들 때 플랜을 받으므로, 여기서는 입력만 들고 플랜 선택으로 넘어간다. 방은 플랜을 고른 뒤 만든다
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!canSubmit) return
+    setSubmitted(true)
+    if (!canSubmit) {
+      const id = !roomName.trim() ? 'room-name' : !meetingDate ? 'meeting-date' : !nickname.trim() ? 'host-nickname' : 'weave-deadline'
+      document.getElementById(id)?.focus()
+      return
+    }
     saveRoomDraft({ name: roomName.trim(), meetingDate, deadlineAt: deadline ? new Date(deadline).toISOString() : undefined, hostNickname: nickname.trim(), capacity, coverImageUrl })
     saveRoomExtras({ coverPhoto: coverPhoto || undefined })
     navigate(paths.roomCreatePlan())
@@ -276,7 +293,10 @@ function RoomCreatePage() {
           <ChevronLeftIcon />
         </button>
       </header>
-      <p className="mt-5 px-1.5 text-[12px] leading-5 text-sub">친구에게 초대 링크를 받았다면 그 링크로 들어오면 돼요.</p>
+      <button type="button" onClick={() => navigate(`${paths.roomList()}?join=1`)} aria-haspopup="dialog" className="mt-5 flex items-start gap-3 rounded-[20px] border border-line bg-surface px-4 py-3.5 text-left">
+        <span aria-hidden="true" className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-point/10 text-point"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" /></svg></span>
+        <span className="min-w-0"><span className="block text-[13px] font-bold break-keep">초대 링크로 참여하기 ›</span><span className="mt-1 block text-[12px] leading-5 break-keep text-sub">친구에게 받은 초대 링크가 있다면 여기를 눌러 주세요.</span></span>
+      </button>
       <section className="mt-[clamp(8px,calc(16dvh_-_48px),76px)] mb-12 px-1.5">
         <h1 className="text-[20px] leading-[24px] font-bold">
           사진에 한마디씩 남기면
@@ -286,20 +306,21 @@ function RoomCreatePage() {
         <p className="mt-3 text-[11px] text-sub">링크 하나로 친구들과 함께 써요</p>
       </section>
 
-      <form onSubmit={handleSubmit} className="mt-auto">
+      <form onSubmit={handleSubmit} noValidate className="mt-auto">
         <Card className="pt-5 pb-6">
-          <Field htmlFor="room-name" label="모임 이름">
+          <Field htmlFor="room-name" label="모임 이름" error={submitted && !roomName.trim() ? '모임 이름을 입력해 주세요.' : undefined}>
             <CountedInput
               id="room-name"
               value={roomName}
+              invalid={submitted && !roomName.trim()}
               maxLength={MAX_ROOM_NAME_LENGTH}
               placeholder="경주 1박 2일"
               onChange={setRoomName}
             />
           </Field>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Field htmlFor="meeting-date" label="놀았던 날">
+          <div className="mt-4 space-y-4">
+            <Field htmlFor="meeting-date" label="모임 날짜" error={submitted && !meetingDate ? '모임 날짜를 선택해 주세요.' : undefined}>
               {/* 날짜 칸은 시안 모양으로 보여주고, 실제 입력은 위에 투명하게 깐 기본 날짜 선택기로 받는다 */}
               <div className="relative flex h-[52px] items-center justify-between rounded-full border border-line bg-surface pr-4 pl-4 text-[13px]">
                 <span className={meetingDate ? '' : 'text-muted'}>
@@ -308,6 +329,8 @@ function RoomCreatePage() {
                 <CalendarIcon />
                 <input
                   id="meeting-date"
+                  aria-invalid={submitted && !meetingDate}
+                  aria-describedby={submitted && !meetingDate ? 'meeting-date-hint meeting-date-error' : 'meeting-date-hint'}
                   type="date"
                   value={meetingDate}
                   onChange={(e) => setMeetingDate(e.target.value)}
@@ -321,11 +344,13 @@ function RoomCreatePage() {
                   className="absolute inset-0 size-full cursor-pointer opacity-0"
                 />
               </div>
+              <p id="meeting-date-hint" className="mt-2 px-3 text-[11px] leading-5 break-keep text-sub">여러 날의 모임은 첫날로 골라 주세요.</p>
             </Field>
-            <Field htmlFor="host-nickname" label="내 이름">
+            <Field htmlFor="host-nickname" label="내 이름" error={submitted && !nickname.trim() ? '이름을 입력해 주세요.' : undefined}>
               <CountedInput
                 id="host-nickname"
                 value={nickname}
+                invalid={submitted && !nickname.trim()}
                 maxLength={MAX_NICKNAME_LENGTH}
                 placeholder="서연"
                 onChange={setNickname}
@@ -333,13 +358,12 @@ function RoomCreatePage() {
             </Field>
           </div>
 
-          <p className="mt-2 px-1 text-[11px] leading-4 text-sub">사진 속 추억의 날짜예요. 여러 날이면 첫날을 선택해 주세요.</p>
 
           <div className="mt-3">
             <Field htmlFor="weave-deadline" label="두루마리 엮는 날" hint="선택 · 나중에 정해도 돼요">
               <input id="weave-deadline" type="datetime-local" value={deadline} min={toLocalDateTimeInput(new Date(now).toISOString())} max={toLocalDateTimeInput(latestDeadline(new Date(now).toISOString()).toISOString())} onChange={event => setDeadline(event.target.value)} className="h-[52px] w-full min-w-0 rounded-2xl border border-line bg-surface px-4 text-[13px]" />
             </Field>
-            {deadline && Date.parse(deadline) <= now && <p role="alert" className="mt-2 text-[11px] text-point">엮는 날은 지금보다 뒤로 정해 주세요.</p>}
+            {deadline && (Date.parse(deadline) <= now || !Number.isFinite(Date.parse(deadline)) || Date.parse(deadline) > latestDeadline(new Date(now).toISOString()).getTime()) && <p id="weave-deadline-error" role="alert" className="mt-2 text-[12px] text-red-700">엮는 날은 지금부터 1년 안의 미래 날짜와 시간으로 정해 주세요.</p>}
           </div>
 
           <div className="mt-3">
@@ -393,7 +417,7 @@ function RoomCreatePage() {
             )}
           </div>
 
-          <Button type="submit" disabled={!canSubmit} className="mt-4 w-full">
+          <Button type="submit" disabled={uploadingCover} className="mt-4 w-full">
             모임방 만들기
           </Button>
         </Card>

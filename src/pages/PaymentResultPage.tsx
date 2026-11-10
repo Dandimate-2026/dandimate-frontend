@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { clearPendingPayment, getPendingPayment, type PaymentOrder } from '../api/payments'
-import { showToast } from '../lib/share'
-import { updateRoom, getRoomInvite } from '../api/rooms'
+import { getRoomInvite } from '../api/rooms'
 import PaymentState from '../components/PaymentState'
 import { paymentErrorMessage } from '../lib/paymentErrors'
 import { clearRoomDraft, getRoomDraft } from '../lib/roomDraft'
@@ -81,10 +80,6 @@ function PaymentResultPage({ kind }: { kind: 'success' | 'fail' }) {
         })
         const draft = getRoomDraft()
         solo = draft?.capacity === 1
-        if (draft?.deadlineAt) {
-          try { await updateRoom(roomId, { deadlineAt: draft.deadlineAt }, '') }
-          catch { showToast('방은 만들었지만 엮는 날을 저장하지 못했어요. 설정에서 다시 정해 주세요') }
-        }
         clearRoomDraft()
         attachDraftExtras(roomId)
       }
