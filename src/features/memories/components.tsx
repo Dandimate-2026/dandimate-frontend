@@ -1,7 +1,6 @@
 import { prepareKakaoShare } from '../../lib/kakaoShare'
 import { shareRoomContent, type RoomShareContext } from '../../lib/share'
 import { siteUrl } from '../../lib/siteUrl'
-import SwipeActions from '../../components/SwipeActions'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Card from '../../components/Card'
 import { ChevronLeftIcon, ImagePlaceholderIcon, PlayIcon } from '../../components/entry/EntryIcons'
@@ -33,16 +32,17 @@ export function MemoryCard({ children, className = '' }: { children: ReactNode; 
 }
 
 export function PhotoSlot({ label, date, src, icon = false, onShare, onDelete }: { label: string; date?: string; src?: string; icon?: boolean; onShare?: () => void; onDelete?: () => void }) {
-  return <SwipeActions share={onShare ? { label: '공유하기', onClick: onShare } : undefined} remove={onDelete ? { label: '삭제하기', onClick: onDelete, danger: true } : undefined}>
+  return <div>
     <div className={`memory-photo ${src ? 'has-photo' : ''}`}>
       {src ? <ViewablePhoto src={src} alt={label} /> : <div className="memory-photo-label">{icon && <ImagePlaceholderIcon />}<span>사진 · {label}</span></div>}
       {date && <span className="memory-photo-date">{date}</span>}
     </div>
-  </SwipeActions>
+    {(onShare || onDelete) && <div className="mt-1 flex justify-end gap-3">{onShare && <button type="button" onClick={onShare} className="min-h-11 px-2 text-[12px] font-semibold text-sub">공유하기</button>}{onDelete && <button type="button" onClick={onDelete} className="min-h-11 px-2 text-[12px] font-semibold text-red-700">사진 삭제</button>}</div>}
+  </div>
 }
 
 export function TextModeToggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
-  return <label className="memory-text-mode"><span>지금 소리를 못 들어요 &gt; 글로 보기</span><input type="checkbox" role="switch" checked={value} onChange={(event) => onChange(event.target.checked)} /><span className="memory-switch" aria-hidden="true" /></label>
+  return <label className="memory-text-mode"><span>소리 대신 글로 보기</span><input type="checkbox" role="switch" checked={value} onChange={(event) => onChange(event.target.checked)} /><span className="memory-switch" aria-hidden="true" /></label>
 }
 
 export function StoryCard({ story, mine = false, textOnly = false, mineLabel = '내 덧붙임' }: { story: MemoryStory; mine?: boolean; textOnly?: boolean; mineLabel?: string }) {

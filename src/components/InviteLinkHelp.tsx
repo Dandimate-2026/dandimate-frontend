@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { SITE_ORIGIN } from '../lib/siteUrl'
 
@@ -20,17 +20,28 @@ export function InviteLinkHelp({ invitePath }: { invitePath?: string }) {
   </div>
 }
 
-export function JoinByInviteLink() {
+export function JoinByInviteLink({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
-  return <details className="group my-4 overflow-hidden rounded-[20px] border border-line bg-surface text-[13px]">
-    <summary className="flex min-h-[76px] cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-point/10 text-point" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m10 13 4-4M8 16l-1 1a4.2 4.2 0 0 1-6-6l4-4a4.2 4.2 0 0 1 6 0m2 1 1-1a4.2 4.2 0 0 1 6 6l-4 4a4.2 4.2 0 0 1-6 0" /></svg></span>
-      <span className="min-w-0 flex-1"><span className="block font-semibold">초대 링크로 참여</span><span className="mt-1 block text-[11px] leading-4 text-sub">친구가 보내준 모임방에 함께해요</span></span>
-      <svg className="shrink-0 text-sub transition-transform group-open:rotate-180" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-    </summary>
-    <form className="border-t border-line p-4" onSubmit={event => {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const element = dialog.current
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    element?.showModal()
+    element?.querySelector('input')?.focus()
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { element?.close(); document.body.style.overflow = overflow; previous?.focus() }
+  }, [])
+  return <dialog ref={dialog} aria-labelledby="join-invite-title" onCancel={event => { event.preventDefault(); onClose() }} onClick={event => {
+    if (event.target !== event.currentTarget) return
+    const box = event.currentTarget.getBoundingClientRect()
+    if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) onClose()
+  }} className="fixed inset-0 m-auto w-[calc(100%_-_32px)] max-w-sm max-h-[calc(100dvh-32px)] overflow-y-auto rounded-3xl border-0 bg-surface p-5 text-[13px] text-ink shadow-xl backdrop:bg-ink/35">
+    <div className="flex items-center justify-between gap-3"><h2 id="join-invite-title" className="text-[18px] font-bold">초대 링크로 참여</h2><button type="button" onClick={onClose} aria-label="닫기" className="flex size-11 shrink-0 items-center justify-center rounded-full text-xl">×</button></div>
+    <p className="mt-1 text-[12px] text-sub">친구가 보내준 모임방에 함께해요</p>
+    <form className="mt-5" onSubmit={event => {
       event.preventDefault()
       try {
         const url = new URL(value.trim())
@@ -46,5 +57,5 @@ export function JoinByInviteLink() {
       {error && <p role="alert" className="mt-2 text-point">{error}</p>}
       <button type="submit" disabled={!value.trim()} className="mt-3 min-h-11 w-full rounded-full bg-ink font-semibold text-surface disabled:opacity-40">초대 확인하기</button>
     </form>
-  </details>
+  </dialog>
 }

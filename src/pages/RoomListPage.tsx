@@ -1,9 +1,10 @@
+import { ApiError } from '../api/client'
 import SwipeActions from '../components/SwipeActions'
 import { useInviteShare } from '../hooks/useInviteShare'
 import { useRoomInvite } from '../hooks/useRoomInvite'
 import { siteUrl } from '../lib/siteUrl'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { getMockRole, USE_MOCK } from '../api/mock'
 import { deleteRoom, leaveRoom, getMyRooms, getRoomHome } from '../api/rooms'
 import type { RoomHome, RoomPlanType, RoomStatus } from '../api/types'
@@ -49,15 +50,14 @@ const PLAN_CLASS: Record<RoomPlanType, string> = {
 const MAX_LIVE_ROOMS = 5
 const ROOM_PAGE_SIZE = 3
 
-function RoomListContinuation({ total, visible, onMore }: { total: number; visible: number; onMore: () => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!ref.current || visible >= total) return
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { observer.disconnect(); onMore() } }, { rootMargin: '80px' })
-    observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [total, visible, onMore])
-  return visible < total ? <div ref={ref} className="h-8" aria-hidden="true" /> : null
+function RoomListContinuation({ total, visible, onMore }: { total: number; visible: number; onMore: (step: number) => void }) {
+  const page = Math.max(1, Math.ceil(visible / ROOM_PAGE_SIZE))
+  const pages = Math.ceil(total / ROOM_PAGE_SIZE)
+  return pages > 1 ? <nav aria-label="모임방 페이지" className="mt-4 flex items-center justify-center gap-4">
+    <button type="button" disabled={page === 1} onClick={() => onMore(-(ROOM_PAGE_SIZE))} className="min-h-11 rounded-full border border-line bg-surface px-4 text-[12px] disabled:opacity-35">이전</button>
+    <span className="text-[12px] text-sub" aria-live="polite">{page} / {pages}</span>
+    <button type="button" disabled={page >= pages} onClick={() => onMore(ROOM_PAGE_SIZE)} className="min-h-11 rounded-full border border-line bg-surface px-4 text-[12px] disabled:opacity-35">다음</button>
+  </nav> : null
 }
 
 /** 화면에 그리지 않고, 방 하나의 실시간 이벤트(알림·방장 변경·사진 등)를 받으면 그 방만 다시 불러오게 한다 */
@@ -136,7 +136,7 @@ function RoomCard({ home, meta, reviewerDemo, onRemoved }: { home: RoomHome; met
       <Link
         to={paths.roomHome(room.id)}
         state={{ ...(reviewerDemo ? { reviewerDemo } : {}), returnTargets: { [paths.roomList()]: window.history.state?.idx } }}
-        className={`relative flex gap-[7px] bg-surface px-3 pt-[14px] pb-[13px] active:opacity-80 ${reviewerDemo ? '' : 'rounded-[20px] border border-line'}`}
+        className="relative flex gap-[7px] rounded-[20px] border border-line bg-surface px-3 pt-[14px] pb-[13px]"
       >
         {/* 안 읽은 방 알림 (친구의 플랜 요청·질문 등). 완성된 방은 아래 "새 답가"로 따로 보여준다 */}
         {home.unreadCount > 0 && room.status !== 'GROWING' && (
@@ -179,9 +179,9 @@ function RoomCard({ home, meta, reviewerDemo, onRemoved }: { home: RoomHome; met
         </div>
       </Link>
       </SwipeActions>
-      {confirming && <dialog ref={dialog} onCancel={event => { event.preventDefault(); if (!deleting) setConfirming(false) }} aria-labelledby={`remove-room-${room.id}`} className="fixed inset-0 m-auto w-[calc(100%_-_40px)] max-w-sm rounded-3xl border-0 bg-surface p-6 text-ink shadow-xl backdrop:bg-black/40">
+      {confirming && <dialog ref={dialog} onCancel={event => { event.preventDefault(); if (!deleting) setConfirming(false) }} aria-labelledby={`remove-room-${room.id}`} className="fixed inset-0 m-auto w-[calc(100%_-_32px)] max-h-[calc(100dvh-32px)] max-w-sm overflow-y-auto rounded-3xl border-0 bg-surface p-6 text-ink shadow-xl backdrop:bg-black/40">
         <h2 id={`remove-room-${room.id}`} className="text-[18px] font-bold">{isHost ? '모임방을 삭제할까요?' : '모임방에서 나갈까요?'}</h2>
-        <p className="mt-3 break-words text-[13px] font-semibold">{room.name}</p>
+        <p className="mt-3 break-words text-[13px] font-semibold [overflow-wrap:anywhere]">{room.name}</p>
         <p className="mt-2 text-[13px] leading-6 text-sub">{isHost ? '모든 멤버의 사진과 이야기가 함께 삭제돼요. 삭제한 모임방은 되돌릴 수 없어요.' : '내가 남긴 사진과 이야기는 모임방에 남아요.'}</p>
         {deleteError && <p role="alert" className="mt-3 text-[12px] text-point">{deleteError}</p>}
         <div className="mt-5 grid grid-cols-2 gap-2"><button type="button" autoFocus disabled={deleting} onClick={() => setConfirming(false)} className="min-h-12 rounded-full border border-line text-[13px] font-semibold">취소</button><button type="button" disabled={deleting} onClick={() => void remove()} className="min-h-12 rounded-full bg-red-600 text-[13px] font-semibold text-white">{deleting ? '처리 중…' : isHost ? '삭제하기' : '나가기'}</button></div>
@@ -195,6 +195,7 @@ function RoomListPage() {
   const navigate = useNavigate()
   const [homes, setHomes] = useState<RoomHome[] | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [listError, setListError] = useState('')
   const [ongoingVisible, setOngoingVisible] = useState(ROOM_PAGE_SIZE)
   const [doneVisible, setDoneVisible] = useState(ROOM_PAGE_SIZE)
   const [roomQuery, setRoomQuery] = useState('')
@@ -206,6 +207,14 @@ function RoomListPage() {
   const [listVersion, setListVersion] = useState(0)
   // 두루 챗봇 바텀시트. 내려도 대화는 chatStore에 남는다
   // 상점(크레딧 구매)에서 돌아오면 챗봇을 다시 열어 이어서 물어볼 수 있게 한다
+  const [searchParams, setSearchParams] = useSearchParams()
+  const inviteOpen = searchParams.get('join') === '1'
+  const setInviteOpen = (open: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (open) next.set('join', '1')
+    else next.delete('join')
+    setSearchParams(next, { replace: true })
+  }
   const location = useLocation()
   const [chatOpen, setChatOpen] = useState(() => Boolean((location.state as { openChat?: boolean } | null)?.openChat))
   const [demo, setDemo] = useState<ReviewerDemo | null>(null)
@@ -262,26 +271,29 @@ function RoomListPage() {
     // 상태 조회는 진입·복귀·재시도 때만 수행한다. 스위치 변경은 PUT 성공 결과를 적용한다.
   }, [demoRetry])
   useEffect(() => {
-    // 로그인한 계정의 방 목록을 받아 방마다 홈 정보를 불러온다. 지워졌거나 더 들어갈 수 없는 방은 뺀다
-    // (mock 모드에서는 계정이 없어서 이 기기에 저장된 방 목록을 쓴다)
-    // 다른 앱·탭에 갔다 오면 다시 불러와서 방장 변경·플랜 변경 등이 바로 보이게 한다
-    const load = () => getMyRooms()
-      .then((rooms) => {
-        // 다른 기기에서 들어간 방도 이 기기에서 열 수 있게 방 이름을 기억해 둔다. 초대 토큰은 그대로 둔다
-        rooms?.forEach((r) =>
-          saveRoomSession(r.roomId, { memberAccessToken: '', ...getRoomSession(r.roomId), roomName: r.name }),
-        )
-        const ids = rooms ? rooms.map((r) => r.roomId) : listSavedRoomIds()
-        return Promise.allSettled(ids.map((id) => getRoomHome(id, '')))
-      })
-      .then((results) => setHomes(results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))))
-      .catch(() => setHomes((prev) => prev ?? []))
-    load()
-    const handleVisible = () => {
-      if (document.visibilityState === 'visible') load()
+    let active = true
+    let sequence = 0
+    const load = async () => {
+      const requestId = ++sequence
+      try {
+        const rooms = await getMyRooms()
+        if (!active || requestId !== sequence) return
+        rooms?.forEach(room => saveRoomSession(room.roomId, { memberAccessToken: '', ...getRoomSession(room.roomId), roomName: room.name }))
+        const ids = rooms ? rooms.map(room => room.roomId) : listSavedRoomIds()
+        const results = await Promise.allSettled(ids.map(id => getRoomHome(id, '')))
+        if (!active || requestId !== sequence) return
+        const transient = (result: PromiseSettledResult<RoomHome>) => result.status === 'rejected' && !(result.reason instanceof ApiError && [403, 404, 410].includes(result.reason.status))
+        const incomplete = results.some(transient)
+        setHomes(previous => results.flatMap((result, index) => result.status === 'fulfilled' ? [result.value] : transient(result) ? previous?.filter(home => home.room.id === ids[index]) ?? [] : []))
+        setListError(incomplete ? '일부 모임방을 불러오지 못했어요. 잠시 후 다시 확인해 주세요.' : '')
+      } catch {
+        if (active && requestId === sequence) setListError('모임방 목록을 불러오지 못했어요. 다시 시도해 주세요.')
+      }
     }
+    void load()
+    const handleVisible = () => { if (document.visibilityState === 'visible') void load() }
     document.addEventListener('visibilitychange', handleVisible)
-    return () => document.removeEventListener('visibilitychange', handleVisible)
+    return () => { active = false; sequence++; document.removeEventListener('visibilitychange', handleVisible) }
   }, [listVersion])
 
   // 실시간 이벤트가 온 방 하나만 다시 불러와 목록에서 바꿔 끼운다
@@ -309,7 +321,7 @@ function RoomListPage() {
     }
   }
 
-  if (!homes) return <main className="flex-1 bg-bg" aria-busy="true" />
+  if (!homes) return listError ? <main className="min-h-dvh bg-bg px-5 pt-16 text-ink"><h1 className="text-xl font-bold">내 모임방</h1><p role="alert" className="mt-5 text-[13px] text-point">{listError}</p><button type="button" onClick={() => setListVersion(value => value + 1)} className="mt-4 min-h-11 rounded-full bg-ink px-5 text-[13px] text-surface">다시 불러오기</button></main> : <main className="flex-1 bg-bg" aria-busy="true" />
 
   const demoIds = new Set(demo ? [demo.hostRoomId, demo.memberRoomId, demo.completedRoomId] : [])
   const regularHomes = homes.filter((home) => !demoIds.has(home.room.id) && !home.room.name.startsWith('[심사용]'))
@@ -326,6 +338,8 @@ function RoomListPage() {
   const done = matchingHomes
     .filter((h) => h.room.status === 'GROWING')
     .sort((a, b) => (b.room.meetingDate ?? '').localeCompare(a.room.meetingDate ?? ''))
+  const ongoingEnd = Math.min(ongoingVisible, Math.max(ROOM_PAGE_SIZE, Math.ceil(ongoing.length / ROOM_PAGE_SIZE) * ROOM_PAGE_SIZE))
+  const doneEnd = Math.min(doneVisible, Math.max(ROOM_PAGE_SIZE, Math.ceil(done.length / ROOM_PAGE_SIZE) * ROOM_PAGE_SIZE))
 
   return (
     <main className={`flex min-h-dvh flex-col bg-bg text-ink ${BOTTOM_TABS_SPACE}`}>
@@ -362,10 +376,14 @@ function RoomListPage() {
 
         <div className="mt-[clamp(28px,6dvh,48px)] flex flex-wrap items-center justify-between gap-3 px-1.5">
           <h1 className="text-[26px] leading-8 font-bold">내 모임방</h1>
-          <button type="button" onClick={() => navigate(paths.roomCreate())} className="flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface px-3 text-[12px] font-semibold"><span aria-hidden="true">＋</span> 새 모임방</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => navigate(paths.roomCreate())} className="flex min-h-11 items-center gap-1 rounded-full bg-ink px-3 text-[12px] font-semibold text-surface"><span aria-hidden="true">＋</span> 새 모임방</button>
+            <button type="button" aria-haspopup="dialog" onClick={() => setInviteOpen(true)} className="min-h-11 rounded-full border border-line bg-surface px-3 text-[12px] font-semibold">초대 링크로 참여</button>
+          </div>
 
         </div>
-        <JoinByInviteLink />
+        {listError && <div className="mt-4 rounded-2xl border border-line bg-surface p-4"><p role="alert" className="text-[13px] text-point">{listError}</p><button type="button" onClick={() => setListVersion(value => value + 1)} className="mt-2 min-h-11 text-[12px] font-semibold">다시 불러오기</button></div>}
+        {inviteOpen && <JoinByInviteLink onClose={() => setInviteOpen(false)} />}
         <div className="relative mt-5">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-sub" aria-hidden="true">
             <circle cx="10.5" cy="10.5" r="6.5" />
@@ -387,11 +405,11 @@ function RoomListPage() {
         </div>}
         {reviewerDemoEnabled && demoOngoing.length > 0 && <section aria-label="진행 중인 데모용 모임방" className="mt-5">
           <h2 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 모임방</h2>
-          <ul className="overflow-hidden rounded-[20px] border-2 border-ink/35 bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoOngoing.map((home) => <RoomCard onRemoved={handleRoomRemoved} key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
+          <ul className="flex flex-col gap-[11px]">{demoOngoing.map((home) => <RoomCard onRemoved={handleRoomRemoved} key={home.room.id} home={home} meta={ongoingMeta(home)} reviewerDemo={demo} />)}</ul>
         </section>}
 
         {roomQuery && matchingHomes.length === 0 && <p className="px-2 py-6 text-center text-[13px] text-sub">일치하는 모임방이 없어요.</p>}
-        {regularHomes.length === 0 && !reviewerDemoEnabled ? (
+        {regularHomes.length === 0 && !reviewerDemoEnabled && !listError ? (
           // 처음 온 사용자: 방이 하나도 없을 때 바로 방 만들기로 보내지 않고 무엇을 하는 곳인지 먼저 보여준다
           <section className="px-1.5">
             <div className="mt-6 flex flex-col items-center rounded-[24px] border border-dashed border-line bg-surface px-6 pt-9 pb-7 text-center">
@@ -420,12 +438,12 @@ function RoomListPage() {
           <section className="mt-5">
           {ongoing.length > 0 && (
             <ul className="mt-[15px] flex flex-col gap-[11px]">
-              {ongoing.slice(0, ongoingVisible).map((h) => (
+              {ongoing.slice(ongoingEnd - ROOM_PAGE_SIZE, ongoingEnd).map((h) => (
                 <RoomCard onRemoved={handleRoomRemoved} key={h.room.id} home={h} meta={ongoingMeta(h)} />
               ))}
             </ul>
           )}
-          <RoomListContinuation total={ongoing.length} visible={ongoingVisible} onMore={() => setOngoingVisible((count) => count + ROOM_PAGE_SIZE)} />
+          <RoomListContinuation total={ongoing.length} visible={ongoingEnd} onMore={(step) => setOngoingVisible(ongoingEnd + step)} />
         </section>
         )}
 
@@ -434,14 +452,14 @@ function RoomListPage() {
             <h2 className="px-1.5 text-[11px] text-sub">완성된 두루마리</h2>
             {reviewerDemoEnabled && demoDone.length > 0 && <section aria-label="완성된 데모용 모임방" className="mt-3">
               <h3 className="mb-2 ml-3 text-[11px] font-semibold text-sub">데모용 두루마리</h3>
-              <ul className="overflow-hidden rounded-[20px] border-2 border-ink/35 bg-surface [&>li+li]:border-t [&>li+li]:border-line">{demoDone.map((home) => <RoomCard onRemoved={handleRoomRemoved} key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
+              <ul className="flex flex-col gap-[11px]">{demoDone.map((home) => <RoomCard onRemoved={handleRoomRemoved} key={home.room.id} home={home} meta={doneMeta(home)} reviewerDemo={demo} />)}</ul>
             </section>}
             <ul className="mt-3 flex flex-col gap-[11px]">
-              {done.slice(0, doneVisible).map((h) => (
+              {done.slice(doneEnd - ROOM_PAGE_SIZE, doneEnd).map((h) => (
                 <RoomCard onRemoved={handleRoomRemoved} key={h.room.id} home={h} meta={doneMeta(h)} />
               ))}
             </ul>
-            <RoomListContinuation total={done.length} visible={doneVisible} onMore={() => setDoneVisible((count) => count + ROOM_PAGE_SIZE)} />
+            <RoomListContinuation total={done.length} visible={doneEnd} onMore={(step) => setDoneVisible(doneEnd + step)} />
           </section>
         )}
       </div>

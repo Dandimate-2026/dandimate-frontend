@@ -271,7 +271,8 @@ function PhotoUploadPage() {
               className="flex aspect-[101/136] w-full flex-col items-center justify-center gap-2 rounded-xl bg-line/60 text-[11px] text-sub"
             >
               <LockIcon />
-              더 올리려면
+              <span>사진을 더 올리고 싶나요?</span>
+              <span className="font-semibold text-ink underline underline-offset-2">플랜 한도 보기 ›</span>
             </button>
           </li>
         )}
@@ -290,11 +291,11 @@ function PhotoUploadPage() {
           <p className="text-[11px] text-point">{error ?? photoPlan.notice}</p>
         ) : (
           <p className="text-[11px] text-sub">
-            {dragId ? '원하는 자리에 놓아주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
+            {maxPhotos === 0 ? '잠긴 칸을 눌러 사진 한도를 확인해 보세요' : dragId ? '원하는 자리에 놓아주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
           </p>
         )}
         <p className="text-[15px] font-semibold">
-          {photos.length} / {maxPhotos}
+          {maxPhotos === 0 ? `${quota?.myPhotoCount ?? home?.me.photoCount ?? 0} / ${perMember}장` : `${photos.length} / ${maxPhotos}`}
         </p>
       </div>
 
@@ -306,7 +307,7 @@ function PhotoUploadPage() {
           className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-line/60 text-[12px] text-sub active:opacity-80"
         >
           <LockIcon />
-          이 방은 총 {perMember}장까지예요 · 플랜 한도 보기
+          한 사람당 {perMember}장까지예요 · 플랜 한도 보기
         </button>
       )}
 
