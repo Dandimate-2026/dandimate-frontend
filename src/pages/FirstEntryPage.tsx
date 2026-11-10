@@ -8,12 +8,14 @@ import { setPhotoLocation, type Place } from '../api/places'
 import { readPhotoDraft, removePhotoDraft, saveRecordingDraft } from '../lib/photoDraft'
 import { readDraft, writeDraft } from '../lib/entryDraft'
 import AnswerForm from '../components/entry/AnswerForm'
-import { ChevronLeftIcon, ImagePlaceholderIcon } from '../components/entry/EntryIcons'
+import { ChevronLeftIcon, ImagePlaceholderIcon, PlayIcon, RetryIcon, StopIcon } from '../components/entry/EntryIcons'
+import Button from '../components/Button'
+import { useAudioPlayback } from '../hooks/useAudioPlayback'
 import { RecordButton, WaveProgress } from '../components/entry/VoiceControls'
 import PlaceSheet from '../components/PlaceSheet'
 import { VoiceLimitSheet } from '../components/PlanLimitSheet'
 import { formatVoiceLimit, isLimitError, usePlanLimitAction, useRoomHomeForQuota, voiceMaxMs } from '../hooks/useRoomQuota'
-import { useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
+import { formatDuration, useVoiceRecorder, type Recording } from '../hooks/useVoiceRecorder'
 import { addRecentPlace, getRecentPlaces } from '../lib/roomExtras'
 import { getRoomSession } from '../lib/session'
 import { prepareImage } from '../lib/image'
@@ -82,6 +84,7 @@ function FirstEntryPage() {
   useEffect(() => () => { if (localRecording) URL.revokeObjectURL(localRecording.audioUrl) }, [localRecording])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const playback = useAudioPlayback(step === 'recorded' && !saving ? localRecording?.audioUrl : null)
   // 방 전체 말하기 시간을 다 썼을 때 띄우는 시트
   const [voiceLimitOpen, setVoiceLimitOpen] = useState(false)
   // 사진마다 먼저 장소를 묻는다. 고른 장소 또는 'skipped'(건너뜀). 아직 안 물었으면 없음
@@ -359,10 +362,16 @@ function FirstEntryPage() {
       ) : step === 'recorded' && localRecording ? (
         <section className="flex flex-1 flex-col pt-6">
           <h2 className="text-[17px] font-bold">녹음을 확인하고 올려 주세요</h2>
-          <audio controls src={localRecording.audioUrl} className="mt-4 w-full" aria-label="올리기 전 내 녹음 확인" />
+          <p className="mt-3 text-[12px] text-sub">녹음 {formatDuration(localRecording.durationMs)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Button variant="outline" disabled={saving} onClick={playback.toggle} aria-pressed={playback.playing} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full px-3 text-[13px]">
+              {playback.playing ? <StopIcon /> : <PlayIcon />}{playback.playing ? '정지' : playback.paused ? '이어 듣기' : '다시 듣기'}
+            </Button>
+            <Button variant="outline" disabled={saving} onClick={() => { playback.reset(); void saveRecordingDraft(roomId, photo.photoId); setLocalRecording(null); setStep('idle') }} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full px-3 text-[13px]"><RetryIcon />다시 녹음</Button>
+          </div>
+          {playback.error && <p role="alert" className="mt-2 text-[12px] text-point">녹음을 재생하지 못했어요. 다시 듣기를 눌러 주세요.</p>}
           <p className="mt-3 text-[12px] leading-5 text-sub">확정하면 사진과 녹음을 올리고, 받아 적은 글을 첫 한마디로 저장해요.</p>
           {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
-          <button type="button" disabled={saving} onClick={() => { void saveRecordingDraft(roomId, photo.photoId); setLocalRecording(null); setStep('idle') }} className="mt-4 min-h-11 text-[13px] text-sub">다시 녹음하기</button>
           <button type="button" disabled={saving} onClick={() => { void saveRecordingDraft(roomId, photo.photoId); setLocalRecording(null); setStep('text') }} className="min-h-11 text-[13px] text-point">글로 남기기</button>
           <button type="button" disabled={saving} onClick={() => void handleVoiceConfirm()} className="mt-auto min-h-[52px] rounded-full bg-ink px-4 text-[15px] font-semibold text-surface disabled:opacity-50">{saving ? '사진과 녹음 저장 중…' : '확정하고 사진 올리기'}</button>
         </section>
