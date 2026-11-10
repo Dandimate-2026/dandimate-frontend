@@ -69,10 +69,6 @@ export async function refreshChatQuota() {
   }
 }
 
-export function setChatQuota(quota: ChatQuota) {
-  setState({ quota })
-}
-
 export async function sendChat(text: string) {
   const message = text.trim()
   if (!message || state.sending || !canAsk(state.quota)) return

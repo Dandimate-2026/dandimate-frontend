@@ -66,7 +66,6 @@ export const PLANS: Plan[] = [
   },
 ]
 
-export const FREE_PLAN = PLANS[0]
 export const RECOMMENDED_PLAN_ID: PlanId = 'lite'
 
 export function findPlan(id: string | null): Plan | undefined {

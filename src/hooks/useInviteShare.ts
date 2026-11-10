@@ -3,8 +3,6 @@ import { roomShareCopy, shareRoomContent, showToast, type RoomShareContext } fro
 import { prepareKakaoShare } from '../lib/kakaoShare'
 import { inviteUrl } from '../lib/session'
 
-export const DEFAULT_SHARE_MESSAGE = '사진과 이야기로\n우리만의 두루마리를 채워요.'
-
 /** Explicit copy always copies only the URL. Sharing includes context and the optional message. */
 export function useInviteShare(inviteToken: string, roomName = '', context: RoomShareContext = 'invite', targetUrl?: string) {
   const [copied, setCopied] = useState(false)
