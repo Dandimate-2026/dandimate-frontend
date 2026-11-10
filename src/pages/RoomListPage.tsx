@@ -136,7 +136,7 @@ function RoomCard({ home, meta, reviewerDemo, onRemoved }: { home: RoomHome; met
       <Link
         to={paths.roomHome(room.id)}
         state={{ ...(reviewerDemo ? { reviewerDemo } : {}), returnTargets: { [paths.roomList()]: window.history.state?.idx } }}
-        className="relative flex gap-[7px] rounded-[20px] border border-line bg-surface px-3 pt-[14px] pb-[13px]"
+        className={`relative flex gap-[7px] rounded-[20px] ${reviewerDemo ? 'border-2' : 'border'} border-line bg-surface px-3 pt-[14px] pb-[13px]`}
       >
         {/* 안 읽은 방 알림 (친구의 플랜 요청·질문 등). 완성된 방은 아래 "새 답가"로 따로 보여준다 */}
         {home.unreadCount > 0 && room.status !== 'GROWING' && (
