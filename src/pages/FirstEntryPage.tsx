@@ -6,7 +6,7 @@ import { deletePhoto, uploadPhotos } from '../api/photos'
 import { setPhotoLocation, type Place } from '../api/places'
 import { readPhotoDraft, removePhotoDraft, saveRecordingDraft } from '../lib/photoDraft'
 import { readDraft, writeDraft } from '../lib/entryDraft'
-import AnswerForm from '../components/entry/AnswerForm'
+import AnswerForm, { type VoiceDraft } from '../components/entry/AnswerForm'
 import { ChevronLeftIcon, ImagePlaceholderIcon, PlayIcon, RetryIcon, StopIcon } from '../components/entry/EntryIcons'
 import Button from '../components/Button'
 import { useAudioPlayback } from '../hooks/useAudioPlayback'
@@ -78,6 +78,8 @@ function FirstEntryPage() {
   const [index, setIndex] = useState(0)
   const [step, setStep] = useState<Step>('idle')
   const [transcript, setTranscript] = useState('')
+  const [voiceDraft, setVoiceDraft] = useState<Omit<VoiceDraft, 'audioUrl'> | null>(null)
+  const [transcribing, setTranscribing] = useState(false)
   const [localRecording, setLocalRecording] = useState<(Recording & { audioUrl: string }) | null>(null)
   useEffect(() => () => { if (localRecording) URL.revokeObjectURL(localRecording.audioUrl) }, [localRecording])
   const [error, setError] = useState<string | null>(null)
@@ -126,6 +128,7 @@ function FirstEntryPage() {
     void saveRecordingDraft(roomId, photo.photoId, { blob, durationMs })
     setLocalRecording({ blob, durationMs, audioUrl: URL.createObjectURL(blob) })
     setStep('recorded')
+    await prepareTranscription({ blob, durationMs })
   }
 
   const recorder = useVoiceRecorder({ maxMs: maxVoiceMs, onFinish: handleRecorded })
@@ -153,6 +156,7 @@ function FirstEntryPage() {
     setConfirmSkipPlace(false)
     setStep('idle')
     setTranscript('')
+    setVoiceDraft(null)
     setLocalRecording(null)
     setError(null)
   }
@@ -200,7 +204,9 @@ function FirstEntryPage() {
       await createEntry(
         photoId,
         session.memberAccessToken,
-        { kind: 'FIRST', inputMode: 'TEXT', transcript: text },
+        voiceDraft
+          ? { kind: 'FIRST', inputMode: 'VOICE', transcriptionId: voiceDraft.transcriptionId, transcript: text }
+          : { kind: 'FIRST', inputMode: 'TEXT', transcript: text },
       )
       committed.current.add(uploaded.current.get(photo.photoId) ?? photo.photoId)
       goNext()
@@ -212,27 +218,31 @@ function FirstEntryPage() {
     }
   }
 
-  const handleVoiceConfirm = async () => {
-    if (!localRecording || writeLock.current) return
+  async function prepareTranscription(recording: Recording) {
+    if (writeLock.current || !session) return
     writeLock.current = true
     setSaving(true)
+    setTranscribing(true)
     setError(null)
+    setVoiceDraft(null)
     try {
       const photoId = await ensureUploaded(photo)
       const selected = places[index]
       if (selected && selected !== 'skipped') await setPhotoLocation(photoId, selected)
       if (!alive.current) return
-      const result = await transcribe(photoId, session.memberAccessToken, localRecording.blob)
+      const result = await transcribe(photoId, session.memberAccessToken, recording.blob)
       if (!alive.current) return
-      await createEntry(photoId, session.memberAccessToken, { kind: 'FIRST', inputMode: 'VOICE', transcriptionId: result.transcriptionId, transcript: result.transcript })
-      committed.current.add(photoId)
-      goNext()
+      if (!result.transcript?.trim()) throw new Error('말소리를 인식하지 못했어요. 다시 녹음하거나 글로 남겨 주세요.')
+      setTranscript(result.transcript)
+      setVoiceDraft({ transcriptionId: result.transcriptionId, durationMs: recording.durationMs })
+      setStep('text')
     } catch (cause) {
       if (isLimitError(cause)) setVoiceLimitOpen(true)
       else setError(cause instanceof Error ? cause.message : '사진과 녹음을 저장하지 못했어요. 다시 시도해 주세요')
     } finally {
       writeLock.current = false
       setSaving(false)
+      setTranscribing(false)
     }
   }
 
@@ -359,7 +369,7 @@ function FirstEntryPage() {
         </section>
       ) : step === 'recorded' && localRecording ? (
         <section className="flex flex-1 flex-col pt-6">
-          <h2 className="text-[17px] font-bold">녹음을 확인하고 올려 주세요</h2>
+          <h2 className="text-[17px] font-bold">녹음을 글로 옮겨 주세요</h2>
           <p className="mt-3 text-[12px] text-sub">녹음 {formatDuration(localRecording.durationMs)}</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <Button variant="outline" disabled={saving} onClick={playback.toggle} aria-pressed={playback.playing} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full px-3 text-[13px]">
@@ -368,10 +378,10 @@ function FirstEntryPage() {
             <Button variant="outline" disabled={saving} onClick={() => { playback.reset(); void saveRecordingDraft(roomId, photo.photoId); setLocalRecording(null); setStep('idle') }} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full px-3 text-[13px]"><RetryIcon />다시 녹음</Button>
           </div>
           {playback.error && <p role="alert" className="mt-2 text-[12px] text-point">녹음을 재생하지 못했어요. 다시 듣기를 눌러 주세요.</p>}
-          <p className="mt-3 text-[12px] leading-5 text-sub">확정하면 사진과 녹음을 올리고, 받아 적은 글을 첫 한마디로 저장해요.</p>
+          <p role="status" className="mt-3 text-[12px] leading-5 text-sub">{transcribing ? '녹음을 글로 옮기고 있어요…' : '받아 적은 글을 확인하고 고친 뒤 저장할 수 있어요.'}</p>
           {error && <p role="alert" className="mt-3 text-[12px] text-point">{error}</p>}
           <button type="button" disabled={saving} onClick={() => { void saveRecordingDraft(roomId, photo.photoId); setLocalRecording(null); setStep('text') }} className="min-h-11 text-[13px] text-point">글로 남기기</button>
-          <button type="button" disabled={saving} onClick={() => void handleVoiceConfirm()} className="mt-auto min-h-[52px] rounded-full bg-ink px-4 text-[15px] font-semibold text-surface disabled:opacity-50">{saving ? '사진과 녹음 저장 중…' : '확정하고 사진 올리기'}</button>
+          <button type="button" disabled={saving} onClick={() => void prepareTranscription(localRecording)} className="mt-auto min-h-[52px] rounded-full bg-ink px-4 text-[15px] font-semibold text-surface disabled:opacity-50">{transcribing ? '녹음을 글로 옮기는 중…' : '녹음을 글로 변환하기'}</button>
         </section>
       ) : showAnswerCard ? (
         <section className="flex flex-1 flex-col pt-8">
@@ -379,13 +389,18 @@ function FirstEntryPage() {
           <AnswerForm
             transcript={transcript}
             maxLength={MAX_TEXT_LENGTH}
-            voice={null}
+            voice={voiceDraft && localRecording ? { ...voiceDraft, audioUrl: localRecording.audioUrl } : null}
             error={error}
             saving={saving}
             confirmLabel={isLast ? '확정하고 마치기' : '확정하고 다음 사진'}
             onChange={text => { setTranscript(text); writeDraft(draftKey, text) }}
             onRetry={() => {
+              if (saving) return
+              setVoiceDraft(null)
+              setLocalRecording(null)
+              void saveRecordingDraft(roomId, photo.photoId)
               setTranscript('')
+              writeDraft(draftKey, '')
               setError(null)
               setStep('idle')
             }}
