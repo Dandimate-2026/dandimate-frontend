@@ -269,11 +269,10 @@ function PhotoUploadPage() {
               type="button"
               onClick={() => setLimitOpen(true)}
               aria-label="사진 한도 안내 보기"
-              className="flex aspect-[101/136] w-full flex-col items-center justify-center gap-2 rounded-xl bg-line/60 text-[11px] text-sub"
+              className="flex aspect-[101/136] w-full flex-col items-center justify-center gap-2 rounded-xl bg-line/60 px-2 text-center text-[11px] leading-5 break-keep text-sub"
             >
               <LockIcon />
-              <span>사진을 더 올리고 싶나요?</span>
-              <span className="font-semibold text-ink underline underline-offset-2">플랜 한도 보기 ›</span>
+              <span className="font-semibold text-ink">더 올리기</span>
             </button>
           </li>
         )}
@@ -292,7 +291,7 @@ function PhotoUploadPage() {
           <p className="text-[11px] text-point">{error ?? photoPlan.notice}</p>
         ) : (
           <p className="text-[11px] text-sub">
-            {maxPhotos === 0 ? '잠긴 칸을 눌러 사진 한도를 확인해 보세요' : dragId ? '원하는 자리에 놓아주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
+            {maxPhotos === 0 ? '더 올리려면 잠긴 칸을 눌러 주세요.' : dragId ? '원하는 자리에 놓아주세요' : '길게 눌러 순서를 바꿀 수 있어요'}
           </p>
         )}
         <p className="text-[15px] font-semibold">
@@ -305,10 +304,10 @@ function PhotoUploadPage() {
         <button
           type="button"
           onClick={() => setLimitOpen(true)}
-          className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-line/60 text-[12px] text-sub active:opacity-80"
+          className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-line/60 px-3 py-2 text-[12px] leading-5 break-keep text-sub active:opacity-80"
         >
           <LockIcon />
-          한 사람당 {perMember}장까지예요 · 플랜 한도 보기
+          한 사람당 {perMember}장 · 더 올리기 ›
         </button>
       )}
 
