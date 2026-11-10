@@ -74,7 +74,7 @@
 <table>
   <tr><th align="center">친구 사진 둘러보기</th><th align="center">이야기 덧붙이기</th></tr>
   <tr>
-    <td align="center"><img src="./docs/readme/circulation.jpg" alt="친구 사진 목록에서 이야기를 펼쳐 읽고 덧붙이는 화면" width="270" /></td>
+    <td align="center"><img src="./docs/readme/circulation-friends-2026-11-10.jpg" alt="친구 사진 목록에서 이야기를 펼쳐 읽고 덧붙이는 화면" width="270" /></td>
     <td align="center"><img src="./docs/readme/contribution.jpg" alt="친구 사진에 떠오르는 기억을 글로 덧붙이는 화면" width="270" /></td>
   </tr>
 </table>

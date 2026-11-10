@@ -5,7 +5,7 @@
 | 파일 | 화면 | 촬영 경로 |
 | --- | --- | --- |
 | `room-home.jpg` | 핀 꽃·참여현황 | `/rooms/lively` |
-| `circulation.jpg` | 최신 친구 사진 둘러보기 목록 | `/rooms/qa/circulation` |
+| `circulation-friends-2026-11-10.jpg` | 최신 친구 사진 둘러보기 목록 | `/rooms/qa/circulation` |
 | `contribution.jpg` | 친구 사진에 글로 기억 덧붙이기 | 같은 목록의 덧붙이기 → 글로 답하기 |
 | `templates.jpg` | 템플릿 펼치기 탭 | `/rooms/scroll-review/weaving?capture=1` |
 | `template-preview.jpg` | 경주 템플릿 미리보기 | 같은 화면의 미리보기 탭 |
@@ -21,4 +21,4 @@
 - 플랜 안내 캡처의 방·인원·카탈로그는 로컬 API 예시 응답입니다. 실제 결제는 진행하지 않았습니다.
 - 일부 예시 사진은 기존 데모의 외부 샘플 사진이므로 문장의 장소와 사진 내용이 일치하지 않을 수 있습니다.
 
-- `circulation.jpg`와 `contribution.jpg`는 최신 UI에서 다시 촬영했습니다. 로컬 모의 API로 친구 사진 한 장을 제공하고, 덧붙임은 입력만 했으며 실제 서버에 저장하지 않았습니다.
+- `circulation-friends-2026-11-10.jpg`와 `contribution.jpg`는 최신 UI에서 다시 촬영했습니다. 로컬 모의 API로 친구 사진 한 장을 제공하고, 덧붙임은 입력만 했으며 실제 서버에 저장하지 않았습니다.
